@@ -1,0 +1,784 @@
+// =============================================================================
+// SCHEMA PRISMA - MẠNG XÃ HỘI SINH VIÊN (THNN)
+// MONGODB-ONLY — Tất cả collections trong 1 database duy nhất
+// =============================================================================
+//
+// Runtime: FastAPI (Python) — prisma-client-py (async)
+// Database: MongoDB 7 — Single database, 35 collections
+//
+// Gốc thiết kế: 28 bảng PostgreSQL (chuyển sang MongoDB) + 7 collections MongoDB
+//
+// Quy ước:
+//   - PK: id String @id @default(auto()) @map("_id") @db.ObjectId
+//   - FK: String @db.ObjectId (reference cross-collection)
+//   - Field map: camelCase → @map("snake_case")
+//   - Collection map: @@map("snake_case_collection")
+//   - Enums: Không dùng enum block (MongoDB không hỗ trợ)
+//            → Dùng String + comment valid values
+//   - Timestamps: DateTime @default(now())
+//   - Soft delete: deletedAt DateTime?
+// =============================================================================
+
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGO_DATABASE_URL")
+}
+
+// =============================================================================
+// COMPOSITE TYPES (Embedded Documents — dùng chung)
+// =============================================================================
+
+/// Thông tin user nhúng (denormalized) — dùng trong Comment, Review
+type UserInfoEmbed {
+  id        String @map("id")
+  fullName  String @map("full_name")
+  avatarUrl String @map("avatar_url")
+}
+
+/// Phản hồi cấp 2 (cấp cuối cùng, không lồng thêm)
+type NestedReply {
+  userInfo  UserInfoEmbed @map("user_info")
+  content   String
+  isHidden  Boolean       @default(false) @map("is_hidden")
+  createdAt DateTime      @map("created_at")
+}
+
+/// Phản hồi cấp 1 (reply trực tiếp, chứa NestedReply[])
+type CommentReply {
+  userInfo  UserInfoEmbed @map("user_info")
+  content   String
+  replies   NestedReply[]
+  isHidden  Boolean       @default(false) @map("is_hidden")
+  createdAt DateTime      @map("created_at")
+}
+
+/// Thành viên cuộc hội thoại (embedded trong Conversation)
+type ConversationMember {
+  userId     String    @map("user_id")
+  role       String? // 'admin' | 'member'
+  lastReadAt DateTime? @map("last_read_at")
+}
+
+/// Snapshot tin nhắn cuối (embedded trong Conversation)
+type LastMessageEmbed {
+  content   String
+  senderId  String   @map("sender_id")
+  createdAt DateTime @map("created_at")
+}
+
+/// Metadata thông báo — điều hướng đến nội dung liên quan
+type NotificationMetadata {
+  referenceId String? @map("reference_id")
+  type        String? // 'post' | 'message' | 'friend_request'
+}
+
+/// Thông tin HTTP request (audit trail)
+type RequestInfoEmbed {
+  ipAddress String @map("ip_address")
+  userAgent String @map("user_agent")
+  endpoint  String
+}
+
+// =============================================================================
+// --- COLLECTIONS (35 tổng cộng) ---
+// =============================================================================
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 1: QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN (UC-01 → UC-05)
+// 6 collections: roles, users, otp_codes, refresh_tokens,
+//                privacy_settings, notification_settings
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: roles — Vai trò người dùng
+model Role {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  role String // 'student' | 'admin'
+
+  // Reverse relations
+  users User[]
+
+  @@map("roles")
+}
+
+/// Collection: users — Thông tin tài khoản người dùng
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  email         String    @unique
+  phoneNumber   String    @map("phone_number")
+  passwordHash  String    @map("password_hash")
+  fullName      String    @map("full_name")
+  bio           String?
+  avatarUrl     String?   @map("avatar_url")
+  coverUrl      String?   @map("cover_url")
+  roleId        String    @map("role") @db.ObjectId
+  isLocked      Boolean   @default(false) @map("is_locked")
+  lockReason    String?   @map("lock_reason")
+  lockedAt      DateTime? @map("locked_at")
+  lockedBy      String?   @map("locked_by") @db.ObjectId
+  emailVerified Boolean   @default(false) @map("email_verified")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // FK Relations
+  roleRef       Role  @relation(fields: [roleId], references: [id])
+  lockedByAdmin User? @relation("UserLockedBy", fields: [lockedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Reverse relations
+  lockedUsers            User[]               @relation("UserLockedBy")
+  refreshTokens          RefreshToken[]
+  privacySetting         PrivacySetting?
+  notificationSetting    NotificationSetting?
+  posts                  Post[]
+  sentFriendRequests     Friendship[]         @relation("FriendshipRequester")
+  receivedFriendRequests Friendship[]         @relation("FriendshipReceiver")
+  blockedUsers           UserBlock[]          @relation("Blocker")
+  blockedByUsers         UserBlock[]          @relation("Blocked")
+  reportsFiled           Report[]             @relation("Reporter")
+  reportsResolved        Report[]             @relation("ReportResolver")
+  shopItems              ShopItem[]
+  buyerOrders            Order[]              @relation("OrderBuyer")
+  sellerOrders           Order[]              @relation("OrderSeller")
+  documents              Document[]
+  courseSections         CourseSection[]
+  schedules              Schedule[]
+  studyNotes             StudyNote[]
+  places                 Place[]
+  placeBookmarks         PlaceBookmark[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+/// Collection: otp_codes — Mã xác thực OTP qua email
+model OtpCode {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  email       String
+  code        String
+  purpose     String // 'register' | 'reset_password'
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3) @map("max_attempts")
+  expiresAt   DateTime @map("expires_at")
+  isUsed      Boolean  @default(false) @map("is_used")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([email, purpose])
+  @@map("otp_codes")
+}
+
+/// Collection: refresh_tokens — JWT refresh tokens
+model RefreshToken {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String    @map("user_id") @db.ObjectId
+  tokenHash  String    @unique @map("token_hash")
+  deviceInfo String?   @map("device_info")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  // FK Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+/// Collection: privacy_settings — Cài đặt quyền riêng tư (UC-13)
+model PrivacySetting {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @unique @map("user_id") @db.ObjectId
+  whoCanSeePosts  String   @default("everyone") @map("who_can_see_posts") // 'everyone' | 'friends' | 'only_me'
+  whoCanMessage   String   @default("everyone") @map("who_can_message") // 'everyone' | 'friends' | 'only_me'
+  whoCanFriendReq String   @default("everyone") @map("who_can_friend_req") // 'everyone' | 'friends_of_friends' | 'no_one'
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // FK Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("privacy_settings")
+}
+
+/// Collection: notification_settings — Bật/tắt thông báo (UC-10)
+model NotificationSetting {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @unique @map("user_id") @db.ObjectId
+  notifyLike      Boolean  @default(true) @map("notify_like")
+  notifyComment   Boolean  @default(true) @map("notify_comment")
+  notifyReply     Boolean  @default(true) @map("notify_reply")
+  notifyFriendReq Boolean  @default(true) @map("notify_friend_req")
+  notifyMessage   Boolean  @default(true) @map("notify_message")
+  notifySchedule  Boolean  @default(true) @map("notify_schedule")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // FK Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notification_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 2: MẠNG XÃ HỘI (UC-06 → UC-13)
+// 5 collections: posts, post_images, friendships, user_blocks, reports
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: posts — Bài đăng newsfeed & bảng tin chung (UC-06, UC-24)
+model Post {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @map("user_id") @db.ObjectId
+  content      String
+  visibility   String    @default("public") @map("visibility") // 'public' | 'friends' | 'private'
+  postType     String    @map("post_type") // 'feed' | 'board'
+  boardTagId   String?   @map("board_tag_id") @db.ObjectId
+  likeCount    Int       @default(0) @map("like_count")
+  commentCount Int       @default(0) @map("comment_count")
+  isHidden     Boolean   @default(false) @map("is_hidden")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  // FK Relations
+  user     User      @relation(fields: [userId], references: [id])
+  boardTag BoardTag? @relation(fields: [boardTagId], references: [id])
+
+  // Reverse relations
+  postImages      PostImage[]
+  boardPostTags   BoardPostTag[]
+  boardPostImages BoardPostImage[]
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("posts")
+}
+
+/// Collection: post_images — Ảnh bài đăng
+model PostImage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  postId       String   @map("post_id") @db.ObjectId
+  imageUrl     String   @map("image_url")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // FK Relations
+  post Post @relation(fields: [postId], references: [id])
+
+  @@map("post_images")
+}
+
+/// Collection: friendships — Quan hệ bạn bè (UC-08)
+model Friendship {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  requesterId String   @map("requester_id") @db.ObjectId
+  receiverId  String   @map("receiver_id") @db.ObjectId
+  status      String   @default("pending") // 'pending' | 'accepted' | 'rejected'
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // FK Relations
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id])
+  receiver  User @relation("FriendshipReceiver", fields: [receiverId], references: [id])
+
+  @@unique([requesterId, receiverId])
+  @@map("friendships")
+}
+
+/// Collection: user_blocks — Chặn người dùng (UC-12)
+model UserBlock {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  blockerId String   @map("blocker_id") @db.ObjectId
+  blockedId String   @map("blocked_id") @db.ObjectId
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // FK Relations
+  blocker User @relation("Blocker", fields: [blockerId], references: [id])
+  blocked User @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+  @@map("user_blocks")
+}
+
+/// Collection: reports — Báo cáo vi phạm (UC-11, UC-29)
+model Report {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  reporterId     String    @map("reporter_id") @db.ObjectId
+  targetType     String    @map("target_type") // 'post' | 'comment' | 'user'
+  targetId       String    @map("target_id")
+  reason         String
+  description    String?
+  status         String    @default("pending") // 'pending' | 'resolved' | 'dismissed'
+  resolvedBy     String?   @map("resolved_by") @db.ObjectId
+  resolvedAction String?   @map("resolved_action") // 'hide_content' | 'lock_account' | 'dismiss'
+  resolvedAt     DateTime? @map("resolved_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  // FK Relations
+  reporter User  @relation("Reporter", fields: [reporterId], references: [id])
+  resolver User? @relation("ReportResolver", fields: [resolvedBy], references: [id])
+
+  @@map("reports")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 3: CỬA HÀNG & THANH TOÁN (UC-14 → UC-17)
+// 4 collections: item_categories, shop_items, item_images, orders
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: item_categories — Danh mục vật phẩm
+model ItemCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Reverse relations
+  shopItems ShopItem[]
+
+  @@map("item_categories")
+}
+
+/// Collection: shop_items — Vật phẩm bán (UC-14)
+model ShopItem {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId    String    @map("seller_id") @db.ObjectId
+  categoryId  String    @map("category_id") @db.ObjectId
+  title       String
+  description String
+  price       Float // DECIMAL(12,2) → Float cho MongoDB
+  avgRating   Float     @default(0) @map("avg_rating")
+  ratingCount Int       @default(0) @map("rating_count")
+  status      String    @default("active") // 'active' | 'sold' | 'hidden'
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  // FK Relations
+  seller   User         @relation(fields: [sellerId], references: [id])
+  category ItemCategory @relation(fields: [categoryId], references: [id])
+
+  // Reverse relations
+  itemImages ItemImage[]
+  orders     Order[]
+
+  @@index([categoryId])
+  @@index([sellerId])
+  @@index([price])
+  @@map("shop_items")
+}
+
+/// Collection: item_images — Ảnh vật phẩm
+model ItemImage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  itemId       String   @map("item_id") @db.ObjectId
+  imageUrl     String   @map("image_url")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // FK Relations
+  item ShopItem @relation(fields: [itemId], references: [id])
+
+  @@map("item_images")
+}
+
+/// Collection: orders — Đơn hàng / Thanh toán VNPAY (UC-16)
+model Order {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  buyerId           String    @map("buyer_id") @db.ObjectId
+  itemId            String    @map("item_id") @db.ObjectId
+  sellerId          String    @map("seller_id") @db.ObjectId
+  amount            Float // DECIMAL(12,2) → Float
+  status            String    @default("pending") // 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded'
+  paymentMethod     String    @default("vnpay") @map("payment_method")
+  vnpayTxnRef       String?   @unique @map("vnpay_txn_ref")
+  vnpayResponseCode String?   @map("vnpay_response_code")
+  paidAt            DateTime? @map("paid_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // FK Relations
+  buyer  User     @relation("OrderBuyer", fields: [buyerId], references: [id])
+  item   ShopItem @relation(fields: [itemId], references: [id])
+  seller User     @relation("OrderSeller", fields: [sellerId], references: [id])
+
+  @@index([buyerId])
+  @@index([status])
+  @@map("orders")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 4: CHIA SẺ TÀI LIỆU (UC-18, UC-19)
+// 2 collections: document_categories, documents
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: document_categories — Phân loại tài liệu
+model DocumentCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Reverse relations
+  documents Document[]
+
+  @@map("document_categories")
+}
+
+/// Collection: documents — Tài liệu chia sẻ (UC-18)
+model Document {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @map("user_id") @db.ObjectId
+  categoryId    String?   @map("category_id") @db.ObjectId
+  title         String
+  description   String?
+  fileUrl       String    @map("file_url")
+  fileName      String    @map("file_name")
+  fileSize      BigInt    @map("file_size")
+  fileType      String    @map("file_type")
+  avgRating     Float     @default(0) @map("avg_rating")
+  ratingCount   Int       @default(0) @map("rating_count")
+  downloadCount Int       @default(0) @map("download_count")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // FK Relations
+  user     User              @relation(fields: [userId], references: [id])
+  category DocumentCategory? @relation(fields: [categoryId], references: [id])
+
+  @@map("documents")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 5: THỜI KHÓA BIỂU & LỊCH HỌC (UC-20 → UC-23)
+// 4 collections: course_sections, schedules, schedule_entries, study_notes
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: course_sections — Lớp học phần (import từ khoa)
+model CourseSection {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @map("user_id") @db.ObjectId
+  courseCode  String   @map("course_code")
+  courseName  String   @map("course_name")
+  sectionCode String?  @map("section_code")
+  instructor  String?
+  dayOfWeek   Int      @map("day_of_week") // 1-7 (1=CN, 2=Thứ 2, ..., 7=Thứ 7)
+  startTime   String   @map("start_time") // "HH:mm" — TIME → String cho MongoDB
+  endTime     String   @map("end_time") // "HH:mm"
+  room        String?
+  semester    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // FK Relations
+  user User @relation(fields: [userId], references: [id])
+
+  // Reverse relations
+  scheduleEntries ScheduleEntry[]
+
+  @@map("course_sections")
+}
+
+/// Collection: schedules — Thời khóa biểu cá nhân (UC-20, UC-22)
+model Schedule {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @map("user_id") @db.ObjectId
+  name      String
+  isActive  Boolean  @default(false) @map("is_active")
+  source    String   @default("manual") // 'manual' | 'excel' | 'ai'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // FK Relations
+  user User @relation(fields: [userId], references: [id])
+
+  // Reverse relations
+  entries ScheduleEntry[]
+
+  @@map("schedules")
+}
+
+/// Collection: schedule_entries — Mục trong TKB
+model ScheduleEntry {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  scheduleId String    @map("schedule_id") @db.ObjectId
+  sectionId  String?   @map("section_id") @db.ObjectId
+  entryType  String    @map("entry_type") // 'class' | 'exam' | 'custom'
+  title      String
+  dayOfWeek  Int?      @map("day_of_week") // 1-7
+  startTime  String    @map("start_time") // "HH:mm"
+  endTime    String    @map("end_time") // "HH:mm"
+  room       String?
+  date       DateTime? // Ngày cụ thể (cho lịch thi)
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  // FK Relations
+  schedule Schedule       @relation(fields: [scheduleId], references: [id])
+  section  CourseSection? @relation(fields: [sectionId], references: [id])
+
+  @@map("schedule_entries")
+}
+
+/// Collection: study_notes — Ghi chú deadline/lịch thi (UC-21, UC-23)
+model StudyNote {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId              String    @map("user_id") @db.ObjectId
+  title               String
+  subject             String?
+  description         String?
+  dueAt               DateTime  @map("due_at")
+  noteType            String    @default("deadline") @map("note_type") // 'deadline' | 'exam' | 'event'
+  remindBeforeMinutes Int       @default(60) @map("remind_before_minutes")
+  isReminded          Boolean   @default(false) @map("is_reminded")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  // FK Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, dueAt])
+  @@map("study_notes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 6: BẢNG TIN CHUNG (UC-24)
+// 3 collections: board_tags, board_post_tags, board_post_images
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: board_tags — Thẻ phân loại bảng tin
+/// Mặc định: tìm_trọ, tìm_ở_ghép, mất_đồ, nhặt_được_đồ, hỏi_đáp, tìm_đường
+model BoardTag {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Reverse relations
+  posts         Post[]
+  boardPostTags BoardPostTag[]
+
+  @@map("board_tags")
+}
+
+/// Collection: board_post_tags — Gắn tag bài bảng tin (N-N)
+/// Gốc PG: PK composite (board_post_id, tag_id) → MongoDB: ObjectId _id + @@unique
+model BoardPostTag {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  boardPostId String @map("board_post_id") @db.ObjectId
+  tagId       String @map("tag_id") @db.ObjectId
+
+  // FK Relations
+  post Post     @relation(fields: [boardPostId], references: [id])
+  tag  BoardTag @relation(fields: [tagId], references: [id])
+
+  @@unique([boardPostId, tagId])
+  @@map("board_post_tags")
+}
+
+/// Collection: board_post_images — Ảnh bài đăng bảng tin
+model BoardPostImage {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  boardPostId  String @map("board_post_id") @db.ObjectId
+  imageUrl     String @map("image_url")
+  displayOrder Int    @default(0) @map("display_order")
+
+  // FK Relations
+  post Post @relation(fields: [boardPostId], references: [id])
+
+  @@map("board_post_images")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 7: QUẢN TRỊ HỆ THỐNG (UC-25 → UC-29)
+// → Sử dụng collections: users, reports, audit_logs đã định nghĩa
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM 8: BẢN ĐỒ ĐỊA ĐIỂM (UC-30)
+// 4 collections: place_categories, places, place_images, place_bookmarks
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: place_categories — Loại địa điểm
+model PlaceCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  icon      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Reverse relations
+  places Place[]
+
+  @@map("place_categories")
+}
+
+/// Collection: places — Địa điểm xung quanh trường (UC-30)
+model Place {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @map("user_id") @db.ObjectId
+  categoryId  String   @map("category_id") @db.ObjectId
+  name        String
+  description String?
+  latitude    Float // DECIMAL(10,7) → Float
+  longitude   Float // DECIMAL(10,7) → Float
+  address     String?
+  avgRating   Float    @default(0) @map("avg_rating")
+  ratingCount Int      @default(0) @map("rating_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // FK Relations
+  user     User          @relation(fields: [userId], references: [id])
+  category PlaceCategory @relation(fields: [categoryId], references: [id])
+
+  // Reverse relations
+  placeImages    PlaceImage[]
+  placeBookmarks PlaceBookmark[]
+
+  @@index([latitude, longitude])
+  @@index([categoryId])
+  @@map("places")
+}
+
+/// Collection: place_images — Ảnh địa điểm
+model PlaceImage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  placeId      String   @map("place_id") @db.ObjectId
+  imageUrl     String   @map("image_url")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // FK Relations
+  place Place @relation(fields: [placeId], references: [id])
+
+  @@map("place_images")
+}
+
+/// Collection: place_bookmarks — Đánh dấu yêu thích
+/// Gốc PG: PK composite (user_id, place_id) → MongoDB: ObjectId _id + @@unique
+model PlaceBookmark {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @map("user_id") @db.ObjectId
+  placeId   String   @map("place_id") @db.ObjectId
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // FK Relations
+  user  User  @relation(fields: [userId], references: [id])
+  place Place @relation(fields: [placeId], references: [id])
+
+  @@unique([userId, placeId])
+  @@map("place_bookmarks")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NHÓM GỐC MONGODB: TƯƠNG TÁC & REALTIME
+// 7 collections: comments, likes, conversations, messages,
+//                notifications, audit_logs, reviews
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Collection: comments — Bình luận bài viết (nested 2 cấp)
+model Comment {
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  targetId   String         @map("target_id")
+  targetType String         @map("target_type") // 'post' | 'board_post' | 'document'
+  userInfo   UserInfoEmbed  @map("user_info")
+  content    String // Tối đa 2000 ký tự
+  replies    CommentReply[]
+  isHidden   Boolean        @default(false) @map("is_hidden")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([targetId, targetType])
+  @@map("comments")
+}
+
+/// Collection: likes — Lượt thích bài viết
+model Like {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  targetId   String   @map("target_id")
+  targetType String   @map("target_type") // 'post' | 'board_post'
+  userId     String   @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([targetId, targetType, userId])
+  @@map("likes")
+}
+
+/// Collection: conversations — Cuộc hội thoại cá nhân & nhóm
+model Conversation {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  type        String // 'direct' | 'group'
+  name        String?
+  members     ConversationMember[]
+  lastMessage LastMessageEmbed?    @map("last_message")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  // Reverse relations
+  messages Message[]
+
+  @@index([updatedAt(sort: Desc)])
+  @@map("conversations")
+}
+
+/// Collection: messages — Tin nhắn
+model Message {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId String   @map("conversation_id") @db.ObjectId
+  senderId       String   @map("sender_id")
+  content        String
+  attachments    String[] // Đường dẫn file/ảnh trên MinIO
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // FK Relations (MongoDB ObjectId reference)
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@map("messages")
+}
+
+/// Collection: notifications — Thông báo
+model Notification {
+  id        String                @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String                @map("user_id")
+  type      String // 'like' | 'comment' | 'friend_request' | 'message' | 'system'
+  title     String
+  content   String
+  metadata  NotificationMetadata?
+  isRead    Boolean               @default(false) @map("is_read")
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  @@index([userId, isRead])
+  @@index([createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+/// Collection: audit_logs — Nhật ký hoạt động hệ thống
+model AuditLog {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String?          @map("user_id")
+  action      String // 'LOGIN' | 'LOGOUT' | 'DELETE_POST' | 'LOCK_ACCOUNT' | 'PAYMENT' | ...
+  requestInfo RequestInfoEmbed @map("request_info")
+  payload     Json?
+  severity    String // 'INFO' | 'WARNING' | 'CRITICAL'
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+/// Collection: reviews — Đánh giá vật phẩm, tài liệu, địa điểm
+model Review {
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  targetId   String        @map("target_id")
+  targetType String        @map("target_type") // 'item' | 'document' | 'place'
+  userInfo   UserInfoEmbed @map("user_info")
+  rating     Int // 1 → 5
+  comment    String?
+  orderId    String?       @map("order_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  @@index([targetId, targetType])
+  @@map("reviews")
+}
