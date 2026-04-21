@@ -1,20 +1,20 @@
 // =============================================================================
-// SCHEMA PRISMA - MẠNG XÃ HỘI SINH VIÊN (THNN)
-// MONGODB-ONLY — Tất cả collections trong 1 database duy nhất
+// SCHEMA PRISMA - MANG XA HOI SINH VIEN (THNN)
+// MONGODB-ONLY  Tat ca collections trong 1 database duy nhat
 // =============================================================================
 //
-// Runtime: FastAPI (Python) — prisma-client-py (async)
-// Database: MongoDB 7 — Single database, 35 collections
+// Runtime: FastAPI (Python)  prisma-client-py (async)
+// Database: MongoDB 7  Single database, 35 collections
 //
-// Gốc thiết kế: 28 bảng PostgreSQL (chuyển sang MongoDB) + 7 collections MongoDB
+// Goc thiet ke: 28 bang PostgreSQL (chuyen sang MongoDB) + 7 collections MongoDB
 //
-// Quy ước:
+// Quy uoc:
 //   - PK: id String @id @default(auto()) @map("_id") @db.ObjectId
 //   - FK: String @db.ObjectId (reference cross-collection)
-//   - Field map: camelCase → @map("snake_case")
+//   - Field map: camelCase -> @map("snake_case")
 //   - Collection map: @@map("snake_case_collection")
-//   - Enums: Không dùng enum block (MongoDB không hỗ trợ)
-//            → Dùng String + comment valid values
+//   - Enums: Khong dung enum block (MongoDB khong ho tro)
+//            -> Dung String + comment valid values
 //   - Timestamps: DateTime @default(now())
 //   - Soft delete: deletedAt DateTime?
 // =============================================================================
@@ -31,71 +31,30 @@ datasource db {
 }
 
 // =============================================================================
-// COMPOSITE TYPES (Embedded Documents — dùng chung)
+// EMBEDDED DOCUMENTS (Json fields)
+// prisma-client-py khong ho tro Composite Types -> dung Json + Pydantic validate
+//
+// Cau truc Json (validate bang Pydantic o runtime):
+//   UserInfoEmbed:         { id, full_name, avatar_url }
+//   NestedReply:           { user_info: UserInfoEmbed, content, is_hidden, created_at }
+//   CommentReply:          { user_info: UserInfoEmbed, content, replies: NestedReply[], is_hidden, created_at }
+//   ConversationMember:    { user_id, role?, last_read_at? }
+//   LastMessageEmbed:      { content, sender_id, created_at }
+//   NotificationMetadata:  { reference_id?, type? }
+//   RequestInfoEmbed:      { ip_address, user_agent, endpoint }
 // =============================================================================
 
-/// Thông tin user nhúng (denormalized) — dùng trong Comment, Review
-type UserInfoEmbed {
-  id        String @map("id")
-  fullName  String @map("full_name")
-  avatarUrl String @map("avatar_url")
-}
-
-/// Phản hồi cấp 2 (cấp cuối cùng, không lồng thêm)
-type NestedReply {
-  userInfo  UserInfoEmbed @map("user_info")
-  content   String
-  isHidden  Boolean       @default(false) @map("is_hidden")
-  createdAt DateTime      @map("created_at")
-}
-
-/// Phản hồi cấp 1 (reply trực tiếp, chứa NestedReply[])
-type CommentReply {
-  userInfo  UserInfoEmbed @map("user_info")
-  content   String
-  replies   NestedReply[]
-  isHidden  Boolean       @default(false) @map("is_hidden")
-  createdAt DateTime      @map("created_at")
-}
-
-/// Thành viên cuộc hội thoại (embedded trong Conversation)
-type ConversationMember {
-  userId     String    @map("user_id")
-  role       String? // 'admin' | 'member'
-  lastReadAt DateTime? @map("last_read_at")
-}
-
-/// Snapshot tin nhắn cuối (embedded trong Conversation)
-type LastMessageEmbed {
-  content   String
-  senderId  String   @map("sender_id")
-  createdAt DateTime @map("created_at")
-}
-
-/// Metadata thông báo — điều hướng đến nội dung liên quan
-type NotificationMetadata {
-  referenceId String? @map("reference_id")
-  type        String? // 'post' | 'message' | 'friend_request'
-}
-
-/// Thông tin HTTP request (audit trail)
-type RequestInfoEmbed {
-  ipAddress String @map("ip_address")
-  userAgent String @map("user_agent")
-  endpoint  String
-}
-
 // =============================================================================
-// --- COLLECTIONS (35 tổng cộng) ---
+// --- COLLECTIONS (35 tong cong) ---
 // =============================================================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 1: QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN (UC-01 → UC-05)
+// -----------------------------------------------------------------------------
+// NHOM 1: QUAN LY TAI KHOAN & PHAN QUYEN (UC-01 -> UC-05)
 // 6 collections: roles, users, otp_codes, refresh_tokens,
 //                privacy_settings, notification_settings
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: roles — Vai trò người dùng
+/// Collection: roles  Vai tro nguoi dung
 model Role {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   role String // 'student' | 'admin'
@@ -106,7 +65,7 @@ model Role {
   @@map("roles")
 }
 
-/// Collection: users — Thông tin tài khoản người dùng
+/// Collection: users  Thong tin tai khoan nguoi dung
 model User {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   email         String    @unique
@@ -157,7 +116,7 @@ model User {
   @@map("users")
 }
 
-/// Collection: otp_codes — Mã xác thực OTP qua email
+/// Collection: otp_codes  Ma xac thuc OTP qua email
 model OtpCode {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   email       String
@@ -173,7 +132,7 @@ model OtpCode {
   @@map("otp_codes")
 }
 
-/// Collection: refresh_tokens — JWT refresh tokens
+/// Collection: refresh_tokens  JWT refresh tokens
 model RefreshToken {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   userId     String    @map("user_id") @db.ObjectId
@@ -189,7 +148,7 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-/// Collection: privacy_settings — Cài đặt quyền riêng tư (UC-13)
+/// Collection: privacy_settings  Cai at quyen rieng tu (UC-13)
 model PrivacySetting {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   userId          String   @unique @map("user_id") @db.ObjectId
@@ -204,7 +163,7 @@ model PrivacySetting {
   @@map("privacy_settings")
 }
 
-/// Collection: notification_settings — Bật/tắt thông báo (UC-10)
+/// Collection: notification_settings  Bat/tat thong bao (UC-10)
 model NotificationSetting {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   userId          String   @unique @map("user_id") @db.ObjectId
@@ -222,12 +181,12 @@ model NotificationSetting {
   @@map("notification_settings")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 2: MẠNG XÃ HỘI (UC-06 → UC-13)
+// -----------------------------------------------------------------------------
+// NHOM 2: MANG XA HOI (UC-06 -> UC-13)
 // 5 collections: posts, post_images, friendships, user_blocks, reports
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: posts — Bài đăng newsfeed & bảng tin chung (UC-06, UC-24)
+/// Collection: posts  Bai ang newsfeed & bang tin chung (UC-06, UC-24)
 model Post {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   userId       String    @map("user_id") @db.ObjectId
@@ -256,7 +215,7 @@ model Post {
   @@map("posts")
 }
 
-/// Collection: post_images — Ảnh bài đăng
+/// Collection: post_images  Anh bai ang
 model PostImage {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   postId       String   @map("post_id") @db.ObjectId
@@ -270,7 +229,7 @@ model PostImage {
   @@map("post_images")
 }
 
-/// Collection: friendships — Quan hệ bạn bè (UC-08)
+/// Collection: friendships  Quan he ban be (UC-08)
 model Friendship {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   requesterId String   @map("requester_id") @db.ObjectId
@@ -287,7 +246,7 @@ model Friendship {
   @@map("friendships")
 }
 
-/// Collection: user_blocks — Chặn người dùng (UC-12)
+/// Collection: user_blocks  Chan nguoi dung (UC-12)
 model UserBlock {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   blockerId String   @map("blocker_id") @db.ObjectId
@@ -302,7 +261,7 @@ model UserBlock {
   @@map("user_blocks")
 }
 
-/// Collection: reports — Báo cáo vi phạm (UC-11, UC-29)
+/// Collection: reports  Bao cao vi pham (UC-11, UC-29)
 model Report {
   id             String    @id @default(auto()) @map("_id") @db.ObjectId
   reporterId     String    @map("reporter_id") @db.ObjectId
@@ -323,12 +282,12 @@ model Report {
   @@map("reports")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 3: CỬA HÀNG & THANH TOÁN (UC-14 → UC-17)
+// -----------------------------------------------------------------------------
+// NHOM 3: CUA HANG & THANH TOAN (UC-14 -> UC-17)
 // 4 collections: item_categories, shop_items, item_images, orders
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: item_categories — Danh mục vật phẩm
+/// Collection: item_categories  Danh muc vat pham
 model ItemCategory {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String   @unique
@@ -341,14 +300,14 @@ model ItemCategory {
   @@map("item_categories")
 }
 
-/// Collection: shop_items — Vật phẩm bán (UC-14)
+/// Collection: shop_items  Vat pham ban (UC-14)
 model ShopItem {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   sellerId    String    @map("seller_id") @db.ObjectId
   categoryId  String    @map("category_id") @db.ObjectId
   title       String
   description String
-  price       Float // DECIMAL(12,2) → Float cho MongoDB
+  price       Float // DECIMAL(12,2) -> Float cho MongoDB
   avgRating   Float     @default(0) @map("avg_rating")
   ratingCount Int       @default(0) @map("rating_count")
   status      String    @default("active") // 'active' | 'sold' | 'hidden'
@@ -370,7 +329,7 @@ model ShopItem {
   @@map("shop_items")
 }
 
-/// Collection: item_images — Ảnh vật phẩm
+/// Collection: item_images  Anh vat pham
 model ItemImage {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   itemId       String   @map("item_id") @db.ObjectId
@@ -384,13 +343,13 @@ model ItemImage {
   @@map("item_images")
 }
 
-/// Collection: orders — Đơn hàng / Thanh toán VNPAY (UC-16)
+/// Collection: orders  on hang / Thanh toan VNPAY (UC-16)
 model Order {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
   buyerId           String    @map("buyer_id") @db.ObjectId
   itemId            String    @map("item_id") @db.ObjectId
   sellerId          String    @map("seller_id") @db.ObjectId
-  amount            Float // DECIMAL(12,2) → Float
+  amount            Float // DECIMAL(12,2) -> Float
   status            String    @default("pending") // 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded'
   paymentMethod     String    @default("vnpay") @map("payment_method")
   vnpayTxnRef       String?   @unique @map("vnpay_txn_ref")
@@ -409,12 +368,12 @@ model Order {
   @@map("orders")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 4: CHIA SẺ TÀI LIỆU (UC-18, UC-19)
+// -----------------------------------------------------------------------------
+// NHOM 4: CHIA SE TAI LIEU (UC-18, UC-19)
 // 2 collections: document_categories, documents
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: document_categories — Phân loại tài liệu
+/// Collection: document_categories  Phan loai tai lieu
 model DocumentCategory {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String   @unique
@@ -426,7 +385,7 @@ model DocumentCategory {
   @@map("document_categories")
 }
 
-/// Collection: documents — Tài liệu chia sẻ (UC-18)
+/// Collection: documents  Tai lieu chia se (UC-18)
 model Document {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   userId        String    @map("user_id") @db.ObjectId
@@ -451,12 +410,12 @@ model Document {
   @@map("documents")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 5: THỜI KHÓA BIỂU & LỊCH HỌC (UC-20 → UC-23)
+// -----------------------------------------------------------------------------
+// NHOM 5: THOI KHOA BIEU & LICH HOC (UC-20 -> UC-23)
 // 4 collections: course_sections, schedules, schedule_entries, study_notes
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: course_sections — Lớp học phần (import từ khoa)
+/// Collection: course_sections  Lop hoc phan (import tu khoa)
 model CourseSection {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   userId      String   @map("user_id") @db.ObjectId
@@ -464,8 +423,8 @@ model CourseSection {
   courseName  String   @map("course_name")
   sectionCode String?  @map("section_code")
   instructor  String?
-  dayOfWeek   Int      @map("day_of_week") // 1-7 (1=CN, 2=Thứ 2, ..., 7=Thứ 7)
-  startTime   String   @map("start_time") // "HH:mm" — TIME → String cho MongoDB
+  dayOfWeek   Int      @map("day_of_week") // 1-7 (1=CN, 2=Thu 2, ..., 7=Thu 7)
+  startTime   String   @map("start_time") // "HH:mm"  TIME -> String cho MongoDB
   endTime     String   @map("end_time") // "HH:mm"
   room        String?
   semester    String?
@@ -480,7 +439,7 @@ model CourseSection {
   @@map("course_sections")
 }
 
-/// Collection: schedules — Thời khóa biểu cá nhân (UC-20, UC-22)
+/// Collection: schedules  Thoi khoa bieu ca nhan (UC-20, UC-22)
 model Schedule {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @map("user_id") @db.ObjectId
@@ -499,7 +458,7 @@ model Schedule {
   @@map("schedules")
 }
 
-/// Collection: schedule_entries — Mục trong TKB
+/// Collection: schedule_entries  Muc trong TKB
 model ScheduleEntry {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   scheduleId String    @map("schedule_id") @db.ObjectId
@@ -510,7 +469,7 @@ model ScheduleEntry {
   startTime  String    @map("start_time") // "HH:mm"
   endTime    String    @map("end_time") // "HH:mm"
   room       String?
-  date       DateTime? // Ngày cụ thể (cho lịch thi)
+  date       DateTime? // Ngay cu the (cho lich thi)
   createdAt  DateTime  @default(now()) @map("created_at")
 
   // FK Relations
@@ -520,7 +479,7 @@ model ScheduleEntry {
   @@map("schedule_entries")
 }
 
-/// Collection: study_notes — Ghi chú deadline/lịch thi (UC-21, UC-23)
+/// Collection: study_notes  Ghi chu deadline/lich thi (UC-21, UC-23)
 model StudyNote {
   id                  String    @id @default(auto()) @map("_id") @db.ObjectId
   userId              String    @map("user_id") @db.ObjectId
@@ -542,13 +501,13 @@ model StudyNote {
   @@map("study_notes")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 6: BẢNG TIN CHUNG (UC-24)
+// -----------------------------------------------------------------------------
+// NHOM 6: BANG TIN CHUNG (UC-24)
 // 3 collections: board_tags, board_post_tags, board_post_images
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: board_tags — Thẻ phân loại bảng tin
-/// Mặc định: tìm_trọ, tìm_ở_ghép, mất_đồ, nhặt_được_đồ, hỏi_đáp, tìm_đường
+/// Collection: board_tags  The phan loai bang tin
+/// Mac inh: tim_tro, tim_o_ghep, mat_o, nhat_uoc_o, hoi_ap, tim_uong
 model BoardTag {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String   @unique
@@ -562,8 +521,8 @@ model BoardTag {
   @@map("board_tags")
 }
 
-/// Collection: board_post_tags — Gắn tag bài bảng tin (N-N)
-/// Gốc PG: PK composite (board_post_id, tag_id) → MongoDB: ObjectId _id + @@unique
+/// Collection: board_post_tags  Gan tag bai bang tin (N-N)
+/// Goc PG: PK composite (board_post_id, tag_id) -> MongoDB: ObjectId _id + @@unique
 model BoardPostTag {
   id          String @id @default(auto()) @map("_id") @db.ObjectId
   boardPostId String @map("board_post_id") @db.ObjectId
@@ -577,7 +536,7 @@ model BoardPostTag {
   @@map("board_post_tags")
 }
 
-/// Collection: board_post_images — Ảnh bài đăng bảng tin
+/// Collection: board_post_images  Anh bai ang bang tin
 model BoardPostImage {
   id           String @id @default(auto()) @map("_id") @db.ObjectId
   boardPostId  String @map("board_post_id") @db.ObjectId
@@ -590,17 +549,17 @@ model BoardPostImage {
   @@map("board_post_images")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 7: QUẢN TRỊ HỆ THỐNG (UC-25 → UC-29)
-// → Sử dụng collections: users, reports, audit_logs đã định nghĩa
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// NHOM 7: QUAN TRI HE THONG (UC-25 -> UC-29)
+// -> Su dung collections: users, reports, audit_logs a inh nghia
+// -----------------------------------------------------------------------------
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM 8: BẢN ĐỒ ĐỊA ĐIỂM (UC-30)
+// -----------------------------------------------------------------------------
+// NHOM 8: BAN O IA IEM (UC-30)
 // 4 collections: place_categories, places, place_images, place_bookmarks
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: place_categories — Loại địa điểm
+/// Collection: place_categories  Loai ia iem
 model PlaceCategory {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String   @unique
@@ -613,15 +572,15 @@ model PlaceCategory {
   @@map("place_categories")
 }
 
-/// Collection: places — Địa điểm xung quanh trường (UC-30)
+/// Collection: places  ia iem xung quanh truong (UC-30)
 model Place {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   userId      String   @map("user_id") @db.ObjectId
   categoryId  String   @map("category_id") @db.ObjectId
   name        String
   description String?
-  latitude    Float // DECIMAL(10,7) → Float
-  longitude   Float // DECIMAL(10,7) → Float
+  latitude    Float // DECIMAL(10,7) -> Float
+  longitude   Float // DECIMAL(10,7) -> Float
   address     String?
   avgRating   Float    @default(0) @map("avg_rating")
   ratingCount Int      @default(0) @map("rating_count")
@@ -641,7 +600,7 @@ model Place {
   @@map("places")
 }
 
-/// Collection: place_images — Ảnh địa điểm
+/// Collection: place_images  Anh ia iem
 model PlaceImage {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   placeId      String   @map("place_id") @db.ObjectId
@@ -655,8 +614,8 @@ model PlaceImage {
   @@map("place_images")
 }
 
-/// Collection: place_bookmarks — Đánh dấu yêu thích
-/// Gốc PG: PK composite (user_id, place_id) → MongoDB: ObjectId _id + @@unique
+/// Collection: place_bookmarks  anh dau yeu thich
+/// Goc PG: PK composite (user_id, place_id) -> MongoDB: ObjectId _id + @@unique
 model PlaceBookmark {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @map("user_id") @db.ObjectId
@@ -671,20 +630,20 @@ model PlaceBookmark {
   @@map("place_bookmarks")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NHÓM GỐC MONGODB: TƯƠNG TÁC & REALTIME
+// -----------------------------------------------------------------------------
+// NHOM GOC MONGODB: TUONG TAC & REALTIME
 // 7 collections: comments, likes, conversations, messages,
 //                notifications, audit_logs, reviews
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-/// Collection: comments — Bình luận bài viết (nested 2 cấp)
+/// Collection: comments  Binh luan bai viet (nested 2 cap)
 model Comment {
   id         String         @id @default(auto()) @map("_id") @db.ObjectId
   targetId   String         @map("target_id")
   targetType String         @map("target_type") // 'post' | 'board_post' | 'document'
-  userInfo   UserInfoEmbed  @map("user_info")
-  content    String // Tối đa 2000 ký tự
-  replies    CommentReply[]
+  userInfo   Json           @map("user_info") // UserInfoEmbed
+  content    String // Toi a 2000 ky tu
+  replies    Json           @default("[]") // CommentReply[]
   isHidden   Boolean        @default(false) @map("is_hidden")
   createdAt  DateTime       @default(now()) @map("created_at")
 
@@ -692,7 +651,7 @@ model Comment {
   @@map("comments")
 }
 
-/// Collection: likes — Lượt thích bài viết
+/// Collection: likes  Luot thich bai viet
 model Like {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   targetId   String   @map("target_id")
@@ -704,13 +663,13 @@ model Like {
   @@map("likes")
 }
 
-/// Collection: conversations — Cuộc hội thoại cá nhân & nhóm
+/// Collection: conversations  Cuoc hoi thoai ca nhan & nhom
 model Conversation {
   id          String               @id @default(auto()) @map("_id") @db.ObjectId
   type        String // 'direct' | 'group'
   name        String?
-  members     ConversationMember[]
-  lastMessage LastMessageEmbed?    @map("last_message")
+  members     Json               @default("[]") // ConversationMember[]
+  lastMessage Json?              @map("last_message") // LastMessageEmbed?
   updatedAt   DateTime             @updatedAt @map("updated_at")
 
   // Reverse relations
@@ -720,13 +679,13 @@ model Conversation {
   @@map("conversations")
 }
 
-/// Collection: messages — Tin nhắn
+/// Collection: messages  Tin nhan
 model Message {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   conversationId String   @map("conversation_id") @db.ObjectId
   senderId       String   @map("sender_id")
   content        String
-  attachments    String[] // Đường dẫn file/ảnh trên MinIO
+  attachments    String[] // uong dan file/anh tren MinIO
   createdAt      DateTime @default(now()) @map("created_at")
 
   // FK Relations (MongoDB ObjectId reference)
@@ -736,14 +695,14 @@ model Message {
   @@map("messages")
 }
 
-/// Collection: notifications — Thông báo
+/// Collection: notifications  Thong bao
 model Notification {
   id        String                @id @default(auto()) @map("_id") @db.ObjectId
   userId    String                @map("user_id")
   type      String // 'like' | 'comment' | 'friend_request' | 'message' | 'system'
   title     String
   content   String
-  metadata  NotificationMetadata?
+  metadata  Json? // NotificationMetadata
   isRead    Boolean               @default(false) @map("is_read")
   createdAt DateTime              @default(now()) @map("created_at")
 
@@ -752,12 +711,12 @@ model Notification {
   @@map("notifications")
 }
 
-/// Collection: audit_logs — Nhật ký hoạt động hệ thống
+/// Collection: audit_logs  Nhat ky hoat ong he thong
 model AuditLog {
   id          String           @id @default(auto()) @map("_id") @db.ObjectId
   userId      String?          @map("user_id")
   action      String // 'LOGIN' | 'LOGOUT' | 'DELETE_POST' | 'LOCK_ACCOUNT' | 'PAYMENT' | ...
-  requestInfo RequestInfoEmbed @map("request_info")
+  requestInfo Json            @map("request_info") // RequestInfoEmbed
   payload     Json?
   severity    String // 'INFO' | 'WARNING' | 'CRITICAL'
   createdAt   DateTime         @default(now()) @map("created_at")
@@ -768,13 +727,13 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-/// Collection: reviews — Đánh giá vật phẩm, tài liệu, địa điểm
+/// Collection: reviews  anh gia vat pham, tai lieu, ia iem
 model Review {
   id         String        @id @default(auto()) @map("_id") @db.ObjectId
   targetId   String        @map("target_id")
   targetType String        @map("target_type") // 'item' | 'document' | 'place'
-  userInfo   UserInfoEmbed @map("user_info")
-  rating     Int // 1 → 5
+  userInfo   Json         @map("user_info") // UserInfoEmbed
+  rating     Int // 1 -> 5
   comment    String?
   orderId    String?       @map("order_id")
   createdAt  DateTime      @default(now()) @map("created_at")
