@@ -1,0 +1,29 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Prisma
+prisma==0.15.0
+
+# Auth & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Validation
+pydantic[email]==2.10.4
+pydantic-settings==2.7.1
+email-validator==2.2.0
+
+# Redis
+redis[hiredis]==5.2.1
+
+# Email
+aiosmtplib==3.0.2
+
+# Storage (MinIO)
+minio==7.2.15
+
+# Dev
+pytest==8.3.4
+pytest-asyncio==0.25.2
+httpx==0.28.1
