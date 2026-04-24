@@ -9,8 +9,11 @@ from app.core.security import decode_token
 from app.core.exceptions import UnauthorizedException, ForbiddenException
 from app.modules.account.repository import AccountRepository
 from app.modules.account.service import AccountService
+from app.modules.social.repository import SocialRepository
+from app.modules.social.service import SocialService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login", auto_error=False)
 
 _db: Prisma | None = None
 
@@ -18,8 +21,16 @@ _db: Prisma | None = None
 def get_db() -> Prisma:
     global _db
     if _db is None:
-        _db = Prisma(auto_register=True)
+        try:
+            _db = Prisma(auto_register=True)
+        except Exception:
+            # Fallback if already registered by another instance (though we aim to avoid this)
+            from prisma import get_client
+            _db = get_client()
     return _db
+
+
+db = get_db()
 
 
 def get_account_repo(db: Prisma = Depends(get_db)) -> AccountRepository:
@@ -30,6 +41,18 @@ def get_account_service(
     repo: AccountRepository = Depends(get_account_repo),
 ) -> AccountService:
     return AccountService(repo)
+
+
+async def get_optional_user_id(token: Annotated[str | None, Depends(oauth2_scheme_optional)]) -> str | None:
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+        if payload and payload.get("type") == "access":
+            return payload.get("sub")
+    except Exception:
+        pass
+    return None
 
 
 async def get_current_user_id(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
@@ -56,3 +79,15 @@ async def require_active_user(
     if user.deletedAt is not None:
         raise UnauthorizedException("Account is deactivated", "ACCOUNT_DEACTIVATED")
     return user_id
+
+
+# --- Social Network ---
+
+def get_social_repo(db: Prisma = Depends(get_db)) -> SocialRepository:
+    return SocialRepository(db)
+
+
+def get_social_service(
+    repo: SocialRepository = Depends(get_social_repo),
+) -> SocialService:
+    return SocialService(repo)

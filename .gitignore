@@ -48,3 +48,4 @@ yarn-error.log*
 Thumbs.db
 desktop.ini
 skills-lock.json
+.agent/

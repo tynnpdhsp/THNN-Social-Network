@@ -31,21 +31,23 @@ settings = get_settings()
 
 # ─── Auth ──────────────────────────────────────────────────────────────────────
 
-@router.post("/register/send-otp", response_model=MessageResponse)
-async def send_register_otp(
+@router.post("/register/resend-verification", response_model=MessageResponse)
+async def resend_verification_otp(
     body: SendOtpRequest,
     svc: AccountService = Depends(get_account_service),
 ):
-    message = await svc.send_register_otp(body)
+    body.purpose = "register"
+    message = await svc.resend_verification_otp(body)
     return MessageResponse(message=message)
 
 
-@router.post("/register", response_model=TokenResponse)
+@router.post("/register", response_model=MessageResponse)
 async def register(
     body: RegisterRequest,
     svc: AccountService = Depends(get_account_service),
 ):
-    return await svc.register(body)
+    message = await svc.register(body)
+    return MessageResponse(message=message)
 
 
 @router.post("/verify-otp", response_model=MessageResponse)
@@ -57,13 +59,16 @@ async def verify_otp(
     return MessageResponse(message=message)
 
 
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    body: LoginRequest,
     request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     svc: AccountService = Depends(get_account_service),
 ):
     ip_address = request.client.host if request.client else "unknown"
+    body = LoginRequest(email=form_data.username, password=form_data.password)
     return await svc.login(body, ip_address)
 
 

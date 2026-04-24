@@ -58,10 +58,13 @@ class AccountService:
 
     # ─── Register ──────────────────────────────────────────────────────────
 
-    async def send_register_otp(self, body: SendOtpRequest) -> str:
-        existing = await self.repo.get_user_by_email(body.email)
-        if existing and existing.deletedAt is None:
-            raise ConflictException("Email already registered", "EMAIL_EXISTS")
+    async def resend_verification_otp(self, body: SendOtpRequest) -> str:
+        user = await self.repo.get_user_by_email(body.email)
+        if user is None or user.deletedAt is not None:
+            raise BadRequestException("Account not found.", "INVALID_REQUEST")
+        
+        if user.emailVerified:
+            raise BadRequestException("Account is already verified.", "ALREADY_VERIFIED")
 
         code = generate_otp(settings.OTP_LENGTH)
         await self.repo.invalidate_otps(body.email, body.purpose)
@@ -78,16 +81,14 @@ class AccountService:
         )
         await cache_otp(body.email, body.purpose, code)
         await send_otp_email(body.email, code, body.purpose)
-        return "OTP sent to your email"
+        return "Verification OTP resent to your email"
 
-    async def register(self, body: RegisterRequest) -> TokenResponse:
+    async def register(self, body: RegisterRequest) -> str:
         existing = await self.repo.get_user_by_email(body.email)
         if existing and existing.deletedAt is None:
+            if not existing.emailVerified:
+                raise ConflictException("Email registered but not verified. Please verify or request new OTP.", "UNVERIFIED_EMAIL_EXISTS")
             raise ConflictException("Email already registered", "EMAIL_EXISTS")
-
-        cached = await get_cached_otp(body.email, "register")
-        if cached is None:
-            raise BadRequestException("OTP not found or expired. Please request a new one.", "OTP_EXPIRED")
 
         role = await self.repo.get_role_by_name("student")
         if role is None:
@@ -100,14 +101,27 @@ class AccountService:
                 "passwordHash": hash_password(body.password),
                 "fullName": body.full_name,
                 "roleId": role.id,
-                "emailVerified": True,
+                "emailVerified": False,
             }
         )
 
-        await delete_cached_otp(body.email, "register")
+        code = generate_otp(settings.OTP_LENGTH)
         await self.repo.invalidate_otps(body.email, "register")
+        await self.repo.create_otp(
+            data={
+                "email": body.email,
+                "code": code,
+                "purpose": "register",
+                "attempts": 0,
+                "maxAttempts": settings.OTP_MAX_ATTEMPTS,
+                "expiresAt": datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=settings.OTP_EXPIRE_MINUTES),
+                "isUsed": False,
+            }
+        )
+        await cache_otp(body.email, "register", code)
+        await send_otp_email(body.email, code, "register")
 
-        return await self._create_tokens(user.id)
+        return "Registration successful. Please check your email to verify your account."
 
     async def verify_otp(self, body: VerifyOtpRequest) -> str:
         cached = await get_cached_otp(body.email, body.purpose)
@@ -126,6 +140,12 @@ class AccountService:
             )
 
         await delete_cached_otp(body.email, body.purpose)
+        
+        if body.purpose == "register":
+            user = await self.repo.get_user_by_email(body.email)
+            if user:
+                await self.repo.update_user(user.id, {"emailVerified": True})
+
         return "OTP verified successfully"
 
     # ─── Login ─────────────────────────────────────────────────────────────
@@ -154,6 +174,10 @@ class AccountService:
         if not verify_password(body.password, user.passwordHash):
             await self._increment_rate_limit(r, ip_key, email_key)
             raise UnauthorizedException("Invalid email or password", "INVALID_CREDENTIALS")
+
+        if not user.emailVerified:
+            await self._increment_rate_limit(r, ip_key, email_key)
+            raise ForbiddenException("Please verify your email before logging in", "EMAIL_NOT_VERIFIED")
 
         await r.delete(ip_key, email_key)
 
@@ -296,13 +320,19 @@ class AccountService:
     # ─── Profile ───────────────────────────────────────────────────────────
 
     async def get_profile(self, user_id: str) -> ProfileResponse:
+        from app.core.cache import get_user_profile_cache, set_user_profile_cache
+        cached = await get_user_profile_cache(user_id)
+        if cached:
+            # Need to convert string dates back if necessary, but model_validate is smart
+            return ProfileResponse.model_validate(cached)
+
         user = await self.repo.get_user_by_id(user_id)
         if user is None:
             raise NotFoundException("User not found", "USER_NOT_FOUND")
 
         role = await self.repo.db.role.find_unique(where={"id": user.roleId})
 
-        return ProfileResponse(
+        profile = ProfileResponse(
             id=user.id,
             email=user.email,
             full_name=user.fullName,
@@ -314,6 +344,8 @@ class AccountService:
             email_verified=user.emailVerified,
             created_at=user.createdAt,
         )
+        await set_user_profile_cache(user_id, profile.model_dump())
+        return profile
 
     async def update_profile(self, user_id: str, body: UpdateProfileRequest) -> ProfileResponse:
         data = body.model_dump(exclude_none=True)
@@ -354,6 +386,12 @@ class AccountService:
     # ─── Privacy Settings ──────────────────────────────────────────────────
 
     async def get_privacy_settings(self, user_id: str):
+        from app.core.cache import get_user_privacy_cache, set_user_privacy_cache
+        cached = await get_user_privacy_cache(user_id)
+        from app.modules.account.schemas import PrivacySettingsResponse
+        if cached:
+            return PrivacySettingsResponse.model_validate(cached)
+
         ps = await self.repo.get_privacy_settings(user_id)
         if ps is None:
             ps = await self.repo.create_privacy_settings(
@@ -364,12 +402,13 @@ class AccountService:
                     "whoCanFriendReq": "everyone",
                 }
             )
-        from app.modules.account.schemas import PrivacySettingsResponse
-        return PrivacySettingsResponse(
+        response = PrivacySettingsResponse(
             who_can_see_posts=ps.whoCanSeePosts,
             who_can_message=ps.whoCanMessage,
             who_can_friend_req=ps.whoCanFriendReq,
         )
+        await set_user_privacy_cache(user_id, response.model_dump())
+        return response
 
     async def update_privacy_settings(self, user_id: str, body: UpdatePrivacySettingsRequest):
         data = body.model_dump(exclude_none=True)
@@ -392,6 +431,12 @@ class AccountService:
     # ─── Notification Settings ─────────────────────────────────────────────
 
     async def get_notification_settings(self, user_id: str):
+        from app.core.cache import get_user_notif_settings_cache, set_user_notif_settings_cache
+        cached = await get_user_notif_settings_cache(user_id)
+        from app.modules.account.schemas import NotificationSettingsResponse
+        if cached:
+            return NotificationSettingsResponse.model_validate(cached)
+
         ns = await self.repo.get_notification_settings(user_id)
         if ns is None:
             ns = await self.repo.create_notification_settings(
@@ -405,8 +450,7 @@ class AccountService:
                     "notifySchedule": True,
                 }
             )
-        from app.modules.account.schemas import NotificationSettingsResponse
-        return NotificationSettingsResponse(
+        response = NotificationSettingsResponse(
             notify_like=ns.notifyLike,
             notify_comment=ns.notifyComment,
             notify_reply=ns.notifyReply,
@@ -414,6 +458,8 @@ class AccountService:
             notify_message=ns.notifyMessage,
             notify_schedule=ns.notifySchedule,
         )
+        await set_user_notif_settings_cache(user_id, response.model_dump())
+        return response
 
     async def update_notification_settings(self, user_id: str, body: UpdateNotificationSettingsRequest):
         data = body.model_dump(exclude_none=True)

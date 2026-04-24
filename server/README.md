@@ -1,15 +1,15 @@
-# 🚀 Server - Social Networking and Learning App
+# Server - Social Networking and Learning App
 
 Backend của dự án được xây dựng với **FastAPI**, sử dụng **Prisma** làm ORM cho **MongoDB**, **Redis** cho caching/rate limiting và **MinIO** cho lưu trữ file.
 
 ---
 
-## 🛠 Yêu cầu hệ thống (Prerequisites)
+## Yêu cầu hệ thống (Prerequisites)
 
 Trước khi bắt đầu, hãy đảm bảo bạn đã cài đặt:
 
 - **Python 3.10+**
-- **MongoDB** (hoặc sử dụng MongoDB Atlas)
+- **MongoDB** (Bắt buộc chạy ở chế độ **Replica Set** để hỗ trợ Prisma. Hoặc sử dụng MongoDB Atlas)
 - **Redis Server**
 - **MinIO** (để upload ảnh/file)
 
@@ -47,9 +47,13 @@ Copy file mẫu `.env.example` thành `.env` và cập nhật các giá trị ph
 cp .env.example .env
 ```
 
-_Lưu ý: Đảm bảo các kết nối tới MongoDB, Redis và MinIO đã chính xác._
+_Lưu ý: Đảm bảo các kết nối tới MongoDB, Redis và MinIO đã chính xác. Đặc biệt, `MONGO_DATABASE_URL` cần có tham số `?replicaSet=rs0` nếu chạy local._
 
 ### 4. Thiết lập Cơ sở dữ liệu (Prisma)
+
+> [!IMPORTANT]
+> **MongoDB bắt buộc phải chạy ở chế độ Replica Set** thì Prisma mới có thể hoạt động (do cần dùng tính năng Transaction).
+> Vui lòng xem chi tiết cách cấu hình tại: [Hướng dẫn cấu hình DB](prisma/DB_Setup_Guide.md)
 
 Sử dụng Prisma để khởi tạo và đồng bộ schema với MongoDB:
 

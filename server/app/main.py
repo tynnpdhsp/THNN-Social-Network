@@ -7,17 +7,19 @@ from prisma import Prisma
 from app.core.config import get_settings
 from app.core.redis import close_redis
 from app.modules.account.router import router as account_router
+from app.modules.social.router import router as social_router
+from app.core.dependencies import db
 
 settings = get_settings()
-
-db = Prisma(auto_register=True)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await db.connect()
+    if not db.is_connected():
+        await db.connect()
     yield
-    await db.disconnect()
+    if db.is_connected():
+        await db.disconnect()
     await close_redis()
 
 
@@ -36,6 +38,7 @@ app.add_middleware(
 )
 
 app.include_router(account_router, prefix=settings.API_V1_PREFIX)
+app.include_router(social_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health")
