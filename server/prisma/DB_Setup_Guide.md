@@ -5,8 +5,37 @@ Tài liệu này ghi chú các bước ngắn gọn để khởi tạo, đồng 
 ## Yêu cầu ban đầu
 1. Cài đặt Python và tạo môi trường ảo (virtual environment) trong thư mục `server`.
 2. Cài đặt đầy đủ các gói requirements bằng lệnh `pip install -r requirements.txt`.
-3. Hãy chắc chắn MongoDB Server đang chạy cục bộ (port mặc định `27017`) hoặc cập nhật `MONGO_DATABASE_URL` trong file `server/.env`.
+3. **MongoDB phải được cấu hình chạy ở chế độ Replica Set (bắt buộc cho Prisma & MongoDB transactions)**.
 4. Windows: Nên có sẵn `.env` (chứa `PYTHONUTF8=1` nội bộ hoặc đã lưu file `schema.prisma` bỏ dấu tiếng Việt để không dính lỗi mã hóa khi chạy prisma).
+
+## Cấu hình MongoDB Replica Set (Bắt buộc)
+Prisma yêu cầu MongoDB phải chạy dưới dạng Replica Set để hỗ trợ transactions. Dưới đây là cách setup Single-Node Replica Set:
+
+### Cách 1: Sử dụng Docker (Khuyên dùng)
+Nếu bạn có Docker, chỉ cần chạy các lệnh sau:
+```bash
+# Chạy container MongoDB với tham số replSet
+docker run --name mongo-rs -p 27017:27017 -d mongo --replSet rs0
+
+# Khởi tạo Replica Set
+docker exec -it mongo-rs mongosh --eval "rs.initiate()"
+```
+
+### Cách 2: Cài đặt trực tiếp trên Windows
+1. Mở file cấu hình của MongoDB (thường nằm ở `C:\Program Files\MongoDB\Server\7.0\bin\mongod.cfg`).
+2. Thêm hoặc mở comment cấu hình replication:
+   ```yaml
+   replication:
+     replSetName: "rs0"
+   ```
+3. Khởi động lại service MongoDB trong `services.msc` (tìm MongoDB Server -> Restart).
+4. Mở terminal, gõ `mongosh` và chạy lệnh:
+   ```javascript
+   rs.initiate()
+   ```
+
+**Lưu ý:** Chuỗi kết nối trong file `server/.env` phải có tham số `replicaSet`, ví dụ:
+`MONGO_DATABASE_URL="mongodb://localhost:27017/mxh_thnn?replicaSet=rs0"`
 
 ## Các Bước Khởi Tạo Database
 
