@@ -1,102 +1,94 @@
 # Server - Social Networking and Learning App
 
-Backend của dự án được xây dựng với **FastAPI**, sử dụng **Prisma** làm ORM cho **MongoDB**, **Redis** cho caching/rate limiting và **MinIO** cho lưu trữ file.
+Backend của dự án được xây dựng với FastAPI, sử dụng Prisma làm ORM chính kết nối với **MongoDB** (Kiến trúc hợp nhất 35 collections). Hệ thống sử dụng Redis cho caching, rate limiting và xử lý sự kiện realtime qua Pub/Sub. Toàn bộ thông báo và phản hồi API đã được bản địa hóa sang Tiếng Việt.
+
+---
+
+## Trạng thái dự án (Module đã hoàn thiện)
+
+Hiện tại, hệ thống đã triển khai xong 4 phân hệ cốt lõi:
+
+1.  **Module Tài khoản (Account)**:
+    - Đăng ký theo luồng: Đăng ký trước -> Xác thực OTP sau.
+    - Đăng nhập (JWT), Quên mật khẩu, Quản lý hồ sơ.
+    - Bảo mật: Rate Limiting theo IP/Email, Refresh Token Blacklist.
+2.  **Module Mạng xã hội (Social)**:
+    - **Newsfeed**: Đăng bài (ảnh/văn bản), Like, Bình luận nested (2 cấp).
+    - **Bạn bè**: Gửi/Chấp nhận lời mời, quản lý danh sách bạn bè, hủy kết bạn.
+    - **Quyền riêng tư**: Chặn người dùng, cài đặt ai được xem bài viết/nhắn tin.
+3.  **Module Bảng tin (Board)**:
+    - Đăng bài theo thẻ phân loại (Tìm trọ, Mất đồ, Hỏi đáp...).
+    - Lọc bài viết theo thẻ, tích hợp hệ thống báo cáo (Report) vi phạm.
+4.  **Module Thông báo (Notification)**:
+    - Hệ thống thông báo thời gian thực (Like, Comment, Reply, Friend Request).
+    - Đếm số thông báo chưa đọc, đánh giá mức độ ưu tiên.
 
 ---
 
 ## Yêu cầu hệ thống (Prerequisites)
 
-Trước khi bắt đầu, hãy đảm bảo bạn đã cài đặt:
-
-- **Python 3.10+**
-- **MongoDB** (Bắt buộc chạy ở chế độ **Replica Set** để hỗ trợ Prisma. Hoặc sử dụng MongoDB Atlas)
-- **Redis Server**
-- **MinIO** (để upload ảnh/file)
+- **Python 3.10+** (Khuyên dùng 3.13)
+- **MongoDB 7+** (Bắt buộc chạy ở chế độ **Replica Set** để hỗ trợ Prisma Transactions. Xem [Hướng dẫn cấu hình DB](prisma/DB_Setup_Guide.md))
+- **Redis Server 7+** (Dùng cho Rate Limiting, Pub/Sub và Caching)
+- **SMTP Server**: Cần tài khoản Gmail App Password để gửi OTP thực tế.
+- **MinIO**: Dùng để lưu trữ hình ảnh bài đăng và vật phẩm (S3 compatible).
 
 ---
 
 ## Cài đặt (Setup)
 
-### 1. Tạo môi trường ảo
+### 1. Môi trường và Thư viện
 
 ```bash
-# Di chuyển vào thư mục server (nếu đang ở root dự án)
 cd server
-
-# Tạo venv
 python -m venv venv
-
-# Kích hoạt venv
-# Trên Windows:
-.\venv\Scripts\activate
-# Trên Linux/macOS:
-source venv/bin/activate
-```
-
-### 2. Cài đặt thư viện
-
-```bash
+.\venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-### 3. Cấu hình biến môi trường
+### 2. Cấu hình biến môi trường
 
-Copy file mẫu `.env.example` thành `.env` và cập nhật các giá trị phù hợp:
+Copy .env.example thành .env và điền các thông tin:
 
-```bash
-cp .env.example .env
-```
+- MONGO_DATABASE_URL: Phải có ?replicaSet=rs0.
+- REDIS_URL: redis://localhost:6379.
+- MAIL\_...: Thông tin tài khoản gửi OTP.
 
-_Lưu ý: Đảm bảo các kết nối tới MongoDB, Redis và MinIO đã chính xác. Đặc biệt, `MONGO_DATABASE_URL` cần có tham số `?replicaSet=rs0` nếu chạy local._
-
-### 4. Thiết lập Cơ sở dữ liệu (Prisma)
-
-> [!IMPORTANT]
-> **MongoDB bắt buộc phải chạy ở chế độ Replica Set** thì Prisma mới có thể hoạt động (do cần dùng tính năng Transaction).
-> Vui lòng xem chi tiết cách cấu hình tại: [Hướng dẫn cấu hình DB](prisma/DB_Setup_Guide.md)
-
-Sử dụng Prisma để khởi tạo và đồng bộ schema với MongoDB:
+### 3. Khởi tạo Database & Seed dữ liệu
 
 ```bash
-# Tạo prisma client
-prisma generate
+# Tạo Prisma Client
+.\venv\Scripts\python -m prisma generate
 
-# Push schema lên database (nếu cần sync schema)
-prisma db push
+# Nạp dữ liệu mẫu (20 người dùng, bài viết, tags, v.v.)
+$env:PYTHONPATH="."; .\venv\Scripts\python prisma/seed.py
 ```
 
 ---
 
-## Chạy Server
+## Chạy Server & Test
 
-Khởi chạy server ở chế độ development:
+Chay Backend:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-Server sẽ chạy tại: [http://localhost:8000](http://localhost:8000)
+- Swagger UI: http://localhost:8000/docs
 
-- **Tài liệu API (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Tài liệu API (ReDoc):** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+Chạy Test Client (Giao diện đơn giản):
+Dự án có sẵn file test_client.html ở thư mục gốc để bạn test nhanh các tính năng mà không cần cài đặt Frontend phức tạp.
 
----
-
-## Chạy Tests
-
-Dự án sử dụng `pytest` để kiểm thử:
-
-```bash
-pytest
-```
+1.  Chạy lệnh: python -m http.server 3000 (ở thư mục gốc).
+2.  Truy cập: http://localhost:3000/test_client.html
 
 ---
 
-## Cấu trúc thư mục
+## Cấu trúc thư mục (Module-based)
 
-- `app/api/`: Các endpoint của API.
-- `app/core/`: Cấu hình hệ thống, security, JWT.
-- `app/models/`: Định dạng dữ liệu (Pydantic models).
-- `app/services/`: Logic xử lý nghiệp vụ.
-- `prisma/`: Schema định nghĩa cơ sở dữ liệu.
-- `tests/`: Bộ mã nguồn kiểm thử.
+- app/core/: Cấu hình hệ thống, Bảo mật, Exception handler.
+- app/modules/account/: Logic tài khoản, OTP, Profile.
+- app/modules/social/: Logic mạng xã hội, bài đăng, board, bạn bè.
+- app/modules/notification/: Logic thông báo hệ thống.
+- prisma/: Schema định nghĩa DB và script Seed.
+- tests/: Integration tests cho các module.

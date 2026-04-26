@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THNN - Test Client Pro v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+        .filter-active { background-color: #2563eb !important; color: white !important; border-color: #2563eb !important; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8 glass p-6 rounded-2xl shadow-sm">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">THNN Social <span class="text-blue-600">Test Pro</span></h1>
+                <p id="status" class="text-sm text-gray-500">Chưa đăng nhập</p>
+            </div>
+            <div id="user-info" class="hidden flex items-center gap-3">
+                <span id="user-name" class="font-medium"></span>
+                <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-100 transition">Đăng xuất</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div id="auth-section" class="glass p-8 rounded-2xl shadow-sm mb-8">
+            <h2 class="text-xl font-semibold mb-4">Đăng nhập</h2>
+            <div class="space-y-4">
+                <input type="email" id="email" value="student1@thnn.com" placeholder="Email" class="w-full p-3 rounded-xl border border-gray-200 outline-none">
+                <input type="password" id="password" value="password123" placeholder="Mật khẩu" class="w-full p-3 rounded-xl border border-gray-200 outline-none">
+                <button onclick="login()" class="w-full bg-blue-600 text-white p-3 rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg">Đăng nhập</button>
+            </div>
+        </div>
+
+        <div id="main-section" class="hidden">
+            <!-- Tabs -->
+            <div class="flex gap-8 mb-6 border-b border-gray-200 px-4 overflow-x-auto">
+                <button onclick="showTab('feed')" id="tab-feed" class="tab-active py-2 whitespace-nowrap">Bảng tin (Feed)</button>
+                <button onclick="showTab('board')" id="tab-board" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Rao vặt (Board)</button>
+                <button onclick="showTab('notif')" id="tab-notif" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Thông báo <span id="notif-count" class="hidden bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full ml-1">0</span></button>
+            </div>
+
+            <!-- Content Area -->
+            <div id="content-feed" class="space-y-4">
+                <div class="glass p-6 rounded-2xl">
+                    <textarea id="post-content" placeholder="Bạn đang nghĩ gì?" class="w-full p-3 rounded-xl border border-gray-100 mb-2 focus:ring-1 focus:ring-blue-300 outline-none"></textarea>
+                    <button onclick="createPost('feed')" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition">Đăng bài Newsfeed</button>
+                </div>
+                <div id="feed-items" class="space-y-4"></div>
+            </div>
+
+            <div id="content-board" class="hidden space-y-4">
+                <!-- Post Area -->
+                <div class="glass p-6 rounded-2xl border-2 border-dashed border-gray-200">
+                    <p class="text-xs font-bold text-gray-400 mb-2">ĐĂNG TIN MỚI</p>
+                    <div class="flex gap-2 mb-2 overflow-x-auto pb-2" id="tag-selector"></div>
+                    <textarea id="board-post-content" placeholder="Nội dung tin rao vặt..." class="w-full p-3 rounded-xl border border-gray-100 mb-2 outline-none"></textarea>
+                    <input type="hidden" id="selected-tag-id">
+                    <button onclick="createPost('board')" class="bg-orange-500 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-orange-600 transition">Đăng tin Board</button>
+                </div>
+
+                <!-- Filter Area -->
+                <div class="flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm overflow-x-auto">
+                    <span class="text-xs font-bold text-gray-400 whitespace-nowrap">LỌC:</span>
+                    <div class="flex gap-2" id="filter-tags">
+                        <button onclick="loadBoard('')" class="filter-btn filter-active border px-3 py-1 rounded-full text-xs transition whitespace-nowrap">Tất cả</button>
+                    </div>
+                </div>
+
+                <div id="board-items" class="space-y-4"></div>
+            </div>
+
+            <div id="content-notif" class="hidden space-y-2">
+                <div id="notif-items" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- API Log (Debug) -->
+        <div class="mt-12">
+            <p class="text-xs font-mono text-gray-400 mb-2">HỆ THỐNG LOG</p>
+            <div id="log" class="bg-gray-900 text-green-400 p-4 rounded-xl text-xs font-mono h-40 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Modal Comment -->
+    <div id="comment-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-lg rounded-2xl p-6">
+            <h3 class="text-lg font-bold mb-4">Bình luận</h3>
+            <div id="comment-list" class="space-y-3 max-h-60 overflow-y-auto mb-4 p-2"></div>
+            <div class="flex gap-2">
+                <input type="text" id="comment-input" placeholder="Viết bình luận..." class="flex-1 border p-2 rounded-lg outline-none">
+                <button id="send-comment-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Gửi</button>
+            </div>
+            <button onclick="closeComments()" class="mt-4 text-gray-500 text-sm w-full text-center">Đóng</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000/api/v1";
+        let token = localStorage.getItem('token');
+        let currentTab = 'feed';
+        let currentBoardFilter = '';
+
+        function log(msg, type = 'info') {
+            const el = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            el.innerHTML += `<div><span class="text-gray-500">[${time}]</span> <span class="${type === 'error' ? 'text-red-400' : ''}">${msg}</span></div>`;
+            el.scrollTop = el.scrollHeight;
+        }
+
+        window.onload = () => {
+            if (token) {
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('main-section').classList.remove('hidden');
+                document.getElementById('user-info').classList.remove('hidden');
+                document.getElementById('status').innerText = "Trạng thái: Đang hoạt động";
+                loadFeed();
+                loadNotifs();
+                loadTags();
+            }
+        }
+
+        async function login() {
+            const formData = new FormData();
+            formData.append('username', document.getElementById('email').value);
+            formData.append('password', document.getElementById('password').value);
+            try {
+                const res = await fetch(`${API_BASE}/account/login`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.access_token) {
+                    localStorage.setItem('token', data.access_token);
+                    location.reload();
+                } else { log("Lỗi: " + JSON.stringify(data), 'error'); }
+            } catch (err) { log("Lỗi kết nối: " + err.message, 'error'); }
+        }
+
+        function logout() { localStorage.removeItem('token'); location.reload(); }
+
+        function showTab(tab) {
+            currentTab = tab;
+            ['feed', 'board', 'notif'].forEach(t => {
+                document.getElementById(`content-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+            });
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            if (tab === 'feed') loadFeed();
+            if (tab === 'board') loadBoard(currentBoardFilter);
+            if (tab === 'notif') loadNotifs();
+        }
+
+        async function loadTags() {
+            const res = await fetch(`${API_BASE}/board/tags`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const tags = await res.json();
+            
+            // For Posting
+            const selector = document.getElementById('tag-selector');
+            selector.innerHTML = '';
+            
+            // For Filtering
+            const filterArea = document.getElementById('filter-tags');
+            filterArea.innerHTML = `<button onclick="handleFilter('', this)" class="filter-btn filter-active border px-3 py-1 rounded-full text-xs transition whitespace-nowrap">Tất cả</button>`;
+
+            tags.forEach((tag, idx) => {
+                selector.innerHTML += `
+                    <button onclick="selectTag('${tag.id}', this)" class="tag-btn border px-3 py-1 rounded-full text-xs hover:bg-gray-100 transition whitespace-nowrap ${idx === 0 ? 'bg-blue-50 border-blue-300 text-blue-600' : ''}">${tag.name}</button>
+                `;
+                filterArea.innerHTML += `
+                    <button onclick="handleFilter('${tag.id}', this)" class="filter-btn border px-3 py-1 rounded-full text-xs hover:bg-gray-100 transition whitespace-nowrap">${tag.name}</button>
+                `;
+                if(idx === 0) selectTag(tag.id, null);
+            });
+        }
+
+        function selectTag(id, btn) {
+            document.getElementById('selected-tag-id').value = id;
+            if (btn) {
+                document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('bg-blue-50', 'border-blue-300', 'text-blue-600'));
+                btn.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-600');
+            }
+        }
+
+        function handleFilter(tagId, btn) {
+            currentBoardFilter = tagId;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('filter-active'));
+            btn.classList.add('filter-active');
+            loadBoard(tagId);
+        }
+
+        async function loadFeed() {
+            const res = await fetch(`${API_BASE}/social/posts`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            renderPosts(data.posts, 'feed-items', 'social');
+        }
+
+        async function loadBoard(tagId = '') {
+            let url = `${API_BASE}/board/posts`;
+            if (tagId) url += `?tag_id=${tagId}`;
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            renderPosts(data.posts, 'board-items', 'board');
+            log(`Đã tải bài viết Board${tagId ? ' (đã lọc)' : ''}`);
+        }
+
+        function renderPosts(posts, containerId, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            (posts || []).forEach(post => {
+                container.innerHTML += `
+                    <div class="glass p-5 rounded-2xl shadow-sm border border-white">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="${post.user_info?.avatar_url || 'https://api.dicebear.com/7.x/initials/svg?seed=U'}" class="w-10 h-10 rounded-full border">
+                            <div>
+                                <p class="font-semibold text-sm">${post.user_info?.full_name}</p>
+                                <p class="text-[10px] text-gray-400 font-bold">${type === 'board' ? '#' + (post.board_tag_name || 'Board') : 'Newsfeed'}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-700 mb-4">${post.content}</p>
+                        <div class="flex gap-4 text-sm text-gray-500">
+                            <button onclick="toggleLike('${post.id}', '${type}')" class="hover:text-blue-600 transition">👍 ${post.like_count}</button>
+                            <button onclick="openComments('${post.id}', '${type}')" class="hover:text-blue-600 transition">💬 ${post.comment_count} Bình luận</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function createPost(type) {
+            const content = type === 'feed' ? document.getElementById('post-content').value : document.getElementById('board-post-content').value;
+            if (!content) return;
+            const url = type === 'feed' ? `${API_BASE}/social/posts` : `${API_BASE}/board/posts`;
+            const body = { content, visibility: 'public' };
+            if (type === 'board') {
+                body.board_tag_id = document.getElementById('selected-tag-id').value;
+                if (!body.board_tag_id) { log("Vui lòng chọn Tag cho bài đăng Board", 'error'); return; }
+            } else { body.post_type = 'feed'; }
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                if (type === 'feed') document.getElementById('post-content').value = '';
+                else document.getElementById('board-post-content').value = '';
+                showTab(type);
+                log(`Đã đăng bài lên ${type}`);
+            } else { log("Lỗi đăng bài: " + res.status, 'error'); }
+        }
+
+        let activePostId = null;
+        let activePostType = 'social';
+
+        async function openComments(postId, type) {
+            activePostId = postId;
+            activePostType = type;
+            document.getElementById('comment-modal').classList.remove('hidden');
+            const url = type === 'board' ? `${API_BASE}/board/posts/${postId}/comments` : `${API_BASE}/social/posts/${postId}/comments`;
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const comments = await res.json();
+            const list = document.getElementById('comment-list');
+            list.innerHTML = '';
+            comments.forEach(c => {
+                list.innerHTML += `<div class="bg-gray-50 p-2 rounded-lg text-sm border-b"><b>${c.user_info?.full_name}:</b> ${c.content}</div>`;
+            });
+            document.getElementById('send-comment-btn').onclick = () => sendComment();
+        }
+
+        function closeComments() { document.getElementById('comment-modal').classList.add('hidden'); }
+
+        async function sendComment() {
+            const content = document.getElementById('comment-input').value;
+            if (!content) return;
+            const url = activePostType === 'board' ? `${API_BASE}/board/posts/${activePostId}/comments` : `${API_BASE}/social/posts/${activePostId}/comments`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            if (res.ok) {
+                document.getElementById('comment-input').value = '';
+                openComments(activePostId, activePostType);
+                showTab(currentTab);
+            }
+        }
+
+        async function toggleLike(postId, type) {
+            const url = type === 'board' ? `${API_BASE}/board/posts/${postId}/like` : `${API_BASE}/social/posts/${postId}/like`;
+            await fetch(url, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            showTab(currentTab);
+        }
+
+        async function loadNotifs() {
+            const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            const container = document.getElementById('notif-items');
+            container.innerHTML = '';
+            const unread = data.unread_count || 0;
+            const badge = document.getElementById('notif-count');
+            if (unread > 0) { badge.innerText = unread; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
+            (data.notifications || []).forEach(n => {
+                container.innerHTML += `
+                    <div class="glass p-4 rounded-xl ${n.is_read ? 'opacity-60' : 'border-l-4 border-red-400'}">
+                        <p class="text-sm font-semibold">${n.title}</p>
+                        <p class="text-xs text-gray-600">${n.content}</p>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

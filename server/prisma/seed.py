@@ -1,15 +1,18 @@
 import asyncio
 import hashlib
+import random
+import json
 from datetime import datetime, timezone, timedelta
 from prisma import Prisma
-from prisma.models import User, Role, BoardTag, Post, Comment, Like, Friendship, PrivacySetting, NotificationSetting
+from prisma import Json
+from app.core.security import hash_password
 
 async def seed():
     db = Prisma()
     await db.connect()
 
-    print("Cleaning database...")
-    # Delete in order of dependencies to avoid constraint issues (though MongoDB is lenient)
+    print("--- [1/8] Cleaning database ---")
+    # Sử dụng danh sách các collection để xóa sạch
     await db.notification.delete_many()
     await db.like.delete_many()
     await db.comment.delete_many()
@@ -19,207 +22,153 @@ async def seed():
     await db.post.delete_many()
     await db.boardtag.delete_many()
     await db.friendship.delete_many()
+    await db.userblock.delete_many()
+    await db.report.delete_many()
     await db.refreshtoken.delete_many()
     await db.privacysetting.delete_many()
     await db.notificationsetting.delete_many()
+    await db.message.delete_many()
+    await db.conversation.delete_many()
+    await db.auditlog.delete_many()
+    await db.review.delete_many()
+    await db.order.delete_many()
+    await db.shopitem.delete_many()
+    await db.itemimage.delete_many()
+    await db.itemcategory.delete_many()
+    await db.document.delete_many()
+    await db.documentcategory.delete_many()
+    await db.placebookmark.delete_many()
+    await db.placeimage.delete_many()
+    await db.place.delete_many()
+    await db.placecategory.delete_many()
+    await db.scheduleentry.delete_many()
+    await db.schedule.delete_many()
+    await db.coursesection.delete_many()
+    await db.studynote.delete_many()
     await db.user.delete_many()
     await db.role.delete_many()
 
-    print("Seeding roles...")
+    print("--- [2/8] Seeding Roles & Users ---")
     admin_role = await db.role.create(data={"role": "admin"})
     student_role = await db.role.create(data={"role": "student"})
-
-    print("Seeding users...")
-    password_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6L6s5WrTHotdJSBe" # 'password123'
     
-    admin = await db.user.create(data={
-        "email": "admin@thnn.com",
-        "phoneNumber": "0123456789",
-        "passwordHash": password_hash,
-        "fullName": "System Admin",
-        "roleId": admin_role.id,
-        "emailVerified": True,
-    })
+    password_raw = "password123"
+    password_hash = hash_password(password_raw)
 
-    # Student 1: The central user
-    u1 = await db.user.create(data={
-        "email": "student1@thnn.com",
-        "phoneNumber": "0901111111",
-        "passwordHash": password_hash,
-        "fullName": "Nguyen Van A",
-        "roleId": student_role.id,
-        "emailVerified": True,
-        "bio": "Sinh vien nam 3 khoa CNTT",
-        "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=A"
-    })
-
-    # Student 2: Friend of Student 1
-    u2 = await db.user.create(data={
-        "email": "student2@thnn.com",
-        "phoneNumber": "0902222222",
-        "passwordHash": password_hash,
-        "fullName": "Tran Thi B",
-        "roleId": student_role.id,
-        "emailVerified": True,
-        "bio": "Yeu thich am nhac va lap trinh",
-        "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=B"
-    })
-
-    # Student 3: Pending friend request from Student 1
-    u3 = await db.user.create(data={
-        "email": "student3@thnn.com",
-        "phoneNumber": "0903333333",
-        "passwordHash": password_hash,
-        "fullName": "Le Van C",
-        "roleId": student_role.id,
-        "emailVerified": True,
-        "bio": "Kien truc su tuong lai",
-        "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=C"
-    })
-
-    # Student 4: Stranger
-    u4 = await db.user.create(data={
-        "email": "student4@thnn.com",
-        "phoneNumber": "0904444444",
-        "passwordHash": password_hash,
-        "fullName": "Pham Thi D",
-        "roleId": student_role.id,
-        "emailVerified": True,
-        "bio": "Nguoi la oi",
-        "avatarUrl": "https://api.dicebear.com/7.x/avataaars/svg?seed=D"
-    })
-
-    print("Seeding friendships...")
-    # S1 & S2 are friends
-    await db.friendship.create(data={
-        "requesterId": u1.id,
-        "receiverId": u2.id,
-        "status": "accepted"
-    })
-
-    # S1 sent request to S3 (pending)
-    await db.friendship.create(data={
-        "requesterId": u1.id,
-        "receiverId": u3.id,
-        "status": "pending"
-    })
-
-    print("Seeding board tags...")
-    tags_data = [
-        {"name": "Tìm trọ", "slug": "tim-tro"},
-        {"name": "Tìm ở ghép", "slug": "tim-o-ghep"},
-        {"name": "Mất đồ", "slug": "mat-do"},
-        {"name": "Nhặt được đồ", "slug": "nhat-duoc-do"},
-        {"name": "Hỏi đáp", "slug": "hoi-dap"},
-        {"name": "Góc học tập", "slug": "hoc-tap"},
-    ]
-    tags = []
-    for t in tags_data:
-        tag = await db.boardtag.create(data=t)
-        tags.append(tag)
-
-    print("Seeding posts...")
-    # --- Feed Posts (student1) ---
-    # Public
-    p1_pub = await db.post.create(data={
-        "userId": u1.id,
-        "content": "[Public] Chao moi nguoi! Day la bai viet cong khai.",
-        "visibility": "public",
-        "postType": "feed",
-    })
-    
-    # Friends only
-    p1_fri = await db.post.create(data={
-        "userId": u1.id,
-        "content": "[Friends] Chi ban be moi thay duoc bai nay nhe!",
-        "visibility": "friends",
-        "postType": "feed",
-    })
-
-    # Private
-    p1_pri = await db.post.create(data={
-        "userId": u1.id,
-        "content": "[Private] Chi minh toi thay thoi.",
-        "visibility": "private",
-        "postType": "feed",
-    })
-
-    # --- Feed Posts (others) ---
-    p2_pub = await db.post.create(data={
-        "userId": u2.id,
-        "content": "Hom nay troi dep qua!",
-        "visibility": "public",
-        "postType": "feed",
-    })
-
-    # --- Board Posts ---
-    b1 = await db.post.create(data={
-        "userId": u1.id,
-        "content": "Tim phong tro quanh khu vuc Cau Giay.",
-        "visibility": "public",
-        "postType": "board",
-        "boardTagId": tags[0].id,
-    })
-
-    b2 = await db.post.create(data={
-        "userId": u3.id,
-        "content": "Co ai muon hoc cung mon Python khong?",
-        "visibility": "public",
-        "postType": "board",
-        "boardTagId": tags[5].id,
-    })
-
-    print("Seeding interactions...")
-    # S2 likes S1's public post
-    await db.like.create(data={
-        "targetId": p1_pub.id,
-        "targetType": "post",
-        "userId": u2.id
-    })
-    await db.post.update(where={"id": p1_pub.id}, data={"likeCount": 1})
-
-    # S1 comments on S2's post
-    from prisma import Json
-    await db.comment.create(data={
-        "targetId": p2_pub.id,
-        "targetType": "post",
-        "userInfo": Json({
-            "id": u1.id,
-            "full_name": u1.fullName,
-            "avatar_url": u1.avatarUrl
-        }),
-        "content": "Dung vay, troi rat dep!",
-        "replies": Json([])
-    })
-    await db.post.update(where={"id": p2_pub.id}, data={"commentCount": 1})
-
-    print("Seeding settings...")
-    for u in [admin, u1, u2, u3, u4]:
+    users = []
+    # Tạo 20 người dùng cho phong phú
+    for i in range(1, 21):
+        u = await db.user.create(data={
+            "email": f"student{i}@thnn.com",
+            "phoneNumber": f"090{i:02d}123456",
+            "passwordHash": password_hash,
+            "fullName": f"Sinh Viên {i}",
+            "roleId": student_role.id,
+            "emailVerified": True,
+            "bio": f"Chào tôi là sinh viên thứ {i} của trường.",
+            "avatarUrl": f"https://api.dicebear.com/7.x/avataaars/svg?seed=S{i}"
+        })
+        users.append(u)
         await db.privacysetting.create(data={"userId": u.id})
         await db.notificationsetting.create(data={"userId": u.id})
 
-    print("Seeding notifications...")
-    # Notification for S1 (S2 liked)
-    await db.notification.create(data={
-        "userId": u1.id,
-        "type": "like",
-        "title": "Lượt thích mới",
-        "content": f"{u2.fullName} đã thích bài viết của bạn.",
-        "metadata": Json({"reference_id": p1_pub.id, "reference_type": "post"}),
-        "isRead": False,
+    u_an = users[0]
+    u_binh = users[1]
+
+    print("--- [3/8] Seeding Social (Friendships, Posts, Interactions) ---")
+    # Friends
+    for i in range(1, 10):
+        await db.friendship.create(data={"requesterId": u_an.id, "receiverId": users[i].id, "status": "accepted"})
+    
+    # Posts & Board Tags
+    tags = []
+    for t_name in ["Tìm trọ", "Tìm đồ", "Hỏi đáp", "Góc học tập", "Câu lạc bộ"]:
+        tag = await db.boardtag.create(data={"name": t_name, "slug": t_name.lower().replace(" ", "-")})
+        tags.append(tag)
+
+    for i in range(15):
+        p_type = "feed" if i < 10 else "board"
+        p = await db.post.create(data={
+            "userId": random.choice(users).id,
+            "content": f"Nội dung bài viết thứ {i+1} về chủ đề {'Newsfeed' if p_type=='feed' else 'Rao vặt'}.",
+            "postType": p_type,
+            "boardTagId": tags[i % len(tags)].id if p_type == "board" else None
+        })
+        # Lượt thích ngẫu nhiên
+        for j in range(random.randint(0, 5)):
+            try: await db.like.create(data={"targetId": p.id, "targetType": "post", "userId": users[j].id})
+            except: pass
+        await db.post.update(where={"id": p.id}, data={"likeCount": 5})
+
+    print("--- [4/8] Seeding Messaging (Conversations & Messages) ---")
+    conv = await db.conversation.create(data={
+        "type": "direct",
+        "members": Json([{"user_id": u_an.id}, {"user_id": u_binh.id}])
+    })
+    for i in range(5):
+        await db.message.create(data={
+            "conversationId": conv.id,
+            "senderId": u_an.id if i % 2 == 0 else u_binh.id,
+            "content": f"Tin nhắn mẫu số {i+1}"
+        })
+
+    print("--- [5/8] Seeding Shop & Orders ---")
+    cat_shop = await db.itemcategory.create(data={"name": "Giáo trình", "description": "Sách vở cũ"})
+    item = await db.shopitem.create(data={
+        "sellerId": u_binh.id,
+        "categoryId": cat_shop.id,
+        "title": "Sách Giải tích 1",
+        "description": "Sách còn mới 90%, không viết bậy.",
+        "price": 50000
+    })
+    await db.order.create(data={
+        "buyerId": u_an.id,
+        "itemId": item.id,
+        "sellerId": u_binh.id,
+        "amount": 50000,
+        "status": "paid",
+        "paidAt": datetime.now(timezone.utc)
     })
 
-    # Notification for S2 (S1 commented)
-    await db.notification.create(data={
-        "userId": u2.id,
-        "type": "comment",
-        "title": "Bình luận mới",
-        "content": f"{u1.fullName} đã bình luận bài viết của bạn.",
-        "metadata": Json({"reference_id": p2_pub.id, "reference_type": "post"}),
-        "isRead": False,
+    print("--- [6/8] Seeding Documents & Study ---")
+    doc_cat = await db.documentcategory.create(data={"name": "Tài liệu CNTT"})
+    await db.document.create(data={
+        "userId": u_an.id,
+        "categoryId": doc_cat.id,
+        "title": "Slide bài giảng Hệ điều hành",
+        "fileUrl": "https://storage.com/os.pdf",
+        "fileName": "os.pdf",
+        "fileSize": 1024567,
+        "fileType": "application/pdf"
     })
 
-    print("Database seeded successfully!")
+    print("--- [7/8] Seeding Places & Reviews ---")
+    pl_cat = await db.placecategory.create(data={"name": "Quán ăn", "icon": "restaurant"})
+    place = await db.place.create(data={
+        "userId": u_an.id,
+        "categoryId": pl_cat.id,
+        "name": "Cơm gà Xối Mỡ A1",
+        "latitude": 21.0285,
+        "longitude": 105.8542,
+        "address": "Cổng sau ký túc xá"
+    })
+    await db.review.create(data={
+        "targetId": place.id,
+        "targetType": "place",
+        "userInfo": Json({"id": u_binh.id, "full_name": u_binh.fullName}),
+        "rating": 5,
+        "comment": "Cơm ngon, nhiều thịt, giá sinh viên!"
+    })
+
+    print("--- [8/8] Seeding Audit Logs ---")
+    await db.auditlog.create(data={
+        "userId": u_an.id,
+        "action": "LOGIN",
+        "severity": "INFO",
+        "requestInfo": Json({"ip_address": "127.0.0.1", "user_agent": "Mozilla/5.0"})
+    })
+
+    print("\n--- SEEDING COMPLETED SUCCESSFULLY! ---")
     await db.disconnect()
 
 if __name__ == "__main__":
