@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime, timezone
 from prisma import Prisma
-from prisma.models import Post, PostImage, Like, Comment
+from prisma.models import Post, PostImage, Like, Comment, Friendship, BoardTag
 from prisma.types import PostCreateInput, PostUpdateInput
 from prisma.errors import RecordNotFoundError
 from app.core.cache import increment_post_like, increment_post_comment
@@ -21,18 +21,75 @@ class SocialRepository:
             include=include
         )
 
-    async def get_posts_feed(self, skip: int = 0, limit: int = 20, post_type: str = "feed") -> List[Post]:
-        return await self.db.post.find_many(
-            where={
+    async def get_posts_feed(
+        self, skip: int = 0, limit: int = 20,
+        post_type: str = "feed",
+        friend_ids: list[str] | None = None,
+        viewer_id: str | None = None,
+    ) -> List[Post]:
+        """Get feed with privacy filtering.
+        
+        Rules:
+        - public: everyone sees
+        - friends: only friends + post owner see
+        - private: only post owner sees
+        """
+        if viewer_id and friend_ids is not None:
+            # Logged-in user sees: public + own posts + friends' posts (if visibility=friends)
+            where = {
                 "postType": post_type,
                 "isHidden": False,
-                "deletedAt": None
-            },
+                "deletedAt": None,
+                "OR": [
+                    {"visibility": "public"},
+                    {"userId": viewer_id},  # Always see own posts
+                    {
+                        "visibility": "friends",
+                        "userId": {"in": friend_ids},
+                    },
+                ],
+            }
+        else:
+            # Anonymous: public only
+            where = {
+                "postType": post_type,
+                "isHidden": False,
+                "deletedAt": None,
+                "visibility": "public",
+            }
+
+        return await self.db.post.find_many(
+            where=where,
             include={"postImages": True, "user": True},
             order={"createdAt": "desc"},
             skip=skip,
-            take=limit
+            take=limit,
         )
+
+    async def count_posts_feed(
+        self, post_type: str = "feed",
+        friend_ids: list[str] | None = None,
+        viewer_id: str | None = None,
+    ) -> int:
+        if viewer_id and friend_ids is not None:
+            where = {
+                "postType": post_type,
+                "isHidden": False,
+                "deletedAt": None,
+                "OR": [
+                    {"visibility": "public"},
+                    {"userId": viewer_id},
+                    {"visibility": "friends", "userId": {"in": friend_ids}},
+                ],
+            }
+        else:
+            where = {
+                "postType": post_type,
+                "isHidden": False,
+                "deletedAt": None,
+                "visibility": "public",
+            }
+        return await self.db.post.count(where=where)
 
     async def update_post(self, post_id: str, data: PostUpdateInput) -> Optional[Post]:
         try:
@@ -138,3 +195,134 @@ class SocialRepository:
             where={"targetId": target_id, "targetType": target_type},
             order={"createdAt": "desc"}
         )
+
+    # --- Friendship Queries ---
+    async def get_friend_ids(self, user_id: str) -> List[str]:
+        """Get list of accepted friend user IDs."""
+        friendships = await self.db.friendship.find_many(
+            where={
+                "status": "accepted",
+                "OR": [
+                    {"requesterId": user_id},
+                    {"receiverId": user_id},
+                ],
+            }
+        )
+        ids = []
+        for f in friendships:
+            ids.append(f.receiverId if f.requesterId == user_id else f.requesterId)
+        return ids
+
+    # --- Friend Requests (UC-08) ---
+    async def send_friend_request(self, requester_id: str, receiver_id: str) -> " Friendship":
+        from prisma.errors import RecordNotFoundError
+        # Create a pending friendship request
+        return await self.db.friendship.create(data={
+            "requesterId": requester_id,
+            "receiverId": receiver_id,
+            "status": "pending",
+        })
+
+    async def accept_friend_request(self, requester_id: str, receiver_id: str) -> Optional["Friendship"]:
+        # Update existing pending request to accepted
+        try:
+            return await self.db.friendship.update(
+                where={"requesterId_receiverId": {"requesterId": requester_id, "receiverId": receiver_id}},
+                data={"status": "accepted"},
+            )
+        except Exception:
+            return None
+
+    async def reject_friend_request(self, requester_id: str, receiver_id: str) -> Optional["Friendship"]:
+        try:
+            return await self.db.friendship.update(
+                where={"requesterId_receiverId": {"requesterId": requester_id, "receiverId": receiver_id}},
+                data={"status": "rejected"},
+            )
+        except Exception:
+            return None
+
+    async def remove_friendship(self, user_a_id: str, user_b_id: str) -> bool:
+        # Try delete in both directions using the unique compound key
+        try:
+            await self.db.friendship.delete(
+                where={"requesterId_receiverId": {"requesterId": user_a_id, "receiverId": user_b_id}}
+            )
+        except Exception:
+            try:
+                await self.db.friendship.delete(
+                    where={"requesterId_receiverId": {"requesterId": user_b_id, "receiverId": user_a_id}}
+                )
+            except Exception:
+                return False
+        return True
+
+    async def get_incoming_friend_requests(self, user_id: str) -> List["Friendship"]:
+        return await self.db.friendship.find_many(
+            where={"receiverId": user_id, "status": "pending"},
+            include={"requester": True},
+        )
+
+    # --- Block & Reports helpers ---
+    async def block_user(self, blocker_id: str, blocked_id: str):
+        return await self.db.userblock.create(data={
+            "blockerId": blocker_id,
+            "blockedId": blocked_id,
+        })
+
+    async def get_blocked_users(self, user_id: str) -> List["UserBlock"]:
+        return await self.db.userblock.find_many(where={"blockerId": user_id})
+
+    async def unblock_user(self, blocker_id: str, blocked_id: str):
+        try:
+            await self.db.userblock.delete(where={"blockerId_blockedId": {"blockerId": blocker_id, "blockedId": blocked_id}})
+        except Exception:
+            # Try reverse just in case (though direction is fixed)
+            try:
+                await self.db.userblock.delete(where={"blockerId_blockedId": {"blockerId": blocked_id, "blockedId": blocker_id}})
+            except Exception:
+                pass
+
+    async def create_report(self, reporter_id: str, target_type: str, target_id: str, reason: str, description: str | None):
+        return await self.db.report.create(data={
+            "reporterId": reporter_id,
+            "targetType": target_type,
+            "targetId": target_id,
+            "reason": reason,
+            "description": description,
+            "status": "pending",
+        })
+
+    # --- Board Queries ---
+    async def get_board_tags(self) -> list:
+        return await self.db.boardtag.find_many(order={"name": "asc"})
+
+    async def get_board_posts(
+        self, skip: int = 0, limit: int = 20,
+        tag_id: str | None = None,
+    ) -> List[Post]:
+        where: dict = {
+            "postType": "board",
+            "isHidden": False,
+            "deletedAt": None,
+        }
+        if tag_id:
+            where["boardTagId"] = tag_id
+
+        return await self.db.post.find_many(
+            where=where,
+            include={"postImages": True, "user": True, "boardTag": True},
+            order={"createdAt": "desc"},
+            skip=skip,
+            take=limit,
+        )
+
+    async def count_board_posts(self, tag_id: str | None = None) -> int:
+        where: dict = {
+            "postType": "board",
+            "isHidden": False,
+            "deletedAt": None,
+        }
+        if tag_id:
+            where["boardTagId"] = tag_id
+        return await self.db.post.count(where=where)

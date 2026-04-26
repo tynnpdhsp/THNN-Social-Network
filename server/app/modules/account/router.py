@@ -135,13 +135,13 @@ async def update_avatar(
     svc: AccountService = Depends(get_account_service),
 ):
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise BadRequestException("File must be an image", "INVALID_FILE_TYPE")
+        raise BadRequestException("Tập tin phải là hình ảnh", "INVALID_FILE_TYPE")
 
     content = await file.read()
     max_bytes = settings.MAX_AVATAR_SIZE_MB * 1024 * 1024
     if len(content) > max_bytes:
         raise BadRequestException(
-            f"Avatar must be under {settings.MAX_AVATAR_SIZE_MB}MB", "FILE_TOO_LARGE"
+            f"Ảnh đại diện phải nhỏ hơn {settings.MAX_AVATAR_SIZE_MB}MB", "FILE_TOO_LARGE"
         )
 
     from app.utils.storage import upload_file
@@ -156,13 +156,13 @@ async def update_cover(
     svc: AccountService = Depends(get_account_service),
 ):
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise BadRequestException("File must be an image", "INVALID_FILE_TYPE")
+        raise BadRequestException("Tập tin phải là hình ảnh", "INVALID_FILE_TYPE")
 
     content = await file.read()
     max_bytes = settings.MAX_COVER_SIZE_MB * 1024 * 1024
     if len(content) > max_bytes:
         raise BadRequestException(
-            f"Cover must be under {settings.MAX_COVER_SIZE_MB}MB", "FILE_TOO_LARGE"
+            f"Ảnh bìa phải nhỏ hơn {settings.MAX_COVER_SIZE_MB}MB", "FILE_TOO_LARGE"
         )
 
     from app.utils.storage import upload_file

@@ -5,12 +5,16 @@ from app.core.exceptions import NotFoundException, ForbiddenException, BadReques
 from app.modules.social.repository import SocialRepository
 from app.modules.social.schemas import (
     PostCreateRequest, PostResponse, PostUpdateRequest, PostImageResponse,
-    UserInfoEmbed, CommentResponse, CommentRequest
+    UserInfoEmbed, CommentResponse, CommentRequest,
+    PaginatedFeedResponse, PaginatedBoardResponse, BoardTagResponse,
+    BoardPostCreateRequest,
 )
+from app.modules.notification.service import NotificationService
 
 class SocialService:
-    def __init__(self, repo: SocialRepository):
+    def __init__(self, repo: SocialRepository, notification_svc: NotificationService = None):
         self.repo = repo
+        self.notification_svc = notification_svc
 
     # --- Posts ---
     async def create_post(self, user_id: str, body: PostCreateRequest) -> PostResponse:
@@ -35,22 +39,34 @@ class SocialService:
 
         return await self._map_post_to_response(post)
 
-    async def get_posts_feed(self, user_id: Optional[str], skip: int = 0, limit: int = 20) -> List[PostResponse]:
-        posts = await self.repo.get_posts_feed(skip, limit)
-        return [await self._map_post_to_response(p) for p in posts]
+    async def get_posts_feed(self, user_id: str | None, skip: int = 0, limit: int = 20) -> PaginatedFeedResponse:
+        friend_ids = None
+        if user_id:
+            friend_ids = await self.repo.get_friend_ids(user_id)
+        
+        posts = await self.repo.get_posts_feed(
+            skip, limit, post_type="feed",
+            friend_ids=friend_ids, viewer_id=user_id,
+        )
+        total = await self.repo.count_posts_feed(
+            post_type="feed",
+            friend_ids=friend_ids, viewer_id=user_id,
+        )
+        items = [await self._map_post_to_response(p) for p in posts]
+        return PaginatedFeedResponse(posts=items, total=total, skip=skip, limit=limit)
 
     async def get_post_details(self, post_id: str) -> PostResponse:
         post = await self.repo.get_post_by_id(post_id)
         if not post or post.deletedAt:
-            raise NotFoundException("Post not found", "POST_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy bài viết", "POST_NOT_FOUND")
         return await self._map_post_to_response(post)
 
     async def update_post(self, user_id: str, post_id: str, body: PostUpdateRequest) -> PostResponse:
         post = await self.repo.get_post_by_id(post_id, include_images=False)
         if not post:
-            raise NotFoundException("Post not found", "POST_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy bài viết", "POST_NOT_FOUND")
         if post.userId != user_id:
-            raise ForbiddenException("Not authorized to update this post", "NOT_AUTHORIZED")
+            raise ForbiddenException("Không có quyền cập nhật bài viết này", "NOT_AUTHORIZED")
 
         data = body.model_dump(exclude_none=True)
         # Map snake_case to camelCase for Prisma
@@ -65,18 +81,18 @@ class SocialService:
     async def delete_post(self, user_id: str, post_id: str):
         post = await self.repo.get_post_by_id(post_id, include_images=False)
         if not post:
-            raise NotFoundException("Post not found", "POST_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy bài viết", "POST_NOT_FOUND")
         if post.userId != user_id:
-            raise ForbiddenException("Not authorized to delete this post", "NOT_AUTHORIZED")
+            raise ForbiddenException("Không có quyền xóa bài viết này", "NOT_AUTHORIZED")
         
         await self.repo.soft_delete_post(post_id)
-        return "Post deleted successfully"
+        return "Đã xóa bài viết thành công"
 
     # --- Likes ---
     async def toggle_like(self, user_id: str, post_id: str):
         post = await self.repo.get_post_by_id(post_id, include_images=False)
         if not post:
-            raise NotFoundException("Post not found", "POST_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy bài viết", "POST_NOT_FOUND")
         
         existing_like = await self.repo.get_like(post_id, "post", user_id)
         if existing_like:
@@ -84,6 +100,10 @@ class SocialService:
             return {"liked": False}
         else:
             await self.repo.create_like(post_id, "post", user_id)
+            # Bắn thông báo cho chủ bài viết (không tự thông báo cho chính mình)
+            if self.notification_svc and post.userId != user_id:
+                actor_name = await self._get_user_name(user_id)
+                await self.notification_svc.notify_like(actor_name, post.userId, post_id)
             return {"liked": True}
 
     # --- Comments ---
@@ -94,7 +114,7 @@ class SocialService:
         user_repo = get_account_repo(prisma_db)
         user = await user_repo.get_user_by_id(user_id)
         if not user:
-            raise NotFoundException("User not found", "USER_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy người dùng", "USER_NOT_FOUND")
             
         user_info = {
             "id": user.id,
@@ -106,7 +126,7 @@ class SocialService:
             # Add as reply to existing comment (level 2)
             parent = await self.repo.get_comment_by_id(body.parent_comment_id)
             if not parent:
-                raise NotFoundException("Parent comment not found", "COMMENT_NOT_FOUND")
+                raise NotFoundException("Không tìm thấy bình luận gốc", "COMMENT_NOT_FOUND")
             
             replies = parent.replies if isinstance(parent.replies, list) else json.loads(parent.replies) if isinstance(parent.replies, str) else []
             new_reply = {
@@ -117,17 +137,105 @@ class SocialService:
             }
             replies.append(new_reply)
             await self.repo.update_comment_replies(parent.id, json.dumps(replies))
-            # Return full parent comment as response or just the new reply? Pattern says parent with replies.
+
+            # Thông báo cho chủ comment gốc
+            parent_user_id = parent.userInfo.get("id", "") if isinstance(parent.userInfo, dict) else ""
+            if self.notification_svc and parent_user_id and parent_user_id != user_id:
+                await self.notification_svc.notify_reply(user.fullName, parent_user_id, post_id)
+
             updated_parent = await self.repo.get_comment_by_id(parent.id)
             return self._map_comment_to_response(updated_parent)
         else:
             # Create new top-level comment
             comment = await self.repo.create_comment(post_id, "post", user_info, body.content)
+
+            # Thông báo cho chủ bài viết
+            post = await self.repo.get_post_by_id(post_id, include_images=False)
+            if self.notification_svc and post and post.userId != user_id:
+                await self.notification_svc.notify_comment(user.fullName, post.userId, post_id)
+
             return self._map_comment_to_response(comment)
 
     async def get_comments(self, post_id: str) -> List[CommentResponse]:
         comments = await self.repo.get_comments_by_target(post_id, "post")
         return [self._map_comment_to_response(c) for c in comments]
+
+    # --- Friend management ---
+    async def send_friend_request(self, user_id: str, target_user_id: str) -> dict:
+        # Simple flow: create pending request
+        await self.repo.send_friend_request(user_id, target_user_id)
+        return {"status": "đã gửi yêu cầu", "to": target_user_id}
+
+    async def list_incoming_friend_requests(self, user_id: str) -> list:
+        requests = await self.repo.get_incoming_friend_requests(user_id)
+        # Return minimal view
+        return [{"from": r.requesterId, "created_at": r.createdAt} for r in requests]
+
+    async def accept_friend_request(self, user_id: str, requester_id: str) -> dict:
+        updated = await self.repo.accept_friend_request(requester_id, user_id)
+        if updated:
+            return {"status": "đã chấp nhận", "from": requester_id, "to": user_id}
+        return {"status": "không tìm thấy"}
+
+    async def reject_friend_request(self, user_id: str, requester_id: str) -> dict:
+        updated = await self.repo.reject_friend_request(requester_id, user_id)
+        if updated:
+            return {"status": "đã từ chối", "from": requester_id, "to": user_id}
+        return {"status": "không tìm thấy"}
+
+    async def unfriend(self, user_id: str, other_user_id: str) -> dict:
+        ok = await self.repo.remove_friendship(user_id, other_user_id)
+        return {"status": "đã hủy kết bạn" if ok else "không tìm thấy"}
+
+    async def list_friends(self, user_id: str) -> list:
+        ids = await self.repo.get_friend_ids(user_id)
+        return ids
+
+    # --- Block management ---
+    async def block_user(self, user_id: str, target_user_id: str) -> dict:
+        # Create block entry
+        await self.repo.block_user(user_id, target_user_id)
+        return {"status": "đã chặn", "blocked": target_user_id}
+
+    async def list_blocked(self, user_id: str) -> list:
+        blocked = await self.repo.get_blocked_users(user_id)
+        return [b.blockedId for b in blocked]
+
+    async def unblock_user(self, user_id: str, target_user_id: str) -> dict:
+        await self.repo.unblock_user(user_id, target_user_id)
+        return {"status": "đã bỏ chặn", "unblocked": target_user_id}
+
+    # --- Reports ---
+    async def report_content(self, reporter_id: str, target_type: str, target_id: str, reason: str, description: str | None = None) -> dict:
+        report = await self.repo.create_report(reporter_id, target_type, target_id, reason, description)
+        return {"report_id": report.id, "status": report.status}
+
+    # --- Board ---
+    async def get_board_tags(self) -> List[BoardTagResponse]:
+        tags = await self.repo.get_board_tags()
+        return [BoardTagResponse(id=t.id, name=t.name, slug=t.slug) for t in tags]
+
+    async def get_board_posts(
+        self, skip: int = 0, limit: int = 20, tag_id: str | None = None,
+    ) -> PaginatedBoardResponse:
+        posts = await self.repo.get_board_posts(skip, limit, tag_id)
+        total = await self.repo.count_board_posts(tag_id)
+        items = [await self._map_post_to_response(p) for p in posts]
+        return PaginatedBoardResponse(posts=items, total=total, skip=skip, limit=limit)
+
+    async def create_board_post(self, user_id: str, body: BoardPostCreateRequest) -> PostResponse:
+        post = await self.repo.create_post(data={
+            "userId": user_id,
+            "content": body.content,
+            "visibility": "public",
+            "postType": "board",
+            "boardTagId": body.board_tag_id,
+            "deletedAt": None,
+        })
+        if body.images:
+            await self.repo.create_post_images(post.id, [img.model_dump() for img in body.images])
+            post = await self.repo.get_post_by_id(post.id)
+        return await self._map_post_to_response(post)
 
     # --- Mapping Helpers ---
     async def _map_post_to_response(self, post) -> PostResponse:
@@ -138,6 +246,11 @@ class SocialService:
         user_info = None
         if hasattr(post, "user") and post.user:
             user_info = UserInfoEmbed(id=post.user.id, full_name=post.user.fullName, avatar_url=post.user.avatarUrl)
+
+        # Board tag name
+        board_tag_name = None
+        if hasattr(post, "boardTag") and post.boardTag:
+            board_tag_name = post.boardTag.name
 
         like_count = post.likeCount
         comment_count = post.commentCount
@@ -157,6 +270,7 @@ class SocialService:
             visibility=post.visibility,
             post_type=post.postType,
             board_tag_id=post.boardTagId,
+            board_tag_name=board_tag_name,
             like_count=like_count,
             comment_count=comment_count,
             is_hidden=post.isHidden,
@@ -188,3 +302,11 @@ class SocialService:
             is_hidden=comment.isHidden,
             created_at=comment.createdAt
         )
+
+    async def _get_user_name(self, user_id: str) -> str:
+        """Lấy tên user để hiển thị trong thông báo."""
+        from app.core.dependencies import get_account_repo
+        from app.core.dependencies import db as prisma_db
+        user_repo = get_account_repo(prisma_db)
+        user = await user_repo.get_user_by_id(user_id)
+        return user.fullName if user else "Người dùng"

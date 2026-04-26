@@ -11,6 +11,8 @@ from app.modules.account.repository import AccountRepository
 from app.modules.account.service import AccountService
 from app.modules.social.repository import SocialRepository
 from app.modules.social.service import SocialService
+from app.modules.notification.repository import NotificationRepository
+from app.modules.notification.service import NotificationService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login", auto_error=False)
@@ -81,6 +83,18 @@ async def require_active_user(
     return user_id
 
 
+# --- Notification ---
+
+def get_notification_repo(db: Prisma = Depends(get_db)) -> NotificationRepository:
+    return NotificationRepository(db)
+
+
+def get_notification_service(
+    repo: NotificationRepository = Depends(get_notification_repo),
+) -> NotificationService:
+    return NotificationService(repo)
+
+
 # --- Social Network ---
 
 def get_social_repo(db: Prisma = Depends(get_db)) -> SocialRepository:
@@ -89,5 +103,6 @@ def get_social_repo(db: Prisma = Depends(get_db)) -> SocialRepository:
 
 def get_social_service(
     repo: SocialRepository = Depends(get_social_repo),
+    notification_svc: NotificationService = Depends(get_notification_service),
 ) -> SocialService:
-    return SocialService(repo)
+    return SocialService(repo, notification_svc)

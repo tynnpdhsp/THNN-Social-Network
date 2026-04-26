@@ -61,10 +61,10 @@ class AccountService:
     async def resend_verification_otp(self, body: SendOtpRequest) -> str:
         user = await self.repo.get_user_by_email(body.email)
         if user is None or user.deletedAt is not None:
-            raise BadRequestException("Account not found.", "INVALID_REQUEST")
+            raise BadRequestException("Không tìm thấy tài khoản.", "INVALID_REQUEST")
         
         if user.emailVerified:
-            raise BadRequestException("Account is already verified.", "ALREADY_VERIFIED")
+            raise BadRequestException("Tài khoản đã được xác thực.", "ALREADY_VERIFIED")
 
         code = generate_otp(settings.OTP_LENGTH)
         await self.repo.invalidate_otps(body.email, body.purpose)
@@ -81,18 +81,18 @@ class AccountService:
         )
         await cache_otp(body.email, body.purpose, code)
         await send_otp_email(body.email, code, body.purpose)
-        return "Verification OTP resent to your email"
+        return "Mã OTP xác thực đã được gửi lại vào email của bạn"
 
     async def register(self, body: RegisterRequest) -> str:
         existing = await self.repo.get_user_by_email(body.email)
         if existing and existing.deletedAt is None:
             if not existing.emailVerified:
-                raise ConflictException("Email registered but not verified. Please verify or request new OTP.", "UNVERIFIED_EMAIL_EXISTS")
-            raise ConflictException("Email already registered", "EMAIL_EXISTS")
+                raise ConflictException("Email đã đăng ký nhưng chưa xác thực. Vui lòng xác thực hoặc yêu cầu mã OTP mới.", "UNVERIFIED_EMAIL_EXISTS")
+            raise ConflictException("Email đã được đăng ký", "EMAIL_EXISTS")
 
         role = await self.repo.get_role_by_name("student")
         if role is None:
-            raise NotFoundException("Default role not found", "ROLE_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy vai trò mặc định", "ROLE_NOT_FOUND")
 
         user = await self.repo.create_user(
             data={
@@ -121,22 +121,22 @@ class AccountService:
         await cache_otp(body.email, "register", code)
         await send_otp_email(body.email, code, "register")
 
-        return "Registration successful. Please check your email to verify your account."
+        return "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản của bạn."
 
     async def verify_otp(self, body: VerifyOtpRequest) -> str:
         cached = await get_cached_otp(body.email, body.purpose)
         if cached is None:
-            raise BadRequestException("OTP not found or expired", "OTP_EXPIRED")
+            raise BadRequestException("Mã OTP không tồn tại hoặc đã hết hạn", "OTP_EXPIRED")
 
         if cached["attempts"] >= cached["max_attempts"]:
             await delete_cached_otp(body.email, body.purpose)
-            raise TooManyRequestsException("OTP max attempts exceeded. Please request a new one.", "OTP_MAX_ATTEMPTS")
+            raise TooManyRequestsException("Đã vượt quá số lần nhập OTP tối đa. Vui lòng yêu cầu mã mới.", "OTP_MAX_ATTEMPTS")
 
         if cached["code"] != body.code:
             attempts = await increment_otp_attempts(body.email, body.purpose)
             remaining = cached["max_attempts"] - attempts
             raise BadRequestException(
-                f"Invalid OTP. {remaining} attempts remaining.", "INVALID_OTP"
+                f"Mã OTP không hợp lệ. Còn lại {remaining} lần thử.", "INVALID_OTP"
             )
 
         await delete_cached_otp(body.email, body.purpose)
@@ -146,7 +146,7 @@ class AccountService:
             if user:
                 await self.repo.update_user(user.id, {"emailVerified": True})
 
-        return "OTP verified successfully"
+        return "Xác thực mã OTP thành công"
 
     # ─── Login ─────────────────────────────────────────────────────────────
 
@@ -156,28 +156,28 @@ class AccountService:
         ip_key = f"rate:login:ip:{ip_address}"
         ip_count = await r.get(ip_key)
         if ip_count and int(ip_count) >= settings.LOGIN_RATE_LIMIT_IP:
-            raise TooManyRequestsException("Too many login attempts from this IP", "IP_RATE_LIMITED")
+            raise TooManyRequestsException("Quá nhiều lần thử đăng nhập từ địa chỉ IP này", "IP_RATE_LIMITED")
 
         email_key = f"rate:login:email:{body.email}"
         email_count = await r.get(email_key)
         if email_count and int(email_count) >= settings.LOGIN_RATE_LIMIT_EMAIL:
-            raise TooManyRequestsException("Too many login attempts for this email", "EMAIL_RATE_LIMITED")
+            raise TooManyRequestsException("Quá nhiều lần thử đăng nhập cho email này", "EMAIL_RATE_LIMITED")
 
         user = await self.repo.get_user_by_email(body.email)
         if user is None or user.deletedAt is not None:
             await self._increment_rate_limit(r, ip_key, email_key)
-            raise UnauthorizedException("Invalid email or password", "INVALID_CREDENTIALS")
+            raise UnauthorizedException("Email hoặc mật khẩu không đúng", "INVALID_CREDENTIALS")
 
         if user.isLocked:
-            raise LockedAccountException(user.lockReason or "Account is locked", "ACCOUNT_LOCKED")
+            raise LockedAccountException(user.lockReason or "Tài khoản đang bị khóa", "ACCOUNT_LOCKED")
 
         if not verify_password(body.password, user.passwordHash):
             await self._increment_rate_limit(r, ip_key, email_key)
-            raise UnauthorizedException("Invalid email or password", "INVALID_CREDENTIALS")
+            raise UnauthorizedException("Email hoặc mật khẩu không đúng", "INVALID_CREDENTIALS")
 
         if not user.emailVerified:
             await self._increment_rate_limit(r, ip_key, email_key)
-            raise ForbiddenException("Please verify your email before logging in", "EMAIL_NOT_VERIFIED")
+            raise ForbiddenException("Vui lòng xác thực email trước khi đăng nhập", "EMAIL_NOT_VERIFIED")
 
         await r.delete(ip_key, email_key)
 
@@ -214,32 +214,32 @@ class AccountService:
                 if remaining > 0:
                     await r.set(f"auth:blacklist:{token_hash}", "revoked", ex=int(remaining))
 
-        return "Logged out successfully"
+        return "Đăng xuất thành công"
 
     # ─── Refresh Token ─────────────────────────────────────────────────────
 
     async def refresh_access_token(self, body: RefreshTokenRequest) -> TokenResponse:
         payload = decode_token(body.refresh_token)
         if payload is None or payload.get("type") != "refresh":
-            raise UnauthorizedException("Invalid refresh token", "INVALID_REFRESH_TOKEN")
+            raise UnauthorizedException("Mã làm mới không hợp lệ", "INVALID_REFRESH_TOKEN")
 
         token_hash = hashlib.sha256(body.refresh_token.encode()).hexdigest()
         r = await get_redis()
         blacklisted = await r.exists(f"auth:blacklist:{token_hash}")
         if blacklisted:
-            raise UnauthorizedException("Refresh token has been revoked", "TOKEN_REVOKED")
+            raise UnauthorizedException("Mã làm mới đã bị thu hồi", "TOKEN_REVOKED")
 
         rt = await self.repo.get_refresh_token_by_hash(token_hash)
         if rt is None:
-            raise UnauthorizedException("Refresh token not found", "TOKEN_NOT_FOUND")
+            raise UnauthorizedException("Không tìm thấy mã làm mới", "TOKEN_NOT_FOUND")
         if rt.revokedAt is not None:
-            raise UnauthorizedException("Refresh token has been revoked", "TOKEN_REVOKED")
+            raise UnauthorizedException("Mã làm mới đã bị thu hồi", "TOKEN_REVOKED")
         if rt.expiresAt < datetime.now(timezone.utc):
-            raise UnauthorizedException("Refresh token expired", "TOKEN_EXPIRED")
+            raise UnauthorizedException("Mã làm mới đã hết hạn", "TOKEN_EXPIRED")
 
         user = await self.repo.get_user_by_id(rt.userId)
         if user is None or user.isLocked or user.deletedAt is not None:
-            raise UnauthorizedException("User account is inactive", "ACCOUNT_INACTIVE")
+            raise UnauthorizedException("Tài khoản người dùng không hoạt động", "ACCOUNT_INACTIVE")
 
         await self.repo.revoke_refresh_token(rt.id)
         remaining = (rt.expiresAt - datetime.now(timezone.utc)).total_seconds()
@@ -253,7 +253,7 @@ class AccountService:
     async def forgot_password(self, body: SendOtpRequest) -> str:
         user = await self.repo.get_user_by_email(body.email)
         if user is None or user.deletedAt is not None:
-            return "If the email exists, an OTP has been sent"
+            return "Nếu email tồn tại, mã OTP đã được gửi"
 
         code = generate_otp(settings.OTP_LENGTH)
         await self.repo.invalidate_otps(body.email, body.purpose)
@@ -270,24 +270,24 @@ class AccountService:
         )
         await cache_otp(body.email, body.purpose, code)
         await send_otp_email(body.email, code, body.purpose)
-        return "If the email exists, an OTP has been sent"
+        return "Nếu email tồn tại, mã OTP đã được gửi"
 
     async def reset_password(self, body: ResetPasswordRequest) -> str:
         cached = await get_cached_otp(body.email, "reset_password")
         if cached is None:
-            raise BadRequestException("OTP not found or expired", "OTP_EXPIRED")
+            raise BadRequestException("Mã OTP không tồn tại hoặc đã hết hạn", "OTP_EXPIRED")
 
         if cached["attempts"] >= cached["max_attempts"]:
             await delete_cached_otp(body.email, "reset_password")
-            raise TooManyRequestsException("OTP max attempts exceeded", "OTP_MAX_ATTEMPTS")
+            raise TooManyRequestsException("Vượt quá số lần nhập OTP tối đa", "OTP_MAX_ATTEMPTS")
 
         if cached["code"] != body.code:
             await increment_otp_attempts(body.email, "reset_password")
-            raise BadRequestException("Invalid OTP", "INVALID_OTP")
+            raise BadRequestException("Mã OTP không hợp lệ", "INVALID_OTP")
 
         user = await self.repo.get_user_by_email(body.email)
         if user is None:
-            raise NotFoundException("User not found", "USER_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy người dùng", "USER_NOT_FOUND")
 
         await self.repo.update_user(user.id, {"passwordHash": hash_password(body.new_password)})
         await self.repo.revoke_all_user_tokens(user.id)
@@ -297,17 +297,17 @@ class AccountService:
         r = await get_redis()
         await r.delete(f"auth:session:{user.id}")
 
-        return "Password reset successfully"
+        return "Đặt lại mật khẩu thành công"
 
     # ─── Change Password ───────────────────────────────────────────────────
 
     async def change_password(self, user_id: str, body: ChangePasswordRequest) -> str:
         user = await self.repo.get_user_by_id(user_id)
         if user is None:
-            raise NotFoundException("User not found", "USER_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy người dùng", "USER_NOT_FOUND")
 
         if not verify_password(body.current_password, user.passwordHash):
-            raise BadRequestException("Current password is incorrect", "WRONG_PASSWORD")
+            raise BadRequestException("Mật khẩu hiện tại không đúng", "WRONG_PASSWORD")
 
         await self.repo.update_user(user.id, {"passwordHash": hash_password(body.new_password)})
         await self.repo.revoke_all_user_tokens(user_id)
@@ -315,7 +315,7 @@ class AccountService:
         r = await get_redis()
         await r.delete(f"auth:session:{user_id}")
 
-        return "Password changed successfully. Please login again."
+        return "Thay đổi mật khẩu thành công. Vui lòng đăng nhập lại."
 
     # ─── Profile ───────────────────────────────────────────────────────────
 
@@ -328,7 +328,7 @@ class AccountService:
 
         user = await self.repo.get_user_by_id(user_id)
         if user is None:
-            raise NotFoundException("User not found", "USER_NOT_FOUND")
+            raise NotFoundException("Không tìm thấy người dùng", "USER_NOT_FOUND")
 
         role = await self.repo.db.role.find_unique(where={"id": user.roleId})
 
@@ -350,7 +350,7 @@ class AccountService:
     async def update_profile(self, user_id: str, body: UpdateProfileRequest) -> ProfileResponse:
         data = body.model_dump(exclude_none=True)
         if not data:
-            raise BadRequestException("No fields to update", "EMPTY_UPDATE")
+            raise BadRequestException("Không có dữ liệu nào để cập nhật", "EMPTY_UPDATE")
 
         field_map = {
             "full_name": "fullName",
@@ -412,7 +412,11 @@ class AccountService:
 
     async def update_privacy_settings(self, user_id: str, body: UpdatePrivacySettingsRequest):
         data = body.model_dump(exclude_none=True)
-        field_map = {"who_can_friend_req": "whoCanFriendReq"}
+        field_map = {
+            "who_can_see_posts": "whoCanSeePosts",
+            "who_can_message": "whoCanMessage",
+            "who_can_friend_req": "whoCanFriendReq",
+        }
         prisma_data = {}
         for k, v in data.items():
             prisma_data[field_map.get(k, k)] = v
