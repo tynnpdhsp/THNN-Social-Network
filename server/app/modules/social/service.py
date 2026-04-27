@@ -210,6 +210,13 @@ class SocialService:
         report = await self.repo.create_report(reporter_id, target_type, target_id, reason, description)
         return {"report_id": report.id, "status": report.status}
 
+    # --- Media ---
+    async def upload_post_image(self, user_id: str, content: bytes, filename: str) -> str:
+        from app.utils.storage import upload_file
+        # Upload vào folder posts/{user_id}
+        url = await upload_file(content, filename, f"posts/{user_id}")
+        return url
+
     # --- Board ---
     async def get_board_tags(self) -> List[BoardTagResponse]:
         tags = await self.repo.get_board_tags()

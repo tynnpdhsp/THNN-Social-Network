@@ -32,6 +32,14 @@ Hiện tại, hệ thống đã triển khai xong 4 phân hệ cốt lõi:
 - **Redis Server 7+** (Dùng cho Rate Limiting, Pub/Sub và Caching)
 - **SMTP Server**: Cần tài khoản Gmail App Password để gửi OTP thực tế.
 - **MinIO**: Dùng để lưu trữ hình ảnh bài đăng và vật phẩm (S3 compatible).
+  - Tải `minio.exe` từ [Min.io](https://dl.min.io/server/minio/release/windows-amd64/minio.exe) hoặc dùng PowerShell:
+    ```powershell
+    Invoke-WebRequest -Uri "https://dl.min.io/server/minio/release/windows-amd64/minio.exe" -OutFile "minio.exe"
+    ```
+  - Chạy Server (tại thư mục chứa file `.exe`):
+    ```powershell
+    $env:MINIO_ROOT_USER="admin"; $env:MINIO_ROOT_PASSWORD="password123"; .\minio.exe server .\minio_data --console-address ":9001"
+    ```
 
 ---
 

@@ -170,3 +170,33 @@ async def add_comment(
     svc: SocialService = Depends(get_social_service),
 ):
     return await svc.add_comment(user_id, post_id, body)
+
+
+# --- Media ---
+
+from fastapi import UploadFile, File
+from app.core.config import get_settings
+from app.core.exceptions import BadRequestException
+
+settings = get_settings()
+
+@router.post("/media/upload", response_model=dict)
+async def upload_media(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+    svc: SocialService = Depends(get_social_service),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise BadRequestException("Tập tin phải là hình ảnh", "INVALID_FILE_TYPE")
+
+    content = await file.read()
+    # Tạm dùng chung limit với avatar
+    max_bytes = settings.MAX_AVATAR_SIZE_MB * 1024 * 1024
+    if len(content) > max_bytes:
+        raise BadRequestException(
+            f"Ảnh bài đăng phải nhỏ hơn {settings.MAX_AVATAR_SIZE_MB}MB", "FILE_TOO_LARGE"
+        )
+
+    url = await svc.upload_post_image(user_id, content, file.filename or "post_image.jpg")
+    return {"image_url": url}
+

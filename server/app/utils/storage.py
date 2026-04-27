@@ -29,6 +29,26 @@ async def upload_file(content: bytes, filename: str, prefix: str) -> str:
 
     if not client.bucket_exists(settings.MINIO_BUCKET):
         client.make_bucket(settings.MINIO_BUCKET)
+        # Set policy to public read
+        policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": ["*"]},
+                    "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+                    "Resource": [f"arn:aws:s3:::{settings.MINIO_BUCKET}"],
+                },
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": ["*"]},
+                    "Action": ["s3:GetObject"],
+                    "Resource": [f"arn:aws:s3:::{settings.MINIO_BUCKET}/*"],
+                },
+            ],
+        }
+        import json
+        client.set_bucket_policy(settings.MINIO_BUCKET, json.dumps(policy))
 
     ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
     object_name = f"{prefix}/{uuid.uuid4().hex}.{ext}"
