@@ -1,8 +1,6 @@
 # Server - Social Networking and Learning App
 
-Backend của dự án được xây dựng với FastAPI, sử dụng Prisma làm ORM chính kết nối với **MongoDB** (Kiến trúc hợp nhất 35 collections). Hệ thống sử dụng Redis cho caching, rate limiting và xử lý sự kiện realtime qua Pub/Sub. Toàn bộ thông báo và phản hồi API đã được bản địa hóa sang Tiếng Việt.
-
----
+## Backend của dự án được xây dựng với FastAPI, sử dụng Prisma làm ORM chính kết nối với **MongoDB** (Kiến trúc hợp nhất 35 collections). Hệ thống sử dụng Redis cho caching, rate limiting và xử lý sự kiện realtime qua Pub/Sub.
 
 ## Trạng thái dự án (Module đã hoàn thiện)
 
@@ -29,7 +27,16 @@ Hiện tại, hệ thống đã triển khai xong 4 phân hệ cốt lõi:
 
 - **Python 3.10+** (Khuyên dùng 3.13)
 - **MongoDB 7+** (Bắt buộc chạy ở chế độ **Replica Set** để hỗ trợ Prisma Transactions. Xem [Hướng dẫn cấu hình DB](prisma/DB_Setup_Guide.md))
-- **Redis Server 7+** (Dùng cho Rate Limiting, Pub/Sub và Caching)
+- **Redis Server** (Dùng cho Rate Limiting, Pub/Sub và Caching)
+  - Cách 1 (Cài đặt vào hệ thống): Tải tại [tporadowski/redis/releases](https://github.com/tporadowski/redis/releases) Sau khi cài đặt gõ `redis-server` trong cmd để chạy
+  - Cách 2 (Chạy nhanh bằng PowerShell):
+    ```powershell
+    Invoke-WebRequest -Uri "https://github.com/tporadowski/redis/releases/download/v5.0.14.1/Redis-x64-5.0.14.1.zip" -OutFile "redis.zip"; Expand-Archive -Path "redis.zip" -DestinationPath "redis"; Remove-Item "redis.zip"
+    ```
+  - Lệnh chạy (cho Cách 2):
+    ```powershell
+    .\redis\redis-server.exe
+    ```
 - **SMTP Server**: Cần tài khoản Gmail App Password để gửi OTP thực tế.
 - **MinIO**: Dùng để lưu trữ hình ảnh bài đăng và vật phẩm (S3 compatible).
   - Tải `minio.exe` từ [Min.io](https://dl.min.io/server/minio/release/windows-amd64/minio.exe) hoặc dùng PowerShell:

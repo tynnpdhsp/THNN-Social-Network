@@ -54,3 +54,5 @@ skills-lock.json
 test_results/
 minio_data/
 minio.exe
+redis/
+redis.zip
