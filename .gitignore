@@ -52,3 +52,5 @@ skills-lock.json
 .agents/
 # Test results
 test_results/
+minio_data/
+minio.exe
