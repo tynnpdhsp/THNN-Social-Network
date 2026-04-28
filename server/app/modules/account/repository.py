@@ -27,8 +27,43 @@ class AccountRepository:
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         return await self.db.user.find_unique(where={"id": user_id})
 
+    async def get_users_by_ids(self, user_ids: list[str]) -> list[User]:
+        return await self.db.user.find_many(where={"id": {"in": user_ids}})
+
     async def get_user_by_email(self, email: str) -> Optional[User]:
         return await self.db.user.find_unique(where={"email": email})
+
+    async def search_users(self, query: str, limit: int = 10) -> list[User]:
+        clean_query = query.strip()
+        print(f"REPO_DEBUG: Searching for '{clean_query}'")
+
+        # Prisma MongoDB bug: OR + mode:"insensitive" returns 0 results.
+        # Workaround: run two separate queries and merge.
+        # NOTE: Do NOT use "deletedAt": None — Prisma MongoDB treats
+        # missing fields differently from null, causing 0 results.
+        by_name = await self.db.user.find_many(
+            where={"fullName": {"contains": clean_query, "mode": "insensitive"}},
+            include={"roleRef": True},
+            take=limit,
+        )
+        by_email = await self.db.user.find_many(
+            where={"email": {"contains": clean_query, "mode": "insensitive"}},
+            include={"roleRef": True},
+            take=limit,
+        )
+
+        # Merge and deduplicate
+        seen_ids = set()
+        users = []
+        for u in by_name + by_email:
+            if u.id not in seen_ids:
+                seen_ids.add(u.id)
+                users.append(u)
+            if len(users) >= limit:
+                break
+
+        print(f"REPO_DEBUG: Found {len(users)} users in DB")
+        return users
 
     async def create_user(self, data: UserCreateInput) -> User:
         return await self.db.user.create(data=data)

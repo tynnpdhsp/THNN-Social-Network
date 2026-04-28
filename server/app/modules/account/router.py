@@ -228,3 +228,15 @@ async def get_order_history(
     svc: AccountService = Depends(get_account_service),
 ):
     return await svc.get_order_history(user_id, skip, limit)
+
+
+@router.get("/search", response_model=list[ProfileResponse])
+async def search_users(
+    query: str = Query(...),
+    limit: int = Query(10, ge=1, le=50),
+    svc: AccountService = Depends(get_account_service),
+):
+    print(f"DEBUG: Searching for '{query}'")
+    users = await svc.search_users(query, limit)
+    print(f"DEBUG: Found {len(users)} users")
+    return users

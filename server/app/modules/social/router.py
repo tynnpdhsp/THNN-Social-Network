@@ -22,6 +22,7 @@ async def create_post(
 ):
     return await svc.create_post(user_id, body)
 
+@router.get("/feed", response_model=PaginatedFeedResponse)
 @router.get("/posts", response_model=PaginatedFeedResponse)
 async def get_posts_feed(
     skip: int = Query(0, ge=0),

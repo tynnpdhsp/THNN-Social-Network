@@ -42,6 +42,8 @@
             <div class="flex gap-8 mb-6 border-b border-gray-200 px-4 overflow-x-auto">
                 <button onclick="showTab('feed')" id="tab-feed" class="tab-active py-2 whitespace-nowrap">Bảng tin (Feed)</button>
                 <button onclick="showTab('board')" id="tab-board" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Rao vặt (Board)</button>
+                <button onclick="showTab('chat')" id="tab-chat" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Trò chuyện (Chat)</button>
+                <button onclick="showTab('friends')" id="tab-friends" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Bạn bè</button>
                 <button onclick="showTab('notif')" id="tab-notif" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Thông báo <span id="notif-count" class="hidden bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full ml-1">0</span></button>
                 <button onclick="showTab('profile')" id="tab-profile" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Cá nhân (Profile)</button>
             </div>
@@ -95,10 +97,44 @@
                 <div id="board-items" class="space-y-4"></div>
             </div>
 
+            <div id="content-chat" class="hidden space-y-4">
+                <div class="glass p-4 rounded-xl">
+                    <h3 class="font-bold mb-4 text-blue-600">Tìm kiếm & Nhắn tin</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="chat-search-query" placeholder="Tìm tên hoặc email..." class="flex-1 border p-2 rounded-xl outline-none shadow-sm" onkeypress="if(event.key==='Enter') searchUsersForChat()">
+                        <button onclick="searchUsersForChat()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium">Tìm</button>
+                    </div>
+                    <div id="chat-search-results" class="space-y-2"></div>
+                </div>
+                <div class="glass p-4 rounded-xl">
+                    <h3 class="font-bold mb-4">Hội thoại gần đây</h3>
+                    <div id="conversation-list" class="space-y-2"></div>
+                </div>
+            </div>
+
             <div id="content-notif" class="hidden space-y-2">
                 <div id="notif-items" class="space-y-2"></div>
             </div>
 
+            <div id="content-friends" class="hidden space-y-4">
+                <div class="glass p-4 rounded-xl">
+                    <h3 class="font-bold mb-4 text-blue-600">Tìm kiếm bạn bè</h3>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="search-query" placeholder="Nhập tên hoặc email..." class="flex-1 border p-2 rounded-xl outline-none shadow-sm" onkeypress="if(event.key==='Enter') searchUsers()">
+                        <button onclick="searchUsers()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium">Tìm</button>
+                    </div>
+                    <div id="search-results" class="space-y-2"></div>
+                </div>
+
+                <div class="glass p-4 rounded-xl">
+                    <h3 class="font-bold mb-4">Lời mời kết bạn</h3>
+                    <div id="friend-requests" class="space-y-2"></div>
+                </div>
+                <div class="glass p-4 rounded-xl">
+                    <h3 class="font-bold mb-4">Danh sách bạn bè</h3>
+                    <div id="friend-list" class="space-y-2"></div>
+                </div>
+            </div>
             <div id="content-profile" class="hidden space-y-4">
                 <div class="glass rounded-2xl overflow-hidden">
                     <!-- Cover Photo -->
@@ -123,6 +159,27 @@
             </div>
         </div>
 
+        <!-- Chat Modal -->
+        <div id="chat-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-gray-100 w-full max-w-lg h-[600px] rounded-3xl flex flex-col overflow-hidden shadow-2xl relative">
+                <div class="p-4 bg-white border-b flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold" id="chat-avatar-letter">?</div>
+                        <div>
+                            <h3 id="chat-title" class="font-bold">Đang tải...</h3>
+                            <p class="text-[10px] text-green-500 font-bold">● ĐANG HOẠT ĐỘNG</p>
+                        </div>
+                    </div>
+                    <button onclick="closeChat()" class="text-gray-400 hover:text-gray-600 transition text-2xl">&times;</button>
+                </div>
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+                <div class="p-4 bg-white border-t flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." class="flex-1 border p-2 rounded-xl outline-none" onkeypress="if(event.key==='Enter') sendChatMessage()">
+                    <button onclick="sendChatMessage()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium">Gửi</button>
+                </div>
+            </div>
+        </div>
+
         <!-- API Log (Debug) -->
         <div class="mt-12">
             <p class="text-xs font-mono text-gray-400 mb-2">HỆ THỐNG LOG</p>
@@ -143,13 +200,31 @@
         </div>
     </div>
 
+    <!-- Modal Chat -->
+    <div id="chat-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-lg rounded-2xl flex flex-col h-[500px]">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 id="chat-title" class="font-bold">Chat</h3>
+                <button onclick="closeChat()" class="text-gray-400">✕</button>
+            </div>
+            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50"></div>
+            <div class="p-4 border-t flex gap-2">
+                <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." class="flex-1 border p-2 rounded-xl outline-none shadow-sm" onkeypress="if(event.key==='Enter') sendChatMessage()">
+                <button onclick="sendChatMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">Gửi</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = "http://localhost:8000/api/v1";
-        const MINIO_URL = "http://localhost:9000"; // Host MinIO
+        const WS_BASE = "ws://localhost:8000/api/v1";
+        const MINIO_URL = "http://localhost:9000"; 
         let token = localStorage.getItem('token');
+        let currentUser = null;
+        let ws = null;
+        let activeConvId = null;
         let currentTab = 'feed';
-        let currentBoardFilter = '';
-        let uploadedImages = []; // Danh sách image_url đã upload cho bài đăng mới
+        let uploadedImages = [];
 
         function log(msg, type = 'info') {
             const el = document.getElementById('log');
@@ -164,10 +239,15 @@
                 document.getElementById('main-section').classList.remove('hidden');
                 document.getElementById('user-info').classList.remove('hidden');
                 document.getElementById('status').innerText = "Trạng thái: Đang hoạt động";
+                
+                loadProfile().then(user => {
+                    currentUser = user;
+                    initWebSocket(user.id);
+                });
+                
                 loadFeed();
                 loadNotifs();
                 loadTags();
-                loadProfile();
             }
         }
 
@@ -189,11 +269,14 @@
 
         function showTab(tab) {
             currentTab = tab;
-            ['feed', 'board', 'notif', 'profile'].forEach(t => {
-                document.getElementById(`content-${t}`).classList.add('hidden');
-                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+            ['feed', 'board', 'notif', 'profile', 'chat', 'friends'].forEach(t => {
+                const el = document.getElementById(`content-${t}`);
                 const btn = document.getElementById(`tab-${t}`);
-                if (btn) btn.classList.add('text-gray-500');
+                if (el) el.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('text-gray-500');
+                }
             });
             document.getElementById(`content-${tab}`).classList.remove('hidden');
             document.getElementById(`tab-${tab}`).classList.add('tab-active');
@@ -201,8 +284,32 @@
             
             if (tab === 'feed') loadFeed();
             if (tab === 'board') loadBoard(currentBoardFilter);
+            if (tab === 'chat') loadConversations();
+            if (tab === 'friends') loadFriendsData();
             if (tab === 'notif') loadNotifs();
             if (tab === 'profile') loadProfile();
+        }
+
+        // --- WebSocket ---
+        function initWebSocket(userId) {
+            if (ws) ws.close();
+            ws = new WebSocket(`${WS_BASE}/messaging/ws/${userId}`);
+            ws.onopen = () => log("WebSocket Connected");
+            ws.onmessage = (e) => {
+                const event = JSON.parse(e.data);
+                if (event.type === 'new_message') {
+                    const msg = event.data;
+                    log(`Tin nhắn mới từ ${msg.sender_id}: ${msg.content.substring(0, 20)}...`);
+                    if (activeConvId === msg.conversation_id) {
+                        appendMessage(msg);
+                    }
+                    if (currentTab === 'chat') loadConversations();
+                }
+            };
+            ws.onclose = () => {
+                log("WebSocket Disconnected. Reconnecting...");
+                setTimeout(() => initWebSocket(userId), 3000);
+            };
         }
 
         // --- Media Handlers ---
@@ -279,11 +386,88 @@
             } catch (err) { log(`Lỗi kết nối: ${err.message}`, 'error'); }
         }
 
-        // --- Core Loaders ---
+        async function loadConversations() {
+            const res = await fetch(`${API_BASE}/messaging/conversations`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            const list = document.getElementById('conversation-list');
+            list.innerHTML = '';
+            data.conversations.forEach(c => {
+                const lastMsgObj = c.last_message || c.lastMessage;
+                const lastMsg = lastMsgObj ? `${(lastMsgObj.sender_id || lastMsgObj.senderId) === currentUser.id ? 'Bạn: ' : ''}${lastMsgObj.content}` : 'Chưa có tin nhắn';
+                list.innerHTML += `
+                    <div onclick="openChat('${c.id}', '${c.name || 'Chat'}')" class="glass p-4 rounded-xl cursor-pointer hover:bg-white/50 transition">
+                        <div class="font-bold">${c.name || 'Chat'}</div>
+                        <div class="text-xs text-gray-500 truncate">${lastMsg}</div>
+                    </div>
+                `;
+            });
+        }
+
+        async function openChat(convId, name) {
+            activeConvId = convId;
+            document.getElementById('chat-title').innerText = name;
+            document.getElementById('chat-modal').classList.remove('hidden');
+            document.getElementById('chat-messages').innerHTML = '<p class="text-center text-xs text-gray-400">Đang tải...</p>';
+            
+            const res = await fetch(`${API_BASE}/messaging/conversations/${convId}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            const box = document.getElementById('chat-messages');
+            box.innerHTML = '';
+            data.messages.reverse().forEach(m => appendMessage(m));
+        }
+
+        function closeChat() {
+            activeConvId = null;
+            document.getElementById('chat-modal').classList.add('hidden');
+        }
+
+        async function sendChatMessage() {
+            const content = document.getElementById('chat-input').value;
+            if (!content || !activeConvId) return;
+            const res = await fetch(`${API_BASE}/messaging/conversations/${activeConvId}/messages`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            if (res.ok) {
+                document.getElementById('chat-input').value = '';
+                const msg = await res.json();
+                appendMessage(msg);
+            }
+        }
+
+        function appendMessage(msg) {
+            const box = document.getElementById('chat-messages');
+            // Tránh trùng lặp tin nhắn nếu đã có trên UI
+            if (document.getElementById(`msg-${msg.id}`)) return;
+            
+            const isMe = (msg.sender_id || msg.senderId) === currentUser.id;
+            console.log("AppendMessage:", { msg_sender: msg.sender_id || msg.senderId, me: currentUser.id, isMe });
+            const msgEl = document.createElement('div');
+            msgEl.id = `msg-${msg.id}`;
+            msgEl.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+            msgEl.innerHTML = `
+                <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800'} p-3 rounded-2xl max-w-[80%] text-sm shadow-sm">
+                    ${msg.content}
+                </div>
+            `;
+            box.appendChild(msgEl);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function startDirectChat(userId, name) {
+            const res = await fetch(`${API_BASE}/messaging/conversations`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'direct', participant_ids: [userId] })
+            });
+            const conv = await res.json();
+            openChat(conv.id, name);
+        }
 
         async function loadProfile() {
             const res = await fetch(`${API_BASE}/account/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (!res.ok) return;
+            if (!res.ok) return null;
             const user = await res.json();
             document.getElementById('profile-name').innerText = user.full_name;
             document.getElementById('profile-email').innerText = user.email;
@@ -299,8 +483,158 @@
                 img.classList.remove('hidden');
                 document.getElementById('cover-placeholder').classList.add('hidden');
             }
+            return user;
         }
 
+        // --- Friends ---
+        async function loadFriendsData() {
+            // Load requests
+            const reqRes = await fetch(`${API_BASE}/social/friends/requests`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const requests = await reqRes.json();
+            const reqList = document.getElementById('friend-requests');
+            reqList.innerHTML = requests.length ? '' : '<p class="text-xs text-gray-400">Không có lời mời nào</p>';
+            requests.forEach(r => {
+                reqList.innerHTML += `
+                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <img src="${r.avatar_url ? (r.avatar_url.startsWith('http') ? r.avatar_url : MINIO_URL + r.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + r.full_name}" class="w-8 h-8 rounded-full border">
+                            <span class="text-sm font-medium">${r.full_name}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="handleFriendRequest('${r.from_id}', 'accept')" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs">Chấp nhận</button>
+                            <button onclick="handleFriendRequest('${r.from_id}', 'reject')" class="bg-gray-200 text-gray-600 px-3 py-1 rounded-lg text-xs">Từ chối</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Load friends
+            const friendRes = await fetch(`${API_BASE}/social/friends`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const friends = await friendRes.json();
+            const list = document.getElementById('friend-list');
+            list.innerHTML = friends.length ? '' : '<p class="text-xs text-gray-400">Chưa có bạn bè</p>';
+            friends.forEach(f => {
+                list.innerHTML += `
+                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <img src="${f.avatar_url ? (f.avatar_url.startsWith('http') ? f.avatar_url : MINIO_URL + f.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + f.full_name}" class="w-8 h-8 rounded-full border">
+                            <span class="text-sm font-medium">${f.full_name}</span>
+                        </div>
+                        <button onclick="unfriend('${f.id}')" class="text-red-500 text-xs hover:underline">Hủy kết bạn</button>
+                    </div>
+                `;
+            });
+        }
+
+        async function searchUsers() {
+            const query = document.getElementById('search-query').value;
+            if (!query) return;
+            const res = await fetch(`${API_BASE}/account/search?query=${encodeURIComponent(query)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const users = await res.json();
+            const container = document.getElementById('search-results');
+            container.innerHTML = users.length ? '' : '<p class="text-xs text-gray-400">Không tìm thấy ai</p>';
+            users.forEach(u => {
+                if (u.id === currentUser.id) return;
+                container.innerHTML += `
+                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <img src="${u.avatar_url ? (u.avatar_url.startsWith('http') ? u.avatar_url : MINIO_URL + u.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + u.full_name}" class="w-8 h-8 rounded-full border">
+                            <div>
+                                <p class="text-sm font-medium">${u.full_name}</p>
+                                <p class="text-[10px] text-gray-400">${u.email}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="startChat('${u.id}', '${u.full_name}')" class="text-blue-600 text-[10px] font-bold border border-blue-200 px-2 py-1 rounded-lg hover:bg-blue-50">✉️ NHẮN TIN</button>
+                            <button onclick="sendFriendRequest('${u.id}')" class="text-green-600 text-[10px] font-bold border border-green-200 px-2 py-1 rounded-lg hover:bg-green-50">➕ KẾT BẠN</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function searchUsersForChat() {
+            const query = document.getElementById('chat-search-query').value;
+            if (!query) return;
+            const res = await fetch(`${API_BASE}/account/search?query=${encodeURIComponent(query)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const users = await res.json();
+            const container = document.getElementById('chat-search-results');
+            container.innerHTML = users.length ? '' : '<p class="text-xs text-gray-400">Không thấy ai</p>';
+            users.forEach(u => {
+                if (u.id === currentUser.id) return;
+                container.innerHTML += `
+                    <div onclick="startChat('${u.id}', '${u.full_name}'); document.getElementById('chat-search-results').innerHTML='';" class="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer rounded-lg">
+                        <img src="${u.avatar_url ? (u.avatar_url.startsWith('http') ? u.avatar_url : MINIO_URL + u.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + u.full_name}" class="w-6 h-6 rounded-full">
+                        <div class="text-xs font-medium">${u.full_name}</div>
+                    </div>
+                `;
+            });
+        }
+
+        async function startChat(targetId, name) {
+            const res = await fetch(`${API_BASE}/messaging/conversations`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'direct', participant_ids: [targetId] })
+            });
+            if (res.ok) {
+                const conv = await res.json();
+                openChat(conv.id, name);
+            }
+        }
+
+        async function openChat(convId, name) {
+            activeConvId = convId;
+            document.getElementById('chat-title').innerText = name;
+            document.getElementById('chat-avatar-letter').innerText = name.charAt(0).toUpperCase();
+            document.getElementById('chat-modal').classList.remove('hidden');
+            document.getElementById('chat-messages').innerHTML = '<p class="text-center text-xs text-gray-400">Đang tải...</p>';
+            
+            const res = await fetch(`${API_BASE}/messaging/conversations/${convId}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            const box = document.getElementById('chat-messages');
+            box.innerHTML = '';
+            data.messages.reverse().forEach(m => appendMessage(m));
+        }
+
+        function closeChat() {
+            activeConvId = null;
+            document.getElementById('chat-modal').classList.add('hidden');
+        }
+
+        async function sendFriendRequest(targetId) {
+            const res = await fetch(`${API_BASE}/social/friends/requests/${targetId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                log("Đã gửi lời mời kết bạn");
+                showTab(currentTab);
+            } else { log("Lỗi gửi lời mời: " + res.status, 'error'); }
+        }
+
+        async function handleFriendRequest(requesterId, action) {
+            const res = await fetch(`${API_BASE}/social/friends/requests/${requesterId}/${action}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                log(`Đã ${action === 'accept' ? 'chấp nhận' : 'từ chối'} lời mời`);
+                loadFriendsData();
+            }
+        }
+
+        async function unfriend(targetId) {
+            if (!confirm("Hủy kết bạn với người này?")) return;
+            const res = await fetch(`${API_BASE}/social/friends/${targetId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                log("Đã hủy kết bạn");
+                loadFriendsData();
+            }
+        }
         async function loadTags() {
             const res = await fetch(`${API_BASE}/board/tags`, { headers: { 'Authorization': `Bearer ${token}` } });
             const tags = await res.json();
@@ -337,7 +671,7 @@
         }
 
         async function loadFeed() {
-            const res = await fetch(`${API_BASE}/social/posts`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(`${API_BASE}/social/feed`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
             renderPosts(data.posts, 'feed-items', 'social');
         }
@@ -381,7 +715,11 @@
                         ${imgHtml}
                         <div class="flex gap-4 text-sm text-gray-500 mt-4 pt-4 border-t border-gray-50">
                             <button onclick="toggleLike('${post.id}', '${type}')" class="hover:text-blue-600 transition">👍 ${post.like_count}</button>
-                            <button onclick="openComments('${post.id}', '${type}')" class="hover:text-blue-600 transition">💬 ${post.comment_count} Bình luận</button>
+                            <button onclick="openComments('${post.id}', '${type}')" class="hover:text-blue-600 transition">💬 ${post.comment_count}</button>
+                            ${post.user_id !== currentUser?.id ? `
+                            <button onclick="startDirectChat('${post.user_id}', '${post.user_info?.full_name}')" class="text-blue-500 hover:underline">✉️ Nhắn tin</button>
+                            <button onclick="sendFriendRequest('${post.user_id}')" class="text-green-600 hover:underline">➕ Kết bạn</button>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -484,10 +822,6 @@
                 `;
             });
         }
-    </script>
-</body>
-</html>
-
     </script>
 </body>
 </html>

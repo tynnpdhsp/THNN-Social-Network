@@ -38,23 +38,16 @@ class SocialRepository:
             # Logged-in user sees: public + own posts + friends' posts (if visibility=friends)
             where = {
                 "postType": post_type,
-                "isHidden": False,
-                "deletedAt": None,
                 "OR": [
                     {"visibility": "public"},
-                    {"userId": viewer_id},  # Always see own posts
-                    {
-                        "visibility": "friends",
-                        "userId": {"in": friend_ids},
-                    },
+                    {"userId": viewer_id},
+                    {"visibility": "friends", "userId": {"in": friend_ids}},
                 ],
             }
         else:
             # Anonymous: public only
             where = {
                 "postType": post_type,
-                "isHidden": False,
-                "deletedAt": None,
                 "visibility": "public",
             }
 
@@ -74,8 +67,6 @@ class SocialRepository:
         if viewer_id and friend_ids is not None:
             where = {
                 "postType": post_type,
-                "isHidden": False,
-                "deletedAt": None,
                 "OR": [
                     {"visibility": "public"},
                     {"userId": viewer_id},
@@ -85,8 +76,6 @@ class SocialRepository:
         else:
             where = {
                 "postType": post_type,
-                "isHidden": False,
-                "deletedAt": None,
                 "visibility": "public",
             }
         return await self.db.post.count(where=where)
@@ -303,8 +292,6 @@ class SocialRepository:
     ) -> List[Post]:
         where: dict = {
             "postType": "board",
-            "isHidden": False,
-            "deletedAt": None,
         }
         if tag_id:
             where["boardTagId"] = tag_id
@@ -320,8 +307,6 @@ class SocialRepository:
     async def count_board_posts(self, tag_id: str | None = None) -> int:
         where: dict = {
             "postType": "board",
-            "isHidden": False,
-            "deletedAt": None,
         }
         if tag_id:
             where["boardTagId"] = tag_id

@@ -164,16 +164,36 @@ class SocialService:
     async def send_friend_request(self, user_id: str, target_user_id: str) -> dict:
         # Simple flow: create pending request
         await self.repo.send_friend_request(user_id, target_user_id)
+        
+        # Bắn thông báo
+        if self.notification_svc:
+            actor_name = await self._get_user_name(user_id)
+            await self.notification_svc.notify_friend_request(actor_name, target_user_id, user_id)
+            
         return {"status": "đã gửi yêu cầu", "to": target_user_id}
 
     async def list_incoming_friend_requests(self, user_id: str) -> list:
         requests = await self.repo.get_incoming_friend_requests(user_id)
-        # Return minimal view
-        return [{"from": r.requesterId, "created_at": r.createdAt} for r in requests]
+        return [
+            {
+                "from_id": r.requesterId,
+                "full_name": r.requester.fullName if r.requester else "Người dùng",
+                "avatar_url": r.requester.avatarUrl if r.requester else None,
+                "created_at": r.createdAt
+            }
+            for r in requests
+        ]
 
     async def accept_friend_request(self, user_id: str, requester_id: str) -> dict:
         updated = await self.repo.accept_friend_request(requester_id, user_id)
         if updated:
+            if self.notification_svc:
+                actor_name = await self._get_user_name(user_id)
+                await self.notification_svc.notify_system(
+                    requester_id, 
+                    "Yêu cầu kết bạn đã được chấp nhận", 
+                    f"{actor_name} đã chấp nhận lời mời kết bạn của bạn."
+                )
             return {"status": "đã chấp nhận", "from": requester_id, "to": user_id}
         return {"status": "không tìm thấy"}
 
@@ -189,7 +209,22 @@ class SocialService:
 
     async def list_friends(self, user_id: str) -> list:
         ids = await self.repo.get_friend_ids(user_id)
-        return ids
+        if not ids:
+            return []
+            
+        from app.core.dependencies import get_account_repo
+        from app.core.dependencies import db as prisma_db
+        user_repo = get_account_repo(prisma_db)
+        
+        friends = await user_repo.get_users_by_ids(ids)
+        return [
+            {
+                "id": f.id,
+                "full_name": f.fullName,
+                "avatar_url": f.avatarUrl
+            }
+            for f in friends
+        ]
 
     # --- Block management ---
     async def block_user(self, user_id: str, target_user_id: str) -> dict:

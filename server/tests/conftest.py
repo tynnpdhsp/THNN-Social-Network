@@ -9,7 +9,7 @@ from httpx import AsyncClient, ASGITransport
 import os
 
 # Increase Prisma timeout for Windows stability
-os.environ["PRISMA_CLIENT_TIMEOUT"] = "60"
+os.environ["PRISMA_CLIENT_TIMEOUT"] = "300"
 
 from app.main import app
 from app.core.dependencies import db
@@ -138,7 +138,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         await db.connect()
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", timeout=60.0) as c:
+    async with AsyncClient(transport=transport, base_url="http://test", timeout=120.0) as c:
         yield c
 
     # Cleanup: disconnect Prisma BEFORE event loop closes

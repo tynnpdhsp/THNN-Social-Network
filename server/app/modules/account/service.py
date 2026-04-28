@@ -319,6 +319,23 @@ class AccountService:
 
     # ─── Profile ───────────────────────────────────────────────────────────
 
+    async def search_users(self, query: str, limit: int = 10) -> list[ProfileResponse]:
+        users = await self.repo.search_users(query, limit)
+        return [
+            ProfileResponse(
+                id=u.id,
+                email=u.email,
+                full_name=u.fullName,
+                phone_number=u.phoneNumber,
+                avatar_url=u.avatarUrl,
+                cover_url=u.coverUrl,
+                email_verified=u.emailVerified,
+                role=u.roleRef.role if u.roleRef else "student",
+                created_at=u.createdAt,
+            )
+            for u in users
+        ]
+
     async def get_profile(self, user_id: str) -> ProfileResponse:
         from app.core.cache import get_user_profile_cache, set_user_profile_cache
         cached = await get_user_profile_cache(user_id)

@@ -10,7 +10,10 @@ from app.modules.account.router import router as account_router
 from app.modules.social.router import router as social_router
 from app.modules.social.board_router import router as board_router
 from app.modules.notification.router import router as notification_router
+from app.modules.messaging.router import router as messaging_router
+from app.modules.messaging.ws_manager import manager
 from app.core.dependencies import db
+import asyncio
 
 settings = get_settings()
 
@@ -19,7 +22,15 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     if not db.is_connected():
         await db.connect()
+    
+    # Start Redis Pub/Sub for messaging
+    app.state.pubsub_task = asyncio.create_task(manager.start_pubsub())
+    
     yield
+    
+    if app.state.pubsub_task:
+        app.state.pubsub_task.cancel()
+        
     if db.is_connected():
         await db.disconnect()
     await close_redis()
@@ -43,6 +54,7 @@ app.include_router(account_router, prefix=settings.API_V1_PREFIX)
 app.include_router(social_router, prefix=settings.API_V1_PREFIX)
 app.include_router(board_router, prefix=settings.API_V1_PREFIX)
 app.include_router(notification_router, prefix=settings.API_V1_PREFIX)
+app.include_router(messaging_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health")
