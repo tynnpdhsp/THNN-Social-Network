@@ -268,6 +268,7 @@
                             <div class="flex justify-between items-center mb-6">
                                 <h3 class="text-xl font-bold">👥 Quản lý người dùng</h3>
                                 <div class="flex gap-2">
+                                    <input type="text" id="admin-user-search" onkeyup="loadAdminUsers()" placeholder="Tìm tên/email..." class="p-2 bg-slate-100 rounded-xl text-xs outline-none border-none">
                                     <select id="admin-user-filter" onchange="loadAdminUsers()" class="p-2 bg-slate-100 rounded-xl text-xs font-bold outline-none">
                                         <option value="">Tất cả</option>
                                         <option value="locked">Bị khóa</option>
@@ -277,6 +278,28 @@
                             </div>
                             <div id="admin-users-list" class="space-y-4">
                                 <p class="text-center text-slate-400 py-10 text-xs font-bold tracking-widest uppercase">ĐANG TẢI DỮ LIỆU...</p>
+                            </div>
+                        </div>
+
+                        <div class="glass p-8 rounded-3xl">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl font-bold">📜 Nhật ký hệ thống</h3>
+                                <button onclick="loadAuditLogs()" class="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition text-[10px] font-bold">LÀM MỚI</button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs">
+                                    <thead>
+                                        <tr class="border-b border-slate-100">
+                                            <th class="pb-3 font-bold text-slate-400 uppercase tracking-tighter">Thời gian</th>
+                                            <th class="pb-3 font-bold text-slate-400 uppercase tracking-tighter">Hành động</th>
+                                            <th class="pb-3 font-bold text-slate-400 uppercase tracking-tighter">Mức độ</th>
+                                            <th class="pb-3 font-bold text-slate-400 uppercase tracking-tighter">Chi tiết</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-audit-list">
+                                        <tr><td colspan="4" class="py-10 text-center text-slate-300 uppercase font-bold tracking-widest">ĐANG TẢI...</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -520,26 +543,35 @@
                 });
 
                 loadAdminUsers();
+                loadAuditLogs();
             } catch (err) { log("Lỗi load admin: " + err.message, 'error'); }
         }
 
         async function loadAdminUsers() {
             const filter = document.getElementById('admin-user-filter').value;
+            const search = document.getElementById('admin-user-search').value;
             let url = `${API_BASE}/admin/users?limit=50`;
             if (filter === 'locked') url += '&is_locked=true';
             if (filter === 'active') url += '&is_locked=false';
+            if (search) url += `&search=${encodeURIComponent(search)}`; // Backend currently doesn't support search param in router, but we'll filter on frontend if needed or update backend
 
             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
-            const users = data.users || [];
+            let users = data.users || [];
+
+            // Frontend filtering for search if backend doesn't support it yet
+            if (search) {
+                const s = search.toLowerCase();
+                users = users.filter(u => u.full_name.toLowerCase().includes(s) || u.email.toLowerCase().includes(s));
+            }
 
             const list = document.getElementById('admin-users-list');
-            list.innerHTML = '';
+            list.innerHTML = users.length ? '' : '<p class="text-center text-slate-400 py-10">Không tìm thấy người dùng</p>';
             users.forEach(u => {
                 list.innerHTML += `
                     <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                         <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400 uppercase">
                                 ${u.full_name[0]}
                             </div>
                             <div>
@@ -548,7 +580,7 @@
                             </div>
                         </div>
                         <div class="flex gap-2">
-                            <select onchange="adminUpdateRole('${u.id}', this.value)" class="text-[10px] bg-slate-50 p-1 rounded border-none outline-none font-bold">
+                            <select onchange="adminUpdateRole('${u.id}', this.value)" class="text-[10px] bg-slate-50 p-1 rounded border-none outline-none font-bold cursor-pointer">
                                 <option value="student" ${u.role === 'student' ? 'selected' : ''}>STUDENT</option>
                                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>ADMIN</option>
                             </select>
@@ -560,6 +592,30 @@
                     </div>
                 `;
             });
+        }
+
+        async function loadAuditLogs() {
+            try {
+                const res = await fetch(`${API_BASE}/admin/audit-logs?limit=20`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                const logs = data.logs || [];
+                const list = document.getElementById('admin-audit-list');
+                list.innerHTML = logs.length ? '' : '<tr><td colspan="4" class="py-10 text-center text-slate-400">Trống</td></tr>';
+                
+                logs.forEach(l => {
+                    const severityClass = l.severity === 'critical' ? 'text-red-500' : (l.severity === 'warning' ? 'text-orange-500' : 'text-blue-500');
+                    list.innerHTML += `
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition">
+                            <td class="py-3 text-slate-400">${new Date(l.created_at).toLocaleString()}</td>
+                            <td class="py-3 font-bold text-slate-700">${l.action}</td>
+                            <td class="py-3"><span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase ${severityClass} bg-opacity-10" style="background-color: currentColor">${l.severity}</span></td>
+                            <td class="py-3 text-slate-500 italic">${l.payload ? JSON.stringify(l.payload).substring(0, 50) + '...' : '-'}</td>
+                        </tr>
+                    `;
+                });
+            } catch (err) { console.error(err); }
         }
 
         async function adminLockUser(id) {
