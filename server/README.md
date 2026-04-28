@@ -20,6 +20,9 @@ Hiện tại, hệ thống đã triển khai xong 4 phân hệ cốt lõi:
 4.  **Module Thông báo (Notification)**:
     - Hệ thống thông báo thời gian thực (Like, Comment, Reply, Friend Request).
     - Đếm số thông báo chưa đọc, đánh giá mức độ ưu tiên.
+5.  **Module Tin nhắn (Messaging)**:
+    - Chat riêng tư và chat nhóm thời gian thực (WebSocket).
+    - Tích hợp Redis Pub/Sub để đồng bộ tin nhắn giữa các instance.
 
 ---
 
