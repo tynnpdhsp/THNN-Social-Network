@@ -12,7 +12,6 @@ async def seed():
     await db.connect()
 
     print("--- [1/8] Cleaning database ---")
-    # Sử dụng danh sách các collection để xóa sạch
     await db.notification.delete_many()
     await db.like.delete_many()
     await db.comment.delete_many()
@@ -45,6 +44,7 @@ async def seed():
     await db.schedule.delete_many()
     await db.coursesection.delete_many()
     await db.studynote.delete_many()
+    await db.user.update_many(where={}, data={"lockedBy": None})
     await db.user.delete_many()
     await db.role.delete_many()
 
@@ -54,6 +54,19 @@ async def seed():
     
     password_raw = "password123"
     password_hash = hash_password(password_raw)
+
+    # Tạo 1 Admin mặc định
+    admin_user = await db.user.create(data={
+        "email": "admin@thnn.com",
+        "phoneNumber": "0888999000",
+        "passwordHash": password_hash,
+        "fullName": "Quản trị viên Hệ thống",
+        "roleId": admin_role.id,
+        "emailVerified": True,
+        "bio": "Tài khoản quản trị cấp cao."
+    })
+    await db.privacysetting.create(data={"userId": admin_user.id})
+    await db.notificationsetting.create(data={"userId": admin_user.id})
 
     users = []
     # Tạo 20 người dùng cho phong phú
@@ -160,13 +173,53 @@ async def seed():
         "comment": "Cơm ngon, nhiều thịt, giá sinh viên!"
     })
 
-    print("--- [8/8] Seeding Audit Logs ---")
-    await db.auditlog.create(data={
-        "userId": u_an.id,
-        "action": "LOGIN",
-        "severity": "INFO",
-        "requestInfo": Json({"ip_address": "127.0.0.1", "user_agent": "Mozilla/5.0"})
+    print("--- [8/8] Seeding Privacy, Blocks & Reports ---")
+    # Sinh Viên 1: Chỉ nhận tin nhắn/kết bạn từ bạn bè
+    await db.privacysetting.update(
+        where={"userId": users[0].id},
+        data={
+            "whoCanMessage": "friends",
+            "whoCanFriendReq": "friends_of_friends"
+        }
+    )
+
+    # Chặn: Sinh Viên 1 chặn Sinh Viên 20
+    await db.userblock.create(data={
+        "blockerId": users[0].id,
+        "blockedId": users[19].id
     })
+
+    # Khóa: Sinh Viên 19 bị Admin khóa
+    await db.user.update(
+        where={"id": users[18].id},
+        data={
+            "isLocked": True,
+            "lockReason": "Vi phạm quy tắc cộng đồng liên tục",
+            "lockedBy": admin_user.id
+        }
+    )
+
+    # Báo cáo:
+    # 1. Báo cáo User (Sinh Viên 1 báo cáo Sinh Viên 20)
+    await db.report.create(data={
+        "reporterId": users[0].id,
+        "targetType": "user",
+        "targetId": users[19].id,
+        "reason": "spam",
+        "description": "Gửi tin nhắn rác liên tục dù đã nhắc nhở",
+        "status": "pending"
+    })
+    # 2. Báo cáo Bài viết
+    random_post = await db.post.find_first(where={"postType": "feed"})
+    if random_post:
+        await db.report.create(data={
+            "reporterId": users[1].id,
+            "targetType": "post",
+            "targetId": random_post.id,
+            "reason": "hate_speech",
+            "description": "Nội dung mang tính công kích cá nhân",
+            "status": "pending"
+        })
 
     print("\n--- SEEDING COMPLETED SUCCESSFULLY! ---")
     await db.disconnect()

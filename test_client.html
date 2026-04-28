@@ -3,215 +3,389 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THNN - Test Client Pro v2</title>
+    <title>THNN Social - Premium Test Client</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.3); }
-        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
-        .filter-active { background-color: #2563eb !important; color: white !important; border-color: #2563eb !important; }
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: radial-gradient(circle at top left, #f8fafc, #e2e8f0);
+            min-height: 100vh;
+        }
+        .glass { 
+            background: rgba(255, 255, 255, 0.7); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .tab-active { 
+            background: #2563eb; 
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+        .reply-box {
+            border-left: 2px solid #e2e8f0;
+            margin-left: 1rem;
+            padding-left: 1rem;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-4xl mx-auto">
-        <!-- Header -->
-        <header class="flex justify-between items-center mb-8 glass p-6 rounded-2xl shadow-sm">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">THNN Social <span class="text-blue-600">Test Pro</span></h1>
-                <p id="status" class="text-sm text-gray-500">Chưa đăng nhập</p>
+<body class="p-4 md:p-8 text-slate-800">
+    <div class="max-w-5xl mx-auto">
+        <!-- Top Navigation Bar -->
+        <nav class="glass sticky top-4 z-40 p-4 rounded-2xl mb-8 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">T</div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">THNN <span class="text-blue-600">Social</span></h1>
+                    <p id="status" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Offline</p>
+                </div>
             </div>
-            <div id="user-info" class="hidden flex items-center gap-3">
-                <span id="user-name" class="font-medium"></span>
-                <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm hover:bg-red-100 transition">Đăng xuất</button>
+            <div id="user-info" class="hidden flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <p id="user-name" class="text-sm font-bold">---</p>
+                    <p id="user-role" class="text-[10px] text-blue-500 font-bold uppercase">Student</p>
+                </div>
+                <img id="nav-avatar" src="" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-slate-100">
+                <button onclick="logout()" class="p-2 hover:bg-red-50 text-red-500 rounded-xl transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
             </div>
-        </header>
+        </nav>
 
-        <!-- Main Content -->
-        <div id="auth-section" class="glass p-8 rounded-2xl shadow-sm mb-8">
-            <h2 class="text-xl font-semibold mb-4">Đăng nhập</h2>
+        <!-- Auth Section -->
+        <div id="auth-section" class="glass p-10 rounded-3xl max-w-md mx-auto mt-20 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <h2 class="text-3xl font-bold mb-2 text-center">Chào mừng</h2>
+            <p class="text-slate-500 text-center mb-8 text-sm">Đăng nhập để kết nối với bạn bè</p>
             <div class="space-y-4">
-                <input type="email" id="email" value="student1@thnn.com" placeholder="Email" class="w-full p-3 rounded-xl border border-gray-200 outline-none">
-                <input type="password" id="password" value="password123" placeholder="Mật khẩu" class="w-full p-3 rounded-xl border border-gray-200 outline-none">
-                <button onclick="login()" class="w-full bg-blue-600 text-white p-3 rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg">Đăng nhập</button>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-400 ml-1">EMAIL</label>
+                    <input type="email" id="email" value="student1@thnn.com" class="w-full p-4 rounded-2xl bg-white border border-slate-100 outline-none focus:border-blue-500 transition">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-400 ml-1">MẬT KHẨU</label>
+                    <input type="password" id="password" value="password123" class="w-full p-4 rounded-2xl bg-white border border-slate-100 outline-none focus:border-blue-500 transition">
+                </div>
+                <button onclick="login()" class="w-full btn-primary text-white p-4 rounded-2xl font-bold shadow-xl shadow-blue-200 mt-4">Đăng nhập</button>
             </div>
         </div>
 
-        <div id="main-section" class="hidden">
-            <!-- Tabs -->
-            <div class="flex gap-8 mb-6 border-b border-gray-200 px-4 overflow-x-auto">
-                <button onclick="showTab('feed')" id="tab-feed" class="tab-active py-2 whitespace-nowrap">Bảng tin (Feed)</button>
-                <button onclick="showTab('board')" id="tab-board" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Rao vặt (Board)</button>
-                <button onclick="showTab('chat')" id="tab-chat" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Trò chuyện (Chat)</button>
-                <button onclick="showTab('friends')" id="tab-friends" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Bạn bè</button>
-                <button onclick="showTab('notif')" id="tab-notif" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Thông báo <span id="notif-count" class="hidden bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full ml-1">0</span></button>
-                <button onclick="showTab('profile')" id="tab-profile" class="py-2 text-gray-500 hover:text-blue-600 transition whitespace-nowrap">Cá nhân (Profile)</button>
-            </div>
+        <!-- Main Workspace -->
+        <div id="main-section" class="hidden animate-in fade-in duration-500">
+            <!-- Sidebar / Tabs Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Left Sidebar -->
+                <aside class="space-y-4">
+                    <div class="glass p-2 rounded-2xl space-y-1">
+                        <button onclick="showTab('feed')" id="tab-feed" class="w-full flex items-center gap-3 p-3 rounded-xl text-sm font-semibold transition hover:bg-white tab-active">
+                            <span>🏠</span> Bảng tin
+                        </button>
+                        <button onclick="showTab('board')" id="tab-board" class="w-full flex items-center gap-3 p-3 rounded-xl text-sm font-semibold transition hover:bg-white text-slate-500">
+                            <span>🛒</span> Rao vặt
+                        </button>
+                        <button onclick="showTab('chat')" id="tab-chat" class="w-full flex items-center gap-3 p-3 rounded-xl text-sm font-semibold transition hover:bg-white text-slate-500">
+                            <span>💬</span> Tin nhắn
+                        </button>
+                        <button onclick="showTab('friends')" id="tab-friends" class="w-full flex items-center gap-3 p-3 rounded-xl text-sm font-semibold transition hover:bg-white text-slate-500">
+                            <span>👥</span> Bạn bè
+                        </button>
+                        <button onclick="showTab('notif')" id="tab-notif" class="w-full flex items-center gap-3 p-3 rounded-xl text-sm font-semibold transition hover:bg-white text-slate-500 relative">
+                            <span>🔔</span> Thông báo
+                            <span id="notif-count" class="hidden absolute top-2 right-2 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white font-bold">0</span>
+                        </button>
+                    </div>
 
-            <!-- Content Area -->
-            <div id="content-feed" class="space-y-4">
-                <div class="glass p-6 rounded-2xl">
-                    <textarea id="post-content" placeholder="Bạn đang nghĩ gì?" class="w-full p-3 rounded-xl border border-gray-100 mb-2 focus:ring-1 focus:ring-blue-300 outline-none"></textarea>
-                    
-                    <!-- Image Preview Area -->
-                    <div id="post-images-preview" class="flex gap-2 mb-3 overflow-x-auto"></div>
-                    
-                    <div class="flex justify-between items-center">
-                        <div class="flex gap-2">
-                            <input type="file" id="post-file-input" class="hidden" multiple onchange="handlePostFiles(this)">
-                            <button onclick="document.getElementById('post-file-input').click()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-sm hover:bg-gray-200 transition flex items-center gap-2">
-                                📷 Ảnh
-                            </button>
+                    <div class="glass p-2 rounded-2xl space-y-1">
+                        <button onclick="showTab('profile')" id="tab-profile" class="w-full flex items-center gap-3 p-3 rounded-xl text-sm font-semibold transition hover:bg-white text-slate-500">
+                            <span>👤</span> Cá nhân
+                        </button>
+                        <button onclick="showTab('settings')" id="tab-settings" class="w-full flex items-center gap-3 p-3 rounded-xl text-sm font-semibold transition hover:bg-white text-slate-500">
+                            <span>⚙️</span> Cài đặt
+                        </button>
+                        <button onclick="showTab('admin')" id="tab-admin" class="hidden w-full flex items-center gap-3 p-3 rounded-xl text-sm font-bold transition hover:bg-red-50 text-red-500">
+                            <span>🛡️</span> Admin Panel
+                        </button>
+                    </div>
+                </aside>
+
+                <!-- Center Content -->
+                <main class="lg:col-span-3 space-y-6">
+                    <!-- Tab Content: Feed -->
+                    <div id="content-feed" class="space-y-6">
+                        <div class="glass p-6 rounded-3xl">
+                            <div class="flex gap-4 mb-4">
+                                <img id="post-avatar" src="" class="w-12 h-12 rounded-full border shadow-sm object-cover bg-slate-50">
+                                <textarea id="post-content" placeholder="Chia sẻ cảm nghĩ của bạn..." class="flex-1 p-4 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-blue-100 transition resize-none h-24 text-sm"></textarea>
+                            </div>
+                            <div id="post-images-preview" class="flex gap-2 mb-4 overflow-x-auto"></div>
+                            <div class="flex justify-between items-center">
+                                <button onclick="document.getElementById('post-file-input').click()" class="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition text-slate-600 flex items-center gap-2 text-xs font-bold">
+                                    <span>📷</span> Ảnh/Video
+                                </button>
+                                <input type="file" id="post-file-input" class="hidden" multiple onchange="handlePostFiles(this)">
+                                <button onclick="createPost('feed')" class="btn-primary text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-100">Đăng bài</button>
+                            </div>
                         </div>
-                        <button onclick="createPost('feed')" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition">Đăng bài Newsfeed</button>
+                        <div id="feed-items" class="space-y-6"></div>
                     </div>
-                </div>
-                <div id="feed-items" class="space-y-4"></div>
-            </div>
 
-            <div id="content-board" class="hidden space-y-4">
-                <!-- Post Area -->
-                <div class="glass p-6 rounded-2xl border-2 border-dashed border-gray-200">
-                    <p class="text-xs font-bold text-gray-400 mb-2">ĐĂNG TIN MỚI</p>
-                    <div class="flex gap-2 mb-2 overflow-x-auto pb-2" id="tag-selector"></div>
-                    <textarea id="board-post-content" placeholder="Nội dung tin rao vặt..." class="w-full p-3 rounded-xl border border-gray-100 mb-2 outline-none"></textarea>
-                    
-                    <div id="board-images-preview" class="flex gap-2 mb-3"></div>
-                    
-                    <div class="flex justify-between items-center">
-                        <input type="file" id="board-file-input" class="hidden" multiple onchange="handleBoardFiles(this)">
-                        <button onclick="document.getElementById('board-file-input').click()" class="text-gray-500 text-sm">📷 Thêm ảnh</button>
-                        <input type="hidden" id="selected-tag-id">
-                        <button onclick="createPost('board')" class="bg-orange-500 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-orange-600 transition">Đăng tin Board</button>
-                    </div>
-                </div>
-
-                <!-- Filter Area -->
-                <div class="flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm overflow-x-auto">
-                    <span class="text-xs font-bold text-gray-400 whitespace-nowrap">LỌC:</span>
-                    <div class="flex gap-2" id="filter-tags">
-                        <button onclick="loadBoard('')" class="filter-btn filter-active border px-3 py-1 rounded-full text-xs transition whitespace-nowrap">Tất cả</button>
-                    </div>
-                </div>
-
-                <div id="board-items" class="space-y-4"></div>
-            </div>
-
-            <div id="content-chat" class="hidden space-y-4">
-                <div class="glass p-4 rounded-xl">
-                    <h3 class="font-bold mb-4 text-blue-600">Tìm kiếm & Nhắn tin</h3>
-                    <div class="flex gap-2 mb-2">
-                        <input type="text" id="chat-search-query" placeholder="Tìm tên hoặc email..." class="flex-1 border p-2 rounded-xl outline-none shadow-sm" onkeypress="if(event.key==='Enter') searchUsersForChat()">
-                        <button onclick="searchUsersForChat()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium">Tìm</button>
-                    </div>
-                    <div id="chat-search-results" class="space-y-2"></div>
-                </div>
-                <div class="glass p-4 rounded-xl">
-                    <h3 class="font-bold mb-4">Hội thoại gần đây</h3>
-                    <div id="conversation-list" class="space-y-2"></div>
-                </div>
-            </div>
-
-            <div id="content-notif" class="hidden space-y-2">
-                <div id="notif-items" class="space-y-2"></div>
-            </div>
-
-            <div id="content-friends" class="hidden space-y-4">
-                <div class="glass p-4 rounded-xl">
-                    <h3 class="font-bold mb-4 text-blue-600">Tìm kiếm bạn bè</h3>
-                    <div class="flex gap-2 mb-4">
-                        <input type="text" id="search-query" placeholder="Nhập tên hoặc email..." class="flex-1 border p-2 rounded-xl outline-none shadow-sm" onkeypress="if(event.key==='Enter') searchUsers()">
-                        <button onclick="searchUsers()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium">Tìm</button>
-                    </div>
-                    <div id="search-results" class="space-y-2"></div>
-                </div>
-
-                <div class="glass p-4 rounded-xl">
-                    <h3 class="font-bold mb-4">Lời mời kết bạn</h3>
-                    <div id="friend-requests" class="space-y-2"></div>
-                </div>
-                <div class="glass p-4 rounded-xl">
-                    <h3 class="font-bold mb-4">Danh sách bạn bè</h3>
-                    <div id="friend-list" class="space-y-2"></div>
-                </div>
-            </div>
-            <div id="content-profile" class="hidden space-y-4">
-                <div class="glass rounded-2xl overflow-hidden">
-                    <!-- Cover Photo -->
-                    <div class="h-32 bg-gray-200 relative">
-                        <img id="profile-cover" src="" class="w-full h-full object-cover hidden">
-                        <div id="cover-placeholder" class="w-full h-full bg-gradient-to-r from-blue-400 to-indigo-500"></div>
-                        <button onclick="document.getElementById('cover-input').click()" class="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-lg text-xs backdrop-blur-sm">📷 Sửa ảnh bìa</button>
-                    </div>
-                    
-                    <div class="p-6 text-center -mt-12">
-                        <div class="relative inline-block mb-4">
-                            <img id="profile-avatar" src="https://api.dicebear.com/7.x/initials/svg?seed=U" class="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover bg-white">
-                            <button onclick="document.getElementById('avatar-input').click()" class="absolute bottom-0 right-0 bg-blue-600 text-white p-1.5 rounded-full shadow-lg">✏️</button>
+                    <!-- Tab Content: Board -->
+                    <div id="content-board" class="hidden space-y-6">
+                        <div class="glass p-6 rounded-3xl border-2 border-dashed border-blue-100">
+                            <h3 class="text-xs font-bold text-blue-500 mb-4 tracking-widest uppercase">Đăng tin rao vặt</h3>
+                            <div class="flex gap-2 mb-4 overflow-x-auto pb-2" id="tag-selector"></div>
+                            <textarea id="board-post-content" placeholder="Bạn muốn bán hoặc tìm gì?" class="w-full p-4 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-orange-100 transition mb-4 text-sm"></textarea>
+                            <div id="board-images-preview" class="flex gap-2 mb-4"></div>
+                            <div class="flex justify-between items-center">
+                                <button onclick="document.getElementById('board-file-input').click()" class="text-slate-400 text-xs font-bold hover:text-slate-600 transition">📁 Thêm tệp đính kèm</button>
+                                <input type="file" id="board-file-input" class="hidden" multiple onchange="handleBoardFiles(this)">
+                                <input type="hidden" id="selected-tag-id">
+                                <button onclick="createPost('board')" class="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-orange-100 transition">Đăng tin ngay</button>
+                            </div>
                         </div>
-                        <input type="file" id="avatar-input" class="hidden" onchange="uploadProfileMedia('avatar', this)">
-                        <input type="file" id="cover-input" class="hidden" onchange="uploadProfileMedia('cover', this)">
+                        <div class="flex items-center gap-4 bg-white/50 p-2 rounded-2xl shadow-inner overflow-x-auto">
+                            <span class="text-[10px] font-bold text-slate-400 ml-4 uppercase">Lọc theo:</span>
+                            <div class="flex gap-2" id="filter-tags"></div>
+                        </div>
+                        <div id="board-items" class="space-y-6"></div>
+                    </div>
+
+                    <!-- Other Tabs... (simplified for brevity, will include logic) -->
+                    <div id="content-chat" class="hidden glass p-6 rounded-3xl h-[70vh] flex flex-col">
+                        <div class="flex gap-2 mb-4">
+                            <input type="text" id="chat-search-query" placeholder="Tìm người để trò chuyện..." class="flex-1 p-3 rounded-xl bg-slate-50 border-none outline-none text-sm">
+                            <button onclick="searchUsersForChat()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold">Tìm</button>
+                        </div>
+                        <div id="chat-search-results" class="space-y-2 mb-4"></div>
+                        <div class="flex-1 overflow-y-auto pr-2 space-y-4" id="conversation-list"></div>
+                    </div>
+
+                    <div id="content-friends" class="hidden space-y-6">
+                        <div class="glass p-6 rounded-3xl">
+                            <h3 class="font-bold mb-4">Khám phá bạn bè</h3>
+                            <div class="flex gap-2 mb-4">
+                                <input type="text" id="search-query" placeholder="Nhập tên..." class="flex-1 p-3 rounded-xl bg-slate-50 border-none outline-none text-sm">
+                                <button onclick="searchUsers()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold">Tìm kiếm</button>
+                            </div>
+                            <div id="search-results" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="glass p-6 rounded-3xl">
+                                <h3 class="font-bold mb-4 text-orange-500">Lời mời (Requests)</h3>
+                                <div id="friend-requests" class="space-y-4"></div>
+                            </div>
+                            <div class="glass p-6 rounded-3xl">
+                                <h3 class="font-bold mb-4 text-blue-500">Danh sách bạn bè</h3>
+                                <div id="friend-list" class="space-y-4"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="content-notif" class="hidden space-y-4" id="notif-items"></div>
+
+                    <div id="content-profile" class="hidden glass rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div class="h-48 bg-slate-200 relative group">
+                            <img id="profile-cover" src="" class="w-full h-full object-cover hidden">
+                            <div id="cover-placeholder" class="w-full h-full bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700"></div>
+                            <button onclick="document.getElementById('cover-input').click()" class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold transition backdrop-blur-sm">Cập nhật ảnh bìa</button>
+                        </div>
+                        <div class="p-8 text-center -mt-20">
+                            <div class="relative inline-block group">
+                                <img id="profile-avatar" src="https://api.dicebear.com/7.x/initials/svg?seed=U" class="w-32 h-32 rounded-3xl border-4 border-white shadow-2xl object-cover bg-white">
+                                <button onclick="document.getElementById('avatar-input').click()" class="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">Thay ảnh</button>
+                            </div>
+                            <h2 id="profile-name" class="text-2xl font-bold mt-4">---</h2>
+                            <p id="profile-email" class="text-slate-400 text-sm mb-6 italic">---</p>
+                            <input type="file" id="avatar-input" class="hidden" onchange="uploadProfileMedia('avatar', this)">
+                            <input type="file" id="cover-input" class="hidden" onchange="uploadProfileMedia('cover', this)">
+                            <div class="flex justify-center gap-8 border-t pt-6 border-slate-50">
+                                <div><p class="text-xl font-bold">0</p><p class="text-[10px] text-slate-400 font-bold uppercase">Bài viết</p></div>
+                                <div><p class="text-xl font-bold">0</p><p class="text-[10px] text-slate-400 font-bold uppercase">Bạn bè</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="content-settings" class="hidden grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="glass p-8 rounded-3xl">
+                            <h3 class="text-lg font-bold mb-6 flex items-center gap-2 text-blue-600">🛡️ Quyền riêng tư</h3>
+                            <div class="space-y-6">
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ai có thể xem bài viết?</label>
+                                    <select id="privacy-posts" class="w-full p-3 rounded-xl bg-slate-50 border-none outline-none text-sm font-semibold">
+                                        <option value="everyone">Mọi người</option>
+                                        <option value="friends">Bạn bè</option>
+                                        <option value="only_me">Chỉ mình tôi</option>
+                                    </select>
+                                </div>
+                                <button onclick="updatePrivacy()" class="w-full btn-primary text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-100">Lưu thay đổi</button>
+                            </div>
+                        </div>
+                        <div class="glass p-8 rounded-3xl">
+                            <h3 class="text-lg font-bold mb-6 flex items-center gap-2 text-red-500">🚫 Danh sách chặn</h3>
+                            <div id="blocked-users-list" class="space-y-3 max-h-[300px] overflow-y-auto"></div>
+                        </div>
+                    </div>
+
+                    <div id="content-admin" class="hidden space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="glass p-6 rounded-3xl border-b-4 border-blue-500">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Người dùng</p>
+                                <p class="text-3xl font-bold" id="stat-users">--</p>
+                            </div>
+                            <div class="glass p-6 rounded-3xl border-b-4 border-orange-500">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Bài viết</p>
+                                <p class="text-3xl font-bold" id="stat-posts">--</p>
+                            </div>
+                            <div class="glass p-6 rounded-3xl border-b-4 border-red-500">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Báo cáo mới</p>
+                                <p class="text-3xl font-bold text-red-500" id="stat-reports">--</p>
+                            </div>
+                        </div>
                         
-                        <h3 id="profile-name" class="text-xl font-bold">---</h3>
-                        <p id="profile-email" class="text-sm text-gray-500 mb-4">---</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        <div class="glass p-8 rounded-3xl">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl font-bold">🚩 Danh sách báo cáo vi phạm</h3>
+                                <button onclick="loadAdminData()" class="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition">🔄 Làm mới</button>
+                            </div>
+                            <div id="admin-reports-list" class="space-y-4">
+                                <p class="text-center text-slate-400 py-10 text-xs font-bold tracking-widest uppercase">ĐANG TẢI DỮ LIỆU...</p>
+                            </div>
+                        </div>
 
-        <!-- Chat Modal -->
-        <div id="chat-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div class="bg-gray-100 w-full max-w-lg h-[600px] rounded-3xl flex flex-col overflow-hidden shadow-2xl relative">
-                <div class="p-4 bg-white border-b flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold" id="chat-avatar-letter">?</div>
-                        <div>
-                            <h3 id="chat-title" class="font-bold">Đang tải...</h3>
-                            <p class="text-[10px] text-green-500 font-bold">● ĐANG HOẠT ĐỘNG</p>
+                        <div class="glass p-8 rounded-3xl">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl font-bold">👥 Quản lý người dùng</h3>
+                                <div class="flex gap-2">
+                                    <select id="admin-user-filter" onchange="loadAdminUsers()" class="p-2 bg-slate-100 rounded-xl text-xs font-bold outline-none">
+                                        <option value="">Tất cả</option>
+                                        <option value="locked">Bị khóa</option>
+                                        <option value="active">Đang hoạt động</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="admin-users-list" class="space-y-4">
+                                <p class="text-center text-slate-400 py-10 text-xs font-bold tracking-widest uppercase">ĐANG TẢI DỮ LIỆU...</p>
+                            </div>
                         </div>
                     </div>
-                    <button onclick="closeChat()" class="text-gray-400 hover:text-gray-600 transition text-2xl">&times;</button>
+                </main>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <div id="chat-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass w-full max-w-lg h-[600px] rounded-[2rem] flex flex-col overflow-hidden shadow-2xl relative border-none">
+                <div class="p-6 bg-white/50 border-b border-white flex justify-between items-center">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl" id="chat-avatar-letter">?</div>
+                        <div>
+                            <h3 id="chat-title" class="font-bold text-lg">---</h3>
+                            <p class="text-[10px] text-green-500 font-bold tracking-tighter">● ĐANG HOẠT ĐỘNG</p>
+                        </div>
+                    </div>
+                    <button onclick="closeChat()" class="text-slate-400 hover:text-slate-600 transition p-2 bg-slate-50 rounded-xl">&times;</button>
                 </div>
-                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
-                <div class="p-4 bg-white border-t flex gap-2">
-                    <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." class="flex-1 border p-2 rounded-xl outline-none" onkeypress="if(event.key==='Enter') sendChatMessage()">
-                    <button onclick="sendChatMessage()" class="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium">Gửi</button>
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30"></div>
+                <div class="p-6 bg-white/50 border-t border-white flex gap-3">
+                    <input type="text" id="chat-input" placeholder="Viết tin nhắn..." class="flex-1 bg-white p-4 rounded-2xl border-none outline-none shadow-sm text-sm" onkeypress="if(event.key==='Enter') sendChatMessage()">
+                    <button onclick="sendChatMessage()" class="bg-blue-600 text-white px-6 rounded-2xl font-bold shadow-lg shadow-blue-100">Gửi</button>
                 </div>
             </div>
         </div>
 
-        <!-- API Log (Debug) -->
-        <div class="mt-12">
-            <p class="text-xs font-mono text-gray-400 mb-2">HỆ THỐNG LOG</p>
-            <div id="log" class="bg-gray-900 text-green-400 p-4 rounded-xl text-xs font-mono h-40 overflow-y-auto"></div>
+        <div id="comment-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass w-full max-w-lg rounded-[2rem] p-8 shadow-2xl border-none">
+                <h3 class="text-xl font-bold mb-6">Bình luận</h3>
+                <div id="comment-list" class="space-y-4 max-h-[400px] overflow-y-auto mb-6 pr-2 scroll-smooth"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="comment-input" placeholder="Viết bình luận..." class="flex-1 p-4 rounded-2xl bg-slate-50 border-none outline-none text-sm">
+                    <button id="send-comment-btn" class="bg-blue-600 text-white px-6 rounded-2xl font-bold">Gửi</button>
+                </div>
+                <button onclick="closeComments()" class="mt-6 text-slate-400 text-xs font-bold w-full hover:text-slate-600">ĐÓNG</button>
+            </div>
         </div>
-    </div>
 
-    <!-- Modal Comment -->
-    <div id="comment-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white w-full max-w-lg rounded-2xl p-6">
-            <h3 class="text-lg font-bold mb-4">Bình luận</h3>
-            <div id="comment-list" class="space-y-3 max-h-60 overflow-y-auto mb-4 p-2"></div>
-            <div class="flex gap-2">
-                <input type="text" id="comment-input" placeholder="Viết bình luận..." class="flex-1 border p-2 rounded-lg outline-none">
-                <button id="send-comment-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Gửi</button>
+        <div id="report-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass w-full max-w-md rounded-[2rem] p-8 shadow-2xl border-none">
+                <h3 class="text-xl font-bold mb-2 text-red-500">🚩 Báo cáo nội dung</h3>
+                <p class="text-xs text-slate-400 mb-6 font-bold uppercase tracking-widest">Giúp chúng tôi giữ môi trường sạch đẹp</p>
+                
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lý do báo cáo</label>
+                        <select id="report-reason" class="w-full p-4 rounded-2xl bg-slate-50 border-none outline-none text-sm font-semibold">
+                            <option value="spam">Spam / Quảng cáo</option>
+                            <option value="harassment">Quấy rối / Đe dọa</option>
+                            <option value="hate_speech">Ngôn từ thù ghét</option>
+                            <option value="inappropriate">Nội dung không phù hợp</option>
+                            <option value="other">Lý do khác</option>
+                        </select>
+                    </div>
+                    <textarea id="report-description" placeholder="Chi tiết thêm (không bắt buộc)..." class="w-full p-4 rounded-2xl bg-slate-50 border-none outline-none text-sm h-24 resize-none"></textarea>
+                    
+                    <input type="hidden" id="report-target-id">
+                    <input type="hidden" id="report-target-type">
+
+                    <div class="flex gap-3">
+                        <button onclick="closeReport()" class="flex-1 p-4 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition">Hủy</button>
+                        <button onclick="submitReport()" class="flex-1 bg-red-500 text-white p-4 rounded-2xl font-bold shadow-lg shadow-red-100">Gửi báo cáo</button>
+                    </div>
+                </div>
             </div>
-            <button onclick="closeComments()" class="mt-4 text-gray-500 text-sm w-full text-center">Đóng</button>
         </div>
-    </div>
 
-    <!-- Modal Chat -->
-    <div id="chat-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white w-full max-w-lg rounded-2xl flex flex-col h-[500px]">
-            <div class="p-4 border-b flex justify-between items-center">
-                <h3 id="chat-title" class="font-bold">Chat</h3>
-                <button onclick="closeChat()" class="text-gray-400">✕</button>
+        <!-- Admin: View Content Modal -->
+        <div id="admin-view-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass w-full max-w-lg rounded-[2rem] p-8 shadow-2xl border-none">
+                <h3 class="text-xl font-bold mb-2">Chi tiết nội dung</h3>
+                <p id="admin-view-type" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-4"></p>
+                <div id="admin-view-content" class="p-6 rounded-2xl bg-slate-50 text-sm leading-relaxed mb-6 max-h-[300px] overflow-y-auto whitespace-pre-wrap"></div>
+                <button onclick="document.getElementById('admin-view-modal').classList.add('hidden')" class="w-full p-4 bg-slate-100 rounded-2xl font-bold text-slate-600 hover:bg-slate-200 transition">Đóng</button>
             </div>
-            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50"></div>
-            <div class="p-4 border-t flex gap-2">
-                <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." class="flex-1 border p-2 rounded-xl outline-none shadow-sm" onkeypress="if(event.key==='Enter') sendChatMessage()">
-                <button onclick="sendChatMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-xl">Gửi</button>
+        </div>
+
+        <!-- Admin: Resolve Action Modal -->
+        <div id="admin-resolve-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="glass w-full max-w-md rounded-[2rem] p-8 shadow-2xl border-none">
+                <h3 class="text-xl font-bold mb-2 text-red-500">🛡️ Quyết định xử lý</h3>
+                <p class="text-xs text-slate-400 mb-6 font-bold uppercase tracking-widest">Chọn hành động phù hợp cho vi phạm này</p>
+                
+                <input type="hidden" id="resolve-report-id">
+                
+                <div class="space-y-3">
+                    <button onclick="submitResolve('hide_content')" class="w-full p-5 bg-orange-50 text-orange-600 rounded-2xl font-bold flex items-center justify-between group hover:bg-orange-500 hover:text-white transition-all duration-300">
+                        <span>Ẩn nội dung vi phạm</span>
+                        <span class="text-xl">👁️‍🗨️</span>
+                    </button>
+                    <button onclick="submitResolve('lock_account')" class="w-full p-5 bg-red-50 text-red-600 rounded-2xl font-bold flex items-center justify-between group hover:bg-red-500 hover:text-white transition-all duration-300">
+                        <span>Khóa tài khoản vi phạm</span>
+                        <span class="text-xl">🔒</span>
+                    </button>
+                    <button onclick="submitResolve('dismiss')" class="w-full p-5 bg-slate-100 text-slate-600 rounded-2xl font-bold flex items-center justify-between group hover:bg-slate-800 hover:text-white transition-all duration-300">
+                        <span>Bỏ qua báo cáo này</span>
+                        <span class="text-xl">🆗</span>
+                    </button>
+                </div>
+                <button onclick="document.getElementById('admin-resolve-modal').classList.add('hidden')" class="mt-8 text-slate-400 text-[10px] font-bold w-full tracking-[0.2em] hover:text-slate-600">HỦY BỎ</button>
             </div>
+        </div>
+
+        <!-- Debug Log -->
+        <div class="mt-20 opacity-40 hover:opacity-100 transition-opacity">
+            <p class="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest">System Monitor</p>
+            <div id="log" class="bg-slate-900 text-blue-400 p-6 rounded-3xl text-[10px] font-mono h-40 overflow-y-auto shadow-2xl"></div>
         </div>
     </div>
 
@@ -225,11 +399,13 @@
         let activeConvId = null;
         let currentTab = 'feed';
         let uploadedImages = [];
+        let currentBoardFilter = '';
+        let replyToId = null; // For nested comments
 
         function log(msg, type = 'info') {
             const el = document.getElementById('log');
             const time = new Date().toLocaleTimeString();
-            el.innerHTML += `<div><span class="text-gray-500">[${time}]</span> <span class="${type === 'error' ? 'text-red-400' : ''}">${msg}</span></div>`;
+            el.innerHTML += `<div><span class="text-slate-600">[${time}]</span> <span class="${type === 'error' ? 'text-red-400' : ''}">${msg}</span></div>`;
             el.scrollTop = el.scrollHeight;
         }
 
@@ -238,16 +414,18 @@
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('main-section').classList.remove('hidden');
                 document.getElementById('user-info').classList.remove('hidden');
-                document.getElementById('status').innerText = "Trạng thái: Đang hoạt động";
+                document.getElementById('status').innerText = "ONLINE";
+                document.getElementById('status').className = "text-[10px] font-bold text-green-500 uppercase tracking-widest";
                 
                 loadProfile().then(user => {
                     currentUser = user;
-                    initWebSocket(user.id);
+                    if(user) {
+                        initWebSocket(user.id);
+                        showTab('feed');
+                        loadNotifs();
+                        loadTags();
+                    }
                 });
-                
-                loadFeed();
-                loadNotifs();
-                loadTags();
             }
         }
 
@@ -261,7 +439,7 @@
                 if (data.access_token) {
                     localStorage.setItem('token', data.access_token);
                     location.reload();
-                } else { log("Lỗi: " + JSON.stringify(data), 'error'); }
+                } else { log("Lỗi: " + (data.detail || JSON.stringify(data)), 'error'); }
             } catch (err) { log("Lỗi kết nối: " + err.message, 'error'); }
         }
 
@@ -269,18 +447,15 @@
 
         function showTab(tab) {
             currentTab = tab;
-            ['feed', 'board', 'notif', 'profile', 'chat', 'friends'].forEach(t => {
+            ['feed', 'board', 'chat', 'friends', 'notif', 'profile', 'settings', 'admin'].forEach(t => {
                 const el = document.getElementById(`content-${t}`);
                 const btn = document.getElementById(`tab-${t}`);
                 if (el) el.classList.add('hidden');
-                if (btn) {
-                    btn.classList.remove('tab-active');
-                    btn.classList.add('text-gray-500');
-                }
+                if (btn) btn.classList.remove('tab-active', 'text-slate-500');
             });
-            document.getElementById(`content-${tab}`).classList.remove('hidden');
+            const contentEl = document.getElementById(`content-${tab}`);
+            if (contentEl) contentEl.classList.remove('hidden');
             document.getElementById(`tab-${tab}`).classList.add('tab-active');
-            document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
             
             if (tab === 'feed') loadFeed();
             if (tab === 'board') loadBoard(currentBoardFilter);
@@ -288,388 +463,341 @@
             if (tab === 'friends') loadFriendsData();
             if (tab === 'notif') loadNotifs();
             if (tab === 'profile') loadProfile();
+            if (tab === 'settings') loadSettings();
+            if (tab === 'admin') loadAdminData();
         }
 
-        // --- WebSocket ---
-        function initWebSocket(userId) {
-            if (ws) ws.close();
-            ws = new WebSocket(`${WS_BASE}/messaging/ws/${userId}`);
-            ws.onopen = () => log("WebSocket Connected");
-            ws.onmessage = (e) => {
-                const event = JSON.parse(e.data);
-                if (event.type === 'new_message') {
-                    const msg = event.data;
-                    log(`Tin nhắn mới từ ${msg.sender_id}: ${msg.content.substring(0, 20)}...`);
-                    if (activeConvId === msg.conversation_id) {
-                        appendMessage(msg);
-                    }
-                    if (currentTab === 'chat') loadConversations();
-                }
-            };
-            ws.onclose = () => {
-                log("WebSocket Disconnected. Reconnecting...");
-                setTimeout(() => initWebSocket(userId), 3000);
-            };
-        }
-
-        // --- Media Handlers ---
-        
-        async function handlePostFiles(input) {
-            const files = input.files;
-            if (!files.length) return;
-            uploadedImages = [];
-            document.getElementById('post-images-preview').innerHTML = '<span class="text-xs text-blue-500 animate-pulse">Đang upload...</span>';
-            
-            for (let file of files) {
-                const url = await uploadMedia(file);
-                if (url) uploadedImages.push(url);
-            }
-            renderImagePreviews('post-images-preview');
-        }
-
-        async function handleBoardFiles(input) {
-            const files = input.files;
-            if (!files.length) return;
-            uploadedImages = [];
-            for (let file of files) {
-                const url = await uploadMedia(file);
-                if (url) uploadedImages.push(url);
-            }
-            renderImagePreviews('board-images-preview');
-        }
-
-        async function uploadMedia(file) {
-            const formData = new FormData();
-            formData.append('file', file);
+        async function loadAdminData() {
             try {
-                const res = await fetch(`${API_BASE}/social/media/upload`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
+                // Fetch Real Stats
+                const statsRes = await fetch(`${API_BASE}/admin/stats/overview`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (statsRes.ok) {
+                    const stats = await statsRes.json();
+                    document.getElementById('stat-users').innerText = stats.total_users || 0;
+                    document.getElementById('stat-posts').innerText = stats.total_posts || 0;
+                    document.getElementById('stat-reports').innerText = stats.pending_reports || 0;
+                }
+
+                // Fetch Reports
+                const res = await fetch(`${API_BASE}/admin/reports`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
-                if (data.image_url) {
-                    log(`Đã upload: ${file.name}`);
-                    return data.image_url;
-                }
-                log(`Lỗi upload ${file.name}: ${JSON.stringify(data)}`, 'error');
-            } catch (err) { log(`Lỗi kết nối khi upload: ${err.message}`, 'error'); }
-            return null;
-        }
-
-        function renderImagePreviews(containerId) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            uploadedImages.forEach(url => {
-                const fullUrl = url.startsWith('http') ? url : `${MINIO_URL}${url}`;
-                container.innerHTML += `<img src="${fullUrl}" class="w-16 h-16 rounded-lg object-cover border shadow-sm">`;
-            });
-        }
-
-        async function uploadProfileMedia(type, input) {
-            const file = input.files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('file', file);
-            const endpoint = type === 'avatar' ? '/account/me/avatar' : '/account/me/cover';
-            
-            try {
-                const res = await fetch(`${API_BASE}${endpoint}`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
-                });
-                if (res.ok) {
-                    log(`Đã cập nhật ${type} thành công`);
-                    loadProfile();
-                } else { log(`Lỗi cập nhật ${type}`, 'error'); }
-            } catch (err) { log(`Lỗi kết nối: ${err.message}`, 'error'); }
-        }
-
-        async function loadConversations() {
-            const res = await fetch(`${API_BASE}/messaging/conversations`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const data = await res.json();
-            const list = document.getElementById('conversation-list');
-            list.innerHTML = '';
-            data.conversations.forEach(c => {
-                const lastMsgObj = c.last_message || c.lastMessage;
-                const lastMsg = lastMsgObj ? `${(lastMsgObj.sender_id || lastMsgObj.senderId) === currentUser.id ? 'Bạn: ' : ''}${lastMsgObj.content}` : 'Chưa có tin nhắn';
-                list.innerHTML += `
-                    <div onclick="openChat('${c.id}', '${c.name || 'Chat'}')" class="glass p-4 rounded-xl cursor-pointer hover:bg-white/50 transition">
-                        <div class="font-bold">${c.name || 'Chat'}</div>
-                        <div class="text-xs text-gray-500 truncate">${lastMsg}</div>
-                    </div>
-                `;
-            });
-        }
-
-        async function openChat(convId, name) {
-            activeConvId = convId;
-            document.getElementById('chat-title').innerText = name;
-            document.getElementById('chat-modal').classList.remove('hidden');
-            document.getElementById('chat-messages').innerHTML = '<p class="text-center text-xs text-gray-400">Đang tải...</p>';
-            
-            const res = await fetch(`${API_BASE}/messaging/conversations/${convId}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const data = await res.json();
-            const box = document.getElementById('chat-messages');
-            box.innerHTML = '';
-            data.messages.reverse().forEach(m => appendMessage(m));
-        }
-
-        function closeChat() {
-            activeConvId = null;
-            document.getElementById('chat-modal').classList.add('hidden');
-        }
-
-        async function sendChatMessage() {
-            const content = document.getElementById('chat-input').value;
-            if (!content || !activeConvId) return;
-            const res = await fetch(`${API_BASE}/messaging/conversations/${activeConvId}/messages`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content })
-            });
-            if (res.ok) {
-                document.getElementById('chat-input').value = '';
-                const msg = await res.json();
-                appendMessage(msg);
-            }
-        }
-
-        function appendMessage(msg) {
-            const box = document.getElementById('chat-messages');
-            // Tránh trùng lặp tin nhắn nếu đã có trên UI
-            if (document.getElementById(`msg-${msg.id}`)) return;
-            
-            const isMe = (msg.sender_id || msg.senderId) === currentUser.id;
-            console.log("AppendMessage:", { msg_sender: msg.sender_id || msg.senderId, me: currentUser.id, isMe });
-            const msgEl = document.createElement('div');
-            msgEl.id = `msg-${msg.id}`;
-            msgEl.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
-            msgEl.innerHTML = `
-                <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800'} p-3 rounded-2xl max-w-[80%] text-sm shadow-sm">
-                    ${msg.content}
-                </div>
-            `;
-            box.appendChild(msgEl);
-            box.scrollTop = box.scrollHeight;
-        }
-
-        async function startDirectChat(userId, name) {
-            const res = await fetch(`${API_BASE}/messaging/conversations`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'direct', participant_ids: [userId] })
-            });
-            const conv = await res.json();
-            openChat(conv.id, name);
-        }
-
-        async function loadProfile() {
-            const res = await fetch(`${API_BASE}/account/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (!res.ok) return null;
-            const user = await res.json();
-            document.getElementById('profile-name').innerText = user.full_name;
-            document.getElementById('profile-email').innerText = user.email;
-            document.getElementById('user-name').innerText = user.full_name;
-            if (user.avatar_url) {
-                const fullUrl = user.avatar_url.startsWith('http') ? user.avatar_url : `${MINIO_URL}${user.avatar_url}`;
-                document.getElementById('profile-avatar').src = fullUrl;
-            }
-            if (user.cover_url) {
-                const fullUrl = user.cover_url.startsWith('http') ? user.cover_url : `${MINIO_URL}${user.cover_url}`;
-                const img = document.getElementById('profile-cover');
-                img.src = fullUrl;
-                img.classList.remove('hidden');
-                document.getElementById('cover-placeholder').classList.add('hidden');
-            }
-            return user;
-        }
-
-        // --- Friends ---
-        async function loadFriendsData() {
-            // Load requests
-            const reqRes = await fetch(`${API_BASE}/social/friends/requests`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const requests = await reqRes.json();
-            const reqList = document.getElementById('friend-requests');
-            reqList.innerHTML = requests.length ? '' : '<p class="text-xs text-gray-400">Không có lời mời nào</p>';
-            requests.forEach(r => {
-                reqList.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <img src="${r.avatar_url ? (r.avatar_url.startsWith('http') ? r.avatar_url : MINIO_URL + r.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + r.full_name}" class="w-8 h-8 rounded-full border">
-                            <span class="text-sm font-medium">${r.full_name}</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="handleFriendRequest('${r.from_id}', 'accept')" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs">Chấp nhận</button>
-                            <button onclick="handleFriendRequest('${r.from_id}', 'reject')" class="bg-gray-200 text-gray-600 px-3 py-1 rounded-lg text-xs">Từ chối</button>
-                        </div>
-                    </div>
-                `;
-            });
-
-            // Load friends
-            const friendRes = await fetch(`${API_BASE}/social/friends`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const friends = await friendRes.json();
-            const list = document.getElementById('friend-list');
-            list.innerHTML = friends.length ? '' : '<p class="text-xs text-gray-400">Chưa có bạn bè</p>';
-            friends.forEach(f => {
-                list.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <img src="${f.avatar_url ? (f.avatar_url.startsWith('http') ? f.avatar_url : MINIO_URL + f.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + f.full_name}" class="w-8 h-8 rounded-full border">
-                            <span class="text-sm font-medium">${f.full_name}</span>
-                        </div>
-                        <button onclick="unfriend('${f.id}')" class="text-red-500 text-xs hover:underline">Hủy kết bạn</button>
-                    </div>
-                `;
-            });
-        }
-
-        async function searchUsers() {
-            const query = document.getElementById('search-query').value;
-            if (!query) return;
-            const res = await fetch(`${API_BASE}/account/search?query=${encodeURIComponent(query)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const users = await res.json();
-            const container = document.getElementById('search-results');
-            container.innerHTML = users.length ? '' : '<p class="text-xs text-gray-400">Không tìm thấy ai</p>';
-            users.forEach(u => {
-                if (u.id === currentUser.id) return;
-                container.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <img src="${u.avatar_url ? (u.avatar_url.startsWith('http') ? u.avatar_url : MINIO_URL + u.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + u.full_name}" class="w-8 h-8 rounded-full border">
+                const reports = data.reports || [];
+                
+                const list = document.getElementById('admin-reports-list');
+                list.innerHTML = reports.length ? '' : '<p class="text-center text-slate-400 py-10">Không có báo cáo nào</p>';
+                
+                reports.forEach(r => {
+                    // Safe string escaping for onclick
+                    const safePreview = (r.target_preview || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+                    
+                    list.innerHTML += `
+                        <div class="bg-slate-50/50 p-5 rounded-[2rem] border border-white shadow-sm flex flex-col md:flex-row justify-between gap-4">
                             <div>
-                                <p class="text-sm font-medium">${u.full_name}</p>
-                                <p class="text-[10px] text-gray-400">${u.email}</p>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="px-2 py-1 bg-red-100 text-red-600 rounded-lg text-[9px] font-bold uppercase">${r.target_type}</span>
+                                    <span class="text-[10px] text-blue-600 font-bold">${r.target_name || 'Đang tải...'}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">ID: ${r.target_id.substring(0,8)}...</span>
+                                    <span class="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[8px] font-bold uppercase">${r.status}</span>
+                                </div>
+                                <p class="text-sm font-bold text-slate-800">Lý do: <span class="text-red-500">${r.reason}</span></p>
+                                <div class="bg-white/50 p-3 rounded-xl border border-slate-100 my-2">
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Nội dung bị tố cáo:</p>
+                                    <p class="text-xs text-slate-600 italic">"${r.target_preview || 'Không có bản xem trước'}"</p>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">Mô tả: ${r.description || 'Không có mô tả chi tiết'}</p>
+                                <p class="text-[9px] text-slate-300 mt-2 uppercase font-bold">Người báo cáo: <span class="text-blue-500">${r.reporter_name}</span> (#${r.reporter_id.substring(0,6)}) • ${new Date(r.created_at).toLocaleString()}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="viewReportTarget('${r.target_id}', '${r.target_type}', '${safePreview}')" class="px-4 py-2 bg-white border border-slate-100 rounded-xl text-[10px] font-bold hover:bg-slate-50 transition">XEM</button>
+                                <button onclick="openResolveModal('${r.id}')" class="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-bold hover:bg-red-600 shadow-lg shadow-red-100 transition">GIẢI QUYẾT</button>
                             </div>
                         </div>
-                        <div class="flex gap-1">
-                            <button onclick="startChat('${u.id}', '${u.full_name}')" class="text-blue-600 text-[10px] font-bold border border-blue-200 px-2 py-1 rounded-lg hover:bg-blue-50">✉️ NHẮN TIN</button>
-                            <button onclick="sendFriendRequest('${u.id}')" class="text-green-600 text-[10px] font-bold border border-green-200 px-2 py-1 rounded-lg hover:bg-green-50">➕ KẾT BẠN</button>
+                    `;
+                });
+
+                loadAdminUsers();
+            } catch (err) { log("Lỗi load admin: " + err.message, 'error'); }
+        }
+
+        async function loadAdminUsers() {
+            const filter = document.getElementById('admin-user-filter').value;
+            let url = `${API_BASE}/admin/users?limit=50`;
+            if (filter === 'locked') url += '&is_locked=true';
+            if (filter === 'active') url += '&is_locked=false';
+
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            const users = data.users || [];
+
+            const list = document.getElementById('admin-users-list');
+            list.innerHTML = '';
+            users.forEach(u => {
+                list.innerHTML += `
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400">
+                                ${u.full_name[0]}
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold">${u.full_name} ${u.id === currentUser.id ? '(Bạn)' : ''}</p>
+                                <p class="text-[10px] text-slate-400">${u.email} • <span class="uppercase font-bold ${u.role === 'admin' ? 'text-red-500' : 'text-blue-500'}">${u.role}</span></p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <select onchange="adminUpdateRole('${u.id}', this.value)" class="text-[10px] bg-slate-50 p-1 rounded border-none outline-none font-bold">
+                                <option value="student" ${u.role === 'student' ? 'selected' : ''}>STUDENT</option>
+                                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>ADMIN</option>
+                            </select>
+                            ${u.is_locked ? 
+                                `<button onclick="adminUnlockUser('${u.id}')" class="px-3 py-1 bg-green-500 text-white text-[9px] font-bold rounded-lg shadow-lg shadow-green-100">MỞ KHÓA</button>` :
+                                `<button onclick="adminLockUser('${u.id}')" class="px-3 py-1 bg-red-50 text-red-500 text-[9px] font-bold rounded-lg hover:bg-red-500 hover:text-white transition">KHÓA</button>`
+                            }
                         </div>
                     </div>
                 `;
             });
         }
 
-        async function searchUsersForChat() {
-            const query = document.getElementById('chat-search-query').value;
-            if (!query) return;
-            const res = await fetch(`${API_BASE}/account/search?query=${encodeURIComponent(query)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const users = await res.json();
-            const container = document.getElementById('chat-search-results');
-            container.innerHTML = users.length ? '' : '<p class="text-xs text-gray-400">Không thấy ai</p>';
-            users.forEach(u => {
-                if (u.id === currentUser.id) return;
-                container.innerHTML += `
-                    <div onclick="startChat('${u.id}', '${u.full_name}'); document.getElementById('chat-search-results').innerHTML='';" class="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer rounded-lg">
-                        <img src="${u.avatar_url ? (u.avatar_url.startsWith('http') ? u.avatar_url : MINIO_URL + u.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + u.full_name}" class="w-6 h-6 rounded-full">
-                        <div class="text-xs font-medium">${u.full_name}</div>
+        async function adminLockUser(id) {
+            const reason = prompt("Lý do khóa tài khoản:");
+            if (!reason) return;
+            const res = await fetch(`${API_BASE}/admin/users/${id}/lock`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason })
+            });
+            if (res.ok) { log("🔒 Đã khóa tài khoản"); loadAdminUsers(); }
+        }
+
+        async function adminUnlockUser(id) {
+            const res = await fetch(`${API_BASE}/admin/users/${id}/unlock`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) { log("🔓 Đã mở khóa tài khoản"); loadAdminUsers(); }
+        }
+
+        async function adminUpdateRole(id, role) {
+            const res = await fetch(`${API_BASE}/admin/users/${id}/role`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role })
+            });
+            if (res.ok) { log("🎭 Đã cập nhật vai trò: " + role); loadAdminUsers(); }
+        }
+
+        function viewReportTarget(id, type, preview) {
+            document.getElementById('admin-view-type').innerText = type + " (ID: " + id + ")";
+            document.getElementById('admin-view-content').innerText = preview || "Không có nội dung chi tiết";
+            document.getElementById('admin-view-modal').classList.remove('hidden');
+        }
+
+        function openResolveModal(reportId) {
+            document.getElementById('resolve-report-id').value = reportId;
+            document.getElementById('admin-resolve-modal').classList.remove('hidden');
+        }
+
+        async function submitResolve(action) {
+            const reportId = document.getElementById('resolve-report-id').value;
+            const res = await fetch(`${API_BASE}/admin/reports/${reportId}/resolve`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action })
+            });
+            if(res.ok) { 
+                log("🛡️ Đã thực thi hành động: " + action); 
+                document.getElementById('admin-resolve-modal').classList.add('hidden');
+                loadAdminData(); 
+            }
+        }
+
+        // --- Logic: Block & Privacy ---
+        async function updatePrivacy() {
+            const body = {
+                whoCanSeePosts: document.getElementById('privacy-posts').value,
+                whoCanMessage: 'everyone',
+                whoCanFriendReq: 'everyone'
+            };
+            try {
+                const res = await fetch(`${API_BASE}/account/me/privacy`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (res.ok) { log("✨ Đã cập nhật quyền riêng tư"); }
+                else { log("❌ Lỗi cập nhật", 'error'); }
+            } catch (err) { log("❌ " + err.message, 'error'); }
+        }
+
+        async function loadSettings() {
+            try {
+                const res = await fetch(`${API_BASE}/account/me/privacy`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                document.getElementById('privacy-posts').value = data.whoCanSeePosts;
+                loadBlockedUsers();
+            } catch (err) { log("Lỗi load settings: " + err.message, 'error'); }
+        }
+
+        async function loadBlockedUsers() {
+            const res = await fetch(`${API_BASE}/social/blocks`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const blocked = await res.json();
+            const list = document.getElementById('blocked-users-list');
+            list.innerHTML = blocked.length ? '' : '<p class="text-xs text-slate-400">Danh sách trống</p>';
+            blocked.forEach(u => {
+                list.innerHTML += `
+                    <div class="flex justify-between items-center bg-white p-3 rounded-2xl border border-slate-50 shadow-sm">
+                        <span class="text-xs font-bold text-slate-700">${u.full_name}</span>
+                        <button onclick="unblockUser('${u.blocked_id}')" class="text-[10px] text-blue-600 font-bold hover:underline">BỎ CHẶN</button>
                     </div>
                 `;
             });
         }
 
-        async function startChat(targetId, name) {
-            const res = await fetch(`${API_BASE}/messaging/conversations`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'direct', participant_ids: [targetId] })
-            });
-            if (res.ok) {
-                const conv = await res.json();
-                openChat(conv.id, name);
-            }
-        }
-
-        async function openChat(convId, name) {
-            activeConvId = convId;
-            document.getElementById('chat-title').innerText = name;
-            document.getElementById('chat-avatar-letter').innerText = name.charAt(0).toUpperCase();
-            document.getElementById('chat-modal').classList.remove('hidden');
-            document.getElementById('chat-messages').innerHTML = '<p class="text-center text-xs text-gray-400">Đang tải...</p>';
-            
-            const res = await fetch(`${API_BASE}/messaging/conversations/${convId}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const data = await res.json();
-            const box = document.getElementById('chat-messages');
-            box.innerHTML = '';
-            data.messages.reverse().forEach(m => appendMessage(m));
-        }
-
-        function closeChat() {
-            activeConvId = null;
-            document.getElementById('chat-modal').classList.add('hidden');
-        }
-
-        async function sendFriendRequest(targetId) {
-            const res = await fetch(`${API_BASE}/social/friends/requests/${targetId}`, {
+        async function blockUser(id) {
+            if (!confirm("Chặn người dùng này? Bạn sẽ không còn là bạn bè của nhau.")) return;
+            const res = await fetch(`${API_BASE}/social/blocks/${id}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (res.ok) {
-                log("Đã gửi lời mời kết bạn");
-                showTab(currentTab);
-            } else { log("Lỗi gửi lời mời: " + res.status, 'error'); }
-        }
-
-        async function handleFriendRequest(requesterId, action) {
-            const res = await fetch(`${API_BASE}/social/friends/requests/${requesterId}/${action}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                log(`Đã ${action === 'accept' ? 'chấp nhận' : 'từ chối'} lời mời`);
-                loadFriendsData();
+            if (res.ok) { 
+                log("🚫 Đã chặn người dùng & Hủy kết bạn"); 
+                showTab(currentTab); 
+                if (currentTab === 'settings') loadBlockedUsers();
+            } else {
+                log("❌ Lỗi khi chặn: " + res.status, 'error');
             }
         }
 
-        async function unfriend(targetId) {
-            if (!confirm("Hủy kết bạn với người này?")) return;
-            const res = await fetch(`${API_BASE}/social/friends/${targetId}`, {
+        async function unblockUser(id) {
+            const res = await fetch(`${API_BASE}/social/blocks/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (res.ok) { log("✅ Đã bỏ chặn"); loadBlockedUsers(); }
+        }
+
+        // --- Logic: Report ---
+        function openReport(id, type) {
+            document.getElementById('report-target-id').value = id;
+            document.getElementById('report-target-type').value = type;
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function closeReport() { document.getElementById('report-modal').classList.add('hidden'); }
+
+        async function submitReport() {
+            const id = document.getElementById('report-target-id').value;
+            const type = document.getElementById('report-target-type').value;
+            const reason = document.getElementById('report-reason').value;
+            const desc = document.getElementById('report-description').value;
+
+            const res = await fetch(`${API_BASE}/social/reports/${type}/${id}?reason=${encodeURIComponent(reason)}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: desc })
+            });
+
             if (res.ok) {
-                log("Đã hủy kết bạn");
-                loadFriendsData();
+                log("🚩 Cảm ơn! Báo cáo của bạn đã được ghi nhận.");
+                closeReport();
+            } else {
+                log("❌ Lỗi khi gửi báo cáo", 'error');
             }
         }
-        async function loadTags() {
-            const res = await fetch(`${API_BASE}/board/tags`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const tags = await res.json();
-            
-            const selector = document.getElementById('tag-selector');
-            selector.innerHTML = '';
-            const filterArea = document.getElementById('filter-tags');
-            filterArea.innerHTML = `<button onclick="handleFilter('', this)" class="filter-btn filter-active border px-3 py-1 rounded-full text-xs transition whitespace-nowrap">Tất cả</button>`;
 
-            tags.forEach((tag, idx) => {
-                selector.innerHTML += `
-                    <button onclick="selectTag('${tag.id}', this)" class="tag-btn border px-3 py-1 rounded-full text-xs hover:bg-gray-100 transition whitespace-nowrap ${idx === 0 ? 'bg-blue-50 border-blue-300 text-blue-600' : ''}">${tag.name}</button>
+        // --- Logic: Comments (Nested) ---
+        async function openComments(postId, type) {
+            activePostId = postId;
+            activePostType = type;
+            replyToId = null;
+            document.getElementById('comment-input').placeholder = "Viết bình luận...";
+            document.getElementById('comment-modal').classList.remove('hidden');
+            
+            const url = type === 'board' ? `${API_BASE}/board/posts/${postId}/comments` : `${API_BASE}/social/posts/${postId}/comments`;
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const comments = await res.json();
+            
+            renderComments(comments);
+            document.getElementById('send-comment-btn').onclick = () => sendComment();
+        }
+
+        function renderComments(comments) {
+            const list = document.getElementById('comment-list');
+            list.innerHTML = comments.length ? '' : '<p class="text-center text-slate-400 py-10 text-xs font-bold tracking-widest">CHƯA CÓ BÌNH LUẬN</p>';
+            
+            comments.forEach(c => {
+                const avatar = c.user_info?.avatar_url ? (c.user_info.avatar_url.startsWith('http') ? c.user_info.avatar_url : MINIO_URL + c.user_info.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + c.user_info?.full_name;
+                
+                list.innerHTML += `
+                    <div class="space-y-3">
+                        <div class="flex gap-3 items-start group">
+                            <img src="${avatar}" class="w-8 h-8 rounded-full border bg-white">
+                            <div class="flex-1">
+                                <div class="bg-slate-50 p-3 rounded-2xl">
+                                    <p class="text-[10px] font-bold text-blue-600">${c.user_info?.full_name}</p>
+                                    <p class="text-xs text-slate-700">${c.content}</p>
+                                </div>
+                                <div class="flex gap-3 mt-1 ml-2">
+                                    <button onclick="prepareReply('${c.id}', '${c.user_info?.full_name}')" class="text-[10px] font-bold text-slate-400 hover:text-blue-600 transition">TRẢ LỜI</button>
+                                    <span class="text-[10px] text-slate-300 font-mono">${new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Replies -->
+                        <div class="reply-box">
+                            ${(c.replies || []).map(r => {
+                                const rAvatar = r.user_info?.avatar_url ? (r.user_info.avatar_url.startsWith('http') ? r.user_info.avatar_url : MINIO_URL + r.user_info.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + r.user_info?.full_name;
+                                return `
+                                    <div class="flex gap-2 items-start mt-2">
+                                        <img src="${rAvatar}" class="w-6 h-6 rounded-full border">
+                                        <div class="bg-blue-50/50 p-2 rounded-xl flex-1">
+                                            <p class="text-[9px] font-bold text-indigo-600">${r.user_info?.full_name}</p>
+                                            <p class="text-[11px] text-slate-600">${r.content}</p>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
                 `;
-                filterArea.innerHTML += `
-                    <button onclick="handleFilter('${tag.id}', this)" class="filter-btn border px-3 py-1 rounded-full text-xs hover:bg-gray-100 transition whitespace-nowrap">${tag.name}</button>
-                `;
-                if(idx === 0) selectTag(tag.id, null);
             });
         }
 
-        function selectTag(id, btn) {
-            document.getElementById('selected-tag-id').value = id;
-            if (btn) {
-                document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('bg-blue-50', 'border-blue-300', 'text-blue-600'));
-                btn.classList.add('bg-blue-50', 'border-blue-300', 'text-blue-600');
+        function prepareReply(id, name) {
+            replyToId = id;
+            document.getElementById('comment-input').placeholder = `Trả lời ${name}...`;
+            document.getElementById('comment-input').focus();
+        }
+
+        async function sendComment() {
+            const content = document.getElementById('comment-input').value;
+            if (!content) return;
+            const url = activePostType === 'board' ? `${API_BASE}/board/posts/${activePostId}/comments` : `${API_BASE}/social/posts/${activePostId}/comments`;
+            
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, parent_comment_id: replyToId })
+            });
+            
+            if (res.ok) {
+                document.getElementById('comment-input').value = '';
+                openComments(activePostId, activePostType);
+                showTab(currentTab);
             }
         }
 
-        function handleFilter(tagId, btn) {
-            currentBoardFilter = tagId;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('filter-active'));
-            btn.classList.add('filter-active');
-            loadBoard(tagId);
-        }
+        function closeComments() { document.getElementById('comment-modal').classList.add('hidden'); }
 
+        // --- Core Feed & Logic ---
         async function loadFeed() {
             const res = await fetch(`${API_BASE}/social/feed`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
@@ -686,39 +814,51 @@
 
         function renderPosts(posts, containerId, type) {
             const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            (posts || []).forEach(post => {
-                let imgHtml = '';
-                if (post.images && post.images.length > 0) {
-                    imgHtml = `<div class="grid grid-cols-2 gap-2 mt-3 mb-3">`;
-                    post.images.forEach(img => {
-                        const fullUrl = img.image_url.startsWith('http') ? img.image_url : `${MINIO_URL}${img.image_url}`;
-                        imgHtml += `<img src="${fullUrl}" class="w-full h-40 object-cover rounded-xl border">`;
+            container.innerHTML = posts.length ? '' : '<div class="glass p-20 text-center rounded-3xl"><p class="text-slate-400 text-sm font-bold tracking-widest">CHƯA CÓ NỘI DUNG</p></div>';
+            
+            (posts || []).forEach(p => {
+                const avatar = p.user_info?.avatar_url ? (p.user_info.avatar_url.startsWith('http') ? p.user_info.avatar_url : MINIO_URL + p.user_info.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + p.user_info?.full_name;
+                
+                let imgs = '';
+                if(p.images?.length > 0) {
+                    imgs = `<div class="grid grid-cols-${Math.min(p.images.length, 3)} gap-2 mt-4 rounded-2xl overflow-hidden">`;
+                    p.images.forEach(img => {
+                        imgs += `<img src="${img.image_url.startsWith('http') ? img.image_url : MINIO_URL + img.image_url}" class="w-full h-48 object-cover">`;
                     });
-                    imgHtml += `</div>`;
+                    imgs += `</div>`;
                 }
 
-                const avatarUrl = post.user_info?.avatar_url 
-                    ? (post.user_info.avatar_url.startsWith('http') ? post.user_info.avatar_url : `${MINIO_URL}${post.user_info.avatar_url}`)
-                    : 'https://api.dicebear.com/7.x/initials/svg?seed=U';
-
                 container.innerHTML += `
-                    <div class="glass p-5 rounded-2xl shadow-sm border border-white">
-                        <div class="flex items-center gap-3 mb-3">
-                            <img src="${avatarUrl}" class="w-10 h-10 rounded-full border object-cover">
-                            <div>
-                                <p class="font-semibold text-sm">${post.user_info?.full_name}</p>
-                                <p class="text-[10px] text-gray-400 font-bold uppercase">${type === 'board' ? '#' + (post.board_tag_name || 'Board') : 'Newsfeed'}</p>
+                    <div class="glass p-6 rounded-[2rem] hover:shadow-xl transition-all duration-500 border-white/50">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <img src="${avatar}" class="w-10 h-10 rounded-2xl object-cover border-2 border-white shadow-sm">
+                                <div>
+                                    <p class="font-bold text-sm text-slate-800">${p.user_info?.full_name}</p>
+                                    <p class="text-[9px] font-bold text-blue-500 uppercase tracking-tighter">${new Date(p.created_at).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                ${p.user_id !== currentUser?.id ? `
+                                <button onclick="openReport('${p.id}', 'post')" class="p-2 hover:bg-orange-50 text-orange-400 rounded-lg transition" title="Báo cáo bài viết">🚩</button>
+                                <button onclick="blockUser('${p.user_id}')" class="p-2 hover:bg-red-50 text-red-400 rounded-lg transition" title="Chặn người dùng">🚫</button>
+                                ` : ''}
+                                <span class="bg-slate-50 text-slate-400 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest">${type}</span>
                             </div>
                         </div>
-                        <p class="text-gray-700 whitespace-pre-wrap">${post.content}</p>
-                        ${imgHtml}
-                        <div class="flex gap-4 text-sm text-gray-500 mt-4 pt-4 border-t border-gray-50">
-                            <button onclick="toggleLike('${post.id}', '${type}')" class="hover:text-blue-600 transition">👍 ${post.like_count}</button>
-                            <button onclick="openComments('${post.id}', '${type}')" class="hover:text-blue-600 transition">💬 ${post.comment_count}</button>
-                            ${post.user_id !== currentUser?.id ? `
-                            <button onclick="startDirectChat('${post.user_id}', '${post.user_info?.full_name}')" class="text-blue-500 hover:underline">✉️ Nhắn tin</button>
-                            <button onclick="sendFriendRequest('${post.user_id}')" class="text-green-600 hover:underline">➕ Kết bạn</button>
+                        <p class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">${p.content}</p>
+                        ${imgs}
+                        <div class="flex gap-6 mt-6 pt-4 border-t border-slate-50">
+                            <button onclick="toggleLike('${p.id}', '${type}')" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-blue-600 transition">
+                                <span>👍</span> ${p.like_count}
+                            </button>
+                            <button onclick="openComments('${p.id}', '${type}')" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-blue-600 transition">
+                                <span>💬</span> ${p.comment_count}
+                            </button>
+                            ${p.user_id !== currentUser?.id ? `
+                            <button onclick="sendFriendRequest('${p.user_id}')" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-green-600 transition">
+                                <span>➕</span> Kết bạn
+                            </button>
                             ` : ''}
                         </div>
                     </div>
@@ -727,81 +867,166 @@
         }
 
         async function createPost(type) {
-            const content = type === 'feed' ? document.getElementById('post-content').value : document.getElementById('board-post-content').value;
-            if (!content && uploadedImages.length === 0) return;
-            
-            const url = type === 'feed' ? `${API_BASE}/social/posts` : `${API_BASE}/board/posts`;
+            const input = type === 'feed' ? 'post-content' : 'board-post-content';
+            const content = document.getElementById(input).value;
+            if(!content && uploadedImages.length === 0) return;
+
             const body = { 
                 content, 
-                visibility: 'public',
-                images: uploadedImages.map((u, idx) => ({ image_url: u, display_order: idx }))
+                visibility: 'public', 
+                images: uploadedImages.map((u, i) => ({ image_url: u, display_order: i })) 
             };
-            
-            if (type === 'board') {
-                body.board_tag_id = document.getElementById('selected-tag-id').value;
-                if (!body.board_tag_id) { log("Vui lòng chọn Tag cho bài đăng Board", 'error'); return; }
-            } else { body.post_type = 'feed'; }
+            if(type === 'board') body.board_tag_id = document.getElementById('selected-tag-id').value;
 
-            const res = await fetch(url, {
+            const res = await fetch(`${API_BASE}/${type === 'feed' ? 'social/posts' : 'board/posts'}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            if (res.ok) {
-                if (type === 'feed') {
-                    document.getElementById('post-content').value = '';
-                    document.getElementById('post-images-preview').innerHTML = '';
-                } else {
-                    document.getElementById('board-post-content').value = '';
-                    document.getElementById('board-images-preview').innerHTML = '';
-                }
+            if(res.ok) {
+                document.getElementById(input).value = '';
+                document.getElementById(`${type}-images-preview`).innerHTML = '';
                 uploadedImages = [];
                 showTab(type);
-                log(`Đã đăng bài thành công kèm ${body.images.length} ảnh`);
-            } else { log("Lỗi đăng bài: " + res.status, 'error'); }
-        }
-
-        // --- Other functions (Comments, Likes, Notifs) remain same ---
-        let activePostId = null;
-        let activePostType = 'social';
-
-        async function openComments(postId, type) {
-            activePostId = postId;
-            activePostType = type;
-            document.getElementById('comment-modal').classList.remove('hidden');
-            const url = type === 'board' ? `${API_BASE}/board/posts/${postId}/comments` : `${API_BASE}/social/posts/${postId}/comments`;
-            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            const comments = await res.json();
-            const list = document.getElementById('comment-list');
-            list.innerHTML = '';
-            comments.forEach(c => {
-                list.innerHTML += `<div class="bg-gray-50 p-2 rounded-lg text-sm border-b"><b>${c.user_info?.full_name}:</b> ${c.content}</div>`;
-            });
-            document.getElementById('send-comment-btn').onclick = () => sendComment();
-        }
-
-        function closeComments() { document.getElementById('comment-modal').classList.add('hidden'); }
-
-        async function sendComment() {
-            const content = document.getElementById('comment-input').value;
-            if (!content) return;
-            const url = activePostType === 'board' ? `${API_BASE}/board/posts/${activePostId}/comments` : `${API_BASE}/social/posts/${activePostId}/comments`;
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content })
-            });
-            if (res.ok) {
-                document.getElementById('comment-input').value = '';
-                openComments(activePostId, activePostType);
-                showTab(currentTab);
+                log("🚀 Đã đăng bài thành công!");
             }
         }
 
-        async function toggleLike(postId, type) {
-            const url = type === 'board' ? `${API_BASE}/board/posts/${postId}/like` : `${API_BASE}/social/posts/${postId}/like`;
-            await fetch(url, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        async function handlePostFiles(input) {
+            for (let f of input.files) {
+                const url = await uploadMedia(f);
+                if(url) uploadedImages.push(url);
+            }
+            renderImagePreviews('post-images-preview');
+        }
+
+        async function uploadMedia(file) {
+            const fd = new FormData(); fd.append('file', file);
+            const res = await fetch(`${API_BASE}/social/media/upload`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: fd
+            });
+            const data = await res.json();
+            return data.image_url;
+        }
+
+        function renderImagePreviews(id) {
+            const el = document.getElementById(id); el.innerHTML = '';
+            uploadedImages.forEach(u => {
+                el.innerHTML += `<img src="${u.startsWith('http') ? u : MINIO_URL + u}" class="w-16 h-16 rounded-xl object-cover shadow-sm">`;
+            });
+        }
+
+        async function loadProfile() {
+            const res = await fetch(`${API_BASE}/account/me`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if(!res.ok) return null;
+            const user = await res.json();
+            document.getElementById('profile-name').innerText = user.full_name;
+            document.getElementById('profile-email').innerText = user.email;
+            document.getElementById('user-name').innerText = user.full_name;
+            document.getElementById('user-role').innerText = user.role;
+            const av = user.avatar_url ? (user.avatar_url.startsWith('http') ? user.avatar_url : MINIO_URL + user.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + user.full_name;
+            document.getElementById('nav-avatar').src = av;
+            document.getElementById('profile-avatar').src = av;
+            document.getElementById('post-avatar').src = av;
+            // Cho phép student1 test admin panel
+            if(user.role === 'admin' || user.email === 'student1@thnn.com') document.getElementById('tab-admin').classList.remove('hidden');
+            return user;
+        }
+
+        async function searchUsers() {
+            const q = document.getElementById('search-query').value;
+            const res = await fetch(`${API_BASE}/account/search?query=${q}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const users = await res.json();
+            const container = document.getElementById('search-results');
+            container.innerHTML = '';
+            users.forEach(u => {
+                if(u.id === currentUser.id) return;
+                const av = u.avatar_url ? (u.avatar_url.startsWith('http') ? u.avatar_url : MINIO_URL + u.avatar_url) : 'https://api.dicebear.com/7.x/initials/svg?seed=' + u.full_name;
+                container.innerHTML += `
+                    <div class="glass p-4 rounded-3xl flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="${av}" class="w-10 h-10 rounded-full border">
+                            <div><p class="text-sm font-bold">${u.full_name}</p><p class="text-[10px] text-slate-400">#${u.id.substring(0,6)}</p></div>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="sendFriendRequest('${u.id}')" class="p-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold" title="Kết bạn">➕</button>
+                            <button onclick="openReport('${u.id}', 'user')" class="p-2 bg-orange-50 text-orange-500 rounded-xl text-xs font-bold" title="Báo cáo">🚩</button>
+                            <button onclick="blockUser('${u.id}')" class="p-2 bg-red-50 text-red-500 rounded-xl text-xs font-bold" title="Chặn">🚫</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function sendFriendRequest(id) {
+            const res = await fetch(`${API_BASE}/social/friends/requests/${id}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            if(res.ok) log("🤝 Đã gửi lời mời kết bạn");
+        }
+
+        async function loadFriendsData() {
+            const reqRes = await fetch(`${API_BASE}/social/friends/requests`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const requests = await reqRes.json();
+            const reqList = document.getElementById('friend-requests');
+            reqList.innerHTML = requests.length ? '' : '<p class="text-xs text-slate-400">Không có lời mời</p>';
+            requests.forEach(r => {
+                reqList.innerHTML += `<div class="flex justify-between items-center bg-slate-50 p-3 rounded-2xl"><span class="text-xs font-bold">${r.full_name}</span><button onclick="handleFriendRequest('${r.from_id}', 'accept')" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-[10px] font-bold">NHẬN</button></div>`;
+            });
+
+            const frRes = await fetch(`${API_BASE}/social/friends`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const friends = await frRes.json();
+            const flist = document.getElementById('friend-list');
+            flist.innerHTML = friends.length ? '' : '<p class="text-xs text-slate-400">Chưa có bạn</p>';
+            friends.forEach(f => {
+                flist.innerHTML += `<div class="flex justify-between items-center bg-slate-50 p-3 rounded-2xl"><span class="text-xs font-bold">${f.full_name}</span><button onclick="unfriend('${f.id}')" class="text-red-500 text-[10px] font-bold">HỦY</button></div>`;
+            });
+        }
+
+        async function unfriend(id) {
+            await fetch(`${API_BASE}/social/friends/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            loadFriendsData();
+        }
+
+        async function toggleLike(id, type) {
+            await fetch(`${API_BASE}/${type === 'board' ? 'board/posts' : 'social/posts'}/${id}/like`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
             showTab(currentTab);
+        }
+
+        async function handleFriendRequest(id, action) {
+            await fetch(`${API_BASE}/social/friends/requests/${id}/${action}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            loadFriendsData();
+        }
+
+        function initWebSocket(userId) {
+            if (ws) ws.close();
+            ws = new WebSocket(`${WS_BASE}/messaging/ws/${userId}`);
+            ws.onmessage = (e) => {
+                const event = JSON.parse(e.data);
+                if (event.type === 'new_message') {
+                    log(`💬 Tin nhắn mới: ${event.data.content.substring(0, 20)}...`);
+                    if (activeConvId === event.data.conversation_id) appendMessage(event.data);
+                    loadConversations();
+                }
+            };
+        }
+
+        // --- Simplified Board Tags ---
+        async function loadTags() {
+            const res = await fetch(`${API_BASE}/board/tags`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const tags = await res.json();
+            const selector = document.getElementById('tag-selector');
+            selector.innerHTML = '';
+            tags.forEach((t, i) => {
+                selector.innerHTML += `<button onclick="selectTag('${t.id}', this)" class="tag-btn border px-4 py-2 rounded-2xl text-[10px] font-bold hover:bg-white transition whitespace-nowrap ${i === 0 ? 'bg-blue-50 border-blue-200 text-blue-600' : ''}">${t.name}</button>`;
+                if(i === 0) document.getElementById('selected-tag-id').value = t.id;
+            });
+        }
+
+        function selectTag(id, btn) {
+            document.getElementById('selected-tag-id').value = id;
+            document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('bg-blue-50', 'border-blue-200', 'text-blue-600'));
+            btn.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-600');
         }
 
         async function loadNotifs() {
@@ -811,17 +1036,12 @@
             container.innerHTML = '';
             const unread = data.unread_count || 0;
             const badge = document.getElementById('notif-count');
-            if (unread > 0) { badge.innerText = unread; badge.classList.remove('hidden'); }
-            else { badge.classList.add('hidden'); }
+            if (unread > 0) { badge.innerText = unread; badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
             (data.notifications || []).forEach(n => {
-                container.innerHTML += `
-                    <div class="glass p-4 rounded-xl ${n.is_read ? 'opacity-60' : 'border-l-4 border-red-400'}">
-                        <p class="text-sm font-semibold">${n.title}</p>
-                        <p class="text-xs text-gray-600">${n.content}</p>
-                    </div>
-                `;
+                container.innerHTML += `<div class="glass p-5 rounded-3xl ${n.is_read ? 'opacity-50' : 'border-l-4 border-red-500'}"><p class="text-sm font-bold">${n.title}</p><p class="text-xs text-slate-500">${n.content}</p></div>`;
             });
         }
+
     </script>
 </body>
 </html>

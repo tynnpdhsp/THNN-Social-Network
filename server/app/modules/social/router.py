@@ -7,7 +7,7 @@ from app.modules.social.service import SocialService
 from app.modules.social.schemas import (
     PostCreateRequest, PostResponse, PostUpdateRequest,
     CommentRequest, CommentResponse,
-    PaginatedFeedResponse,
+    PaginatedFeedResponse, ReportCreateRequest
 )
 
 router = APIRouter(prefix="/social", tags=["Social Network"])
@@ -90,6 +90,8 @@ async def list_friends(
 
 # --- Blocks ---
 
+# --- Blocks ---
+
 @router.post("/blocks/{target_user_id}")
 async def block_user(
     target_user_id: str,
@@ -119,12 +121,12 @@ async def unblock_user(
 async def report_content(
     target_type: str,
     target_id: str,
+    body: ReportCreateRequest,
     reason: str = Query(...),
-    description: str | None = None,
     user_id: str = Depends(get_current_user_id),
     svc: SocialService = Depends(get_social_service),
 ):
-    return await svc.report_content(user_id, target_type, target_id, reason, description)
+    return await svc.report_content(user_id, target_type, target_id, reason, body.description)
 
 @router.put("/posts/{post_id}", response_model=PostResponse)
 async def update_post(
@@ -171,6 +173,24 @@ async def add_comment(
     svc: SocialService = Depends(get_social_service),
 ):
     return await svc.add_comment(user_id, post_id, body)
+
+
+# --- Block & Report ---
+
+
+@router.post("/report")
+async def create_report(
+    body: dict,
+    user_id: str = Depends(get_current_user_id),
+    svc: SocialService = Depends(get_social_service),
+):
+    return await svc.report_content(
+        user_id, 
+        body.get("target_type"), 
+        body.get("target_id"), 
+        body.get("reason"), 
+        body.get("description")
+    )
 
 
 # --- Media ---

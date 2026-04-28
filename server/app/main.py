@@ -11,6 +11,7 @@ from app.modules.social.router import router as social_router
 from app.modules.social.board_router import router as board_router
 from app.modules.notification.router import router as notification_router
 from app.modules.messaging.router import router as messaging_router
+from app.modules.admin.router import router as admin_router
 from app.modules.messaging.ws_manager import manager
 from app.core.dependencies import db
 import asyncio
@@ -55,6 +56,7 @@ app.include_router(social_router, prefix=settings.API_V1_PREFIX)
 app.include_router(board_router, prefix=settings.API_V1_PREFIX)
 app.include_router(notification_router, prefix=settings.API_V1_PREFIX)
 app.include_router(messaging_router, prefix=settings.API_V1_PREFIX)
+app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health")

@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, UploadFile, File, Request, Query
 
-from app.core.dependencies import get_account_service, require_active_user
+from app.core.dependencies import get_account_service, require_active_user, get_current_user_id
 from app.core.config import get_settings
 from app.core.exceptions import BadRequestException
 from app.modules.account.service import AccountService
@@ -74,11 +74,18 @@ async def login(
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout(
+    request: Request,
     user_id: str = Depends(require_active_user),
     refresh_token: Optional[str] = None,
     svc: AccountService = Depends(get_account_service),
 ):
-    message = await svc.logout(user_id, refresh_token)
+    # Extract access token from header to invalidate specific session
+    auth_header = request.headers.get("Authorization")
+    access_token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header[7:]
+        
+    message = await svc.logout(user_id, refresh_token, access_token)
     return MessageResponse(message=message)
 
 
@@ -126,6 +133,24 @@ async def update_my_profile(
     svc: AccountService = Depends(get_account_service),
 ):
     return await svc.update_profile(user_id, body)
+
+
+# --- Privacy (UC-18) ---
+
+@router.get("/privacy")
+async def get_privacy_settings(
+    user_id: str = Depends(get_current_user_id),
+    svc: AccountService = Depends(get_account_service),
+):
+    return await svc.get_privacy_settings(user_id)
+
+@router.put("/privacy")
+async def update_privacy_settings(
+    body: dict,
+    user_id: str = Depends(get_current_user_id),
+    svc: AccountService = Depends(get_account_service),
+):
+    return await svc.update_privacy_settings(user_id, body)
 
 
 @router.put("/me/avatar", response_model=ProfileResponse)

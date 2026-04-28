@@ -4,7 +4,7 @@
 
 ## Trạng thái dự án (Module đã hoàn thiện)
 
-Hiện tại, hệ thống đã triển khai xong 4 phân hệ cốt lõi:
+Hiện tại, hệ thống đã triển khai xong 6 phân hệ cốt lõi:
 
 1.  **Module Tài khoản (Account)**:
     - Đăng ký theo luồng: Đăng ký trước -> Xác thực OTP sau.
@@ -23,6 +23,10 @@ Hiện tại, hệ thống đã triển khai xong 4 phân hệ cốt lõi:
 5.  **Module Tin nhắn (Messaging)**:
     - Chat riêng tư và chat nhóm thời gian thực (WebSocket).
     - Tích hợp Redis Pub/Sub để đồng bộ tin nhắn giữa các instance.
+6.  **Module Quản trị (Admin Dashboard)**:
+    - Thống kê hệ thống: User, Posts, Reports, **Doanh thu**.
+    - Quản lý người dùng: Khóa/Mở khóa tài khoản, **Phân quyền (Role)**.
+    - Xử lý báo cáo: Duyệt vi phạm, ẩn nội dung hoặc khóa tác giả vi phạm.
 
 ---
 
@@ -108,5 +112,7 @@ Dự án có sẵn file test_client.html ở thư mục gốc để bạn test n
 - app/modules/account/: Logic tài khoản, OTP, Profile.
 - app/modules/social/: Logic mạng xã hội, bài đăng, board, bạn bè.
 - app/modules/notification/: Logic thông báo hệ thống.
+- app/modules/messaging/: Logic tin nhắn realtime.
+- app/modules/admin/: Logic quản trị và thống kê.
 - prisma/: Schema định nghĩa DB và script Seed.
 - tests/: Integration tests cho các module.

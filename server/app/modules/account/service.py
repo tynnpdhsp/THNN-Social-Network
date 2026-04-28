@@ -183,9 +183,10 @@ class AccountService:
 
         await self.repo.update_user(user.id, {"lastLoginAt": datetime.now(timezone.utc)})
 
-        tokens = await self._create_tokens(user.id)
+        # Create tokens and get the session ID
+        tokens, sid = await self._create_tokens(user.id)
 
-        session_key = f"auth:session:{user.id}"
+        session_key = f"auth:session:{user.id}:{sid}"
         import json
         session_data = json.dumps({
             "user_id": user.id,
@@ -201,12 +202,25 @@ class AccountService:
 
     # ─── Logout ─────────────────────────────────────────────────────────────
 
-    async def logout(self, user_id: str, refresh_token: Optional[str] = None) -> str:
+    async def logout(self, user_id: str, refresh_token: Optional[str] = None, access_token: Optional[str] = None) -> str:
         r = await get_redis()
-        await r.delete(f"auth:session:{user_id}")
+        
+        # If access token provided, invalidate specific session
+        if access_token:
+            payload = decode_token(access_token)
+            if payload and payload.get("sid"):
+                sid = payload["sid"]
+                await r.delete(f"auth:session:{user_id}:{sid}")
+        else:
+            # Fallback: if no specific session, we might want to delete all? 
+            # For now, just require access_token or token_hash from refresh
+            pass
 
         if refresh_token:
             token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+            # If we used token_hash as sid (which we do in refresh), delete that too
+            await r.delete(f"auth:session:{user_id}:{token_hash}")
+            
             rt = await self.repo.get_refresh_token_by_hash(token_hash)
             if rt and rt.revokedAt is None:
                 await self.repo.revoke_refresh_token(rt.id)
@@ -246,7 +260,16 @@ class AccountService:
         if remaining > 0:
             await r.set(f"auth:blacklist:{token_hash}", "revoked", ex=int(remaining))
 
-        return await self._create_tokens(user.id)
+        # Create new tokens using same sid if possible or new one
+        tokens, new_sid = await self._create_tokens(user.id)
+        
+        # Migrate session to new sid
+        old_session = await r.get(f"auth:session:{user.id}:{token_hash}")
+        if old_session:
+            await r.set(f"auth:session:{user.id}:{new_sid}", old_session, ex=86400)
+            await r.delete(f"auth:session:{user.id}:{token_hash}")
+
+        return tokens
 
     # ─── Forgot Password ───────────────────────────────────────────────────
 
@@ -324,9 +347,9 @@ class AccountService:
         return [
             ProfileResponse(
                 id=u.id,
-                email=u.email,
+                email="",  # Masked for privacy
                 full_name=u.fullName,
-                phone_number=u.phoneNumber,
+                phone_number="",  # Masked for privacy
                 avatar_url=u.avatarUrl,
                 cover_url=u.coverUrl,
                 email_verified=u.emailVerified,
@@ -484,10 +507,22 @@ class AccountService:
 
     async def update_notification_settings(self, user_id: str, body: UpdateNotificationSettingsRequest):
         data = body.model_dump(exclude_none=True)
-        field_map = {"notify_friend_req": "notifyFriendReq"}
+        field_map = {
+            "notify_like": "notifyLike",
+            "notify_comment": "notifyComment",
+            "notify_reply": "notifyLike", # Wait, usually separate, let's check schema
+            "notify_friend_req": "notifyFriendReq",
+            "notify_message": "notifyMessage",
+            "notify_schedule": "notifySchedule"
+        }
+        # Correcting notify_reply mapping
+        field_map["notify_reply"] = "notifyReply"
+
         prisma_data = {}
         for k, v in data.items():
-            prisma_data[field_map.get(k, k)] = v
+            prisma_key = field_map.get(k)
+            if prisma_key:
+                prisma_data[prisma_key] = v
 
         ns = await self.repo.update_notification_settings(user_id, prisma_data)
         r = await get_redis()
@@ -525,10 +560,13 @@ class AccountService:
 
     # ─── Helpers ────────────────────────────────────────────────────────────
 
-    async def _create_tokens(self, user_id: str) -> TokenResponse:
-        access_token = create_access_token(user_id)
+    async def _create_tokens(self, user_id: str) -> tuple[TokenResponse, str]:
         refresh_token = create_refresh_token(user_id)
         token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
+        
+        # Use token_hash as sid for simplicity
+        sid = token_hash
+        access_token = create_access_token(user_id, extra_claims={"sid": sid})
 
         await self.repo.create_refresh_token(
             data={
@@ -538,7 +576,7 @@ class AccountService:
             }
         )
 
-        return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+        return TokenResponse(access_token=access_token, refresh_token=refresh_token), sid
 
     async def _increment_rate_limit(self, r, ip_key: str, email_key: str) -> None:
         ip_count = await r.incr(ip_key)
@@ -548,3 +586,54 @@ class AccountService:
         email_count = await r.incr(email_key)
         if email_count == 1:
             await r.expire(email_key, settings.LOGIN_RATE_LIMIT_EMAIL_WINDOW_SECONDS)
+
+    # --- Privacy Settings (UC-13) ---
+
+    async def get_privacy_settings(self, user_id: str) -> dict:
+        setting = await self.repo.db.privacysetting.find_unique(
+            where={"userId": user_id}
+        )
+        if not setting:
+            # Return defaults
+            return {
+                "who_can_see_posts": "everyone",
+                "who_can_message": "everyone",
+                "who_can_friend_req": "everyone",
+            }
+        return {
+            "who_can_see_posts": setting.whoCanSeePosts,
+            "who_can_message": setting.whoCanMessage,
+            "who_can_friend_req": setting.whoCanFriendReq,
+        }
+
+    async def update_privacy_settings(self, user_id: str, data: dict) -> dict:
+        update_data = {}
+        if "who_can_see_posts" in data:
+            update_data["whoCanSeePosts"] = data["who_can_see_posts"]
+        if "who_can_message" in data:
+            update_data["whoCanMessage"] = data["who_can_message"]
+        if "who_can_friend_req" in data:
+            update_data["whoCanFriendReq"] = data["who_can_friend_req"]
+
+        existing = await self.repo.db.privacysetting.find_unique(
+            where={"userId": user_id}
+        )
+        if existing:
+            setting = await self.repo.db.privacysetting.update(
+                where={"id": existing.id},
+                data=update_data,
+            )
+        else:
+            setting = await self.repo.db.privacysetting.create(
+                data={
+                    "userId": user_id,
+                    "whoCanSeePosts": data.get("who_can_see_posts", "everyone"),
+                    "whoCanMessage": data.get("who_can_message", "everyone"),
+                    "whoCanFriendReq": data.get("who_can_friend_req", "everyone"),
+                }
+            )
+        return {
+            "who_can_see_posts": setting.whoCanSeePosts,
+            "who_can_message": setting.whoCanMessage,
+            "who_can_friend_req": setting.whoCanFriendReq,
+        }

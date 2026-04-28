@@ -116,3 +116,7 @@ class PaginatedBoardResponse(BaseModel):
     skip: int
     limit: int
 
+
+class ReportCreateRequest(BaseModel):
+    description: Optional[str] = None
+

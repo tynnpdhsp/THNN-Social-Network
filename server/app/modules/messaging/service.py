@@ -61,6 +61,31 @@ class MessagingService:
                 raise BadRequestException("Cần có người nhận", "MISSING_PARTICIPANT")
             other_user_id = body.participant_ids[0]
             
+            # Block Check
+            block_exists = await prisma_db.userblock.find_first(
+                where={
+                    "OR": [
+                        {"blockerId": user_id, "blockedId": other_user_id},
+                        {"blockerId": other_user_id, "blockedId": user_id}
+                    ]
+                }
+            )
+            if block_exists:
+                raise ForbiddenException("Không thể gửi tin nhắn (Người dùng đã bị chặn hoặc bạn bị chặn)", "USER_BLOCKED")
+
+            # Privacy Check
+            from app.modules.account.repository import AccountRepository
+            from app.core.dependencies import db as prisma_db
+            acc_repo = AccountRepository(prisma_db)
+            privacy = await acc_repo.get_privacy_settings(other_user_id)
+            if privacy and privacy.whoCanMessage == "friends":
+                # Check if they are friends
+                from app.modules.social.repository import SocialRepository
+                soc_repo = SocialRepository(prisma_db)
+                friend_ids = await soc_repo.get_friend_ids(other_user_id)
+                if user_id not in friend_ids:
+                    raise ForbiddenException("Người dùng này chỉ nhận tin nhắn từ bạn bè", "FRIENDS_ONLY_MESSAGE")
+            
             # Check for existing DM
             existing = await self.repo.find_direct_conversation(user_id, other_user_id)
             if existing:

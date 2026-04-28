@@ -41,16 +41,29 @@ class SocialService:
 
     async def get_posts_feed(self, user_id: str | None, skip: int = 0, limit: int = 20) -> PaginatedFeedResponse:
         friend_ids = None
+        blocked_ids = None
         if user_id:
             friend_ids = await self.repo.get_friend_ids(user_id)
+            # Fetch users who blocked viewer or viewer blocked
+            blocks = await self.repo.db.userblock.find_many(
+                where={
+                    "OR": [
+                        {"blockerId": user_id},
+                        {"blockedId": user_id}
+                    ]
+                }
+            )
+            blocked_ids = list(set([b.blockedId if b.blockerId == user_id else b.blockerId for b in blocks]))
         
         posts = await self.repo.get_posts_feed(
             skip, limit, post_type="feed",
             friend_ids=friend_ids, viewer_id=user_id,
+            blocked_ids=blocked_ids
         )
         total = await self.repo.count_posts_feed(
             post_type="feed",
             friend_ids=friend_ids, viewer_id=user_id,
+            blocked_ids=blocked_ids
         )
         items = [await self._map_post_to_response(p) for p in posts]
         return PaginatedFeedResponse(posts=items, total=total, skip=skip, limit=limit)
@@ -124,26 +137,26 @@ class SocialService:
 
         if body.parent_comment_id:
             # Add as reply to existing comment (level 2)
-            parent = await self.repo.get_comment_by_id(body.parent_comment_id)
-            if not parent:
-                raise NotFoundException("Không tìm thấy bình luận gốc", "COMMENT_NOT_FOUND")
-            
-            replies = parent.replies if isinstance(parent.replies, list) else json.loads(parent.replies) if isinstance(parent.replies, str) else []
             new_reply = {
                 "user_info": user_info,
                 "content": body.content,
                 "is_hidden": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
-            replies.append(new_reply)
-            await self.repo.update_comment_replies(parent.id, json.dumps(replies))
+            updated_parent = await self.repo.add_reply_to_comment(
+                body.parent_comment_id, 
+                new_reply, 
+                target_id=post_id, 
+                target_type="post"
+            )
+            if not updated_parent:
+                raise NotFoundException("Không tìm thấy bình luận gốc", "COMMENT_NOT_FOUND")
 
             # Thông báo cho chủ comment gốc
-            parent_user_id = parent.userInfo.get("id", "") if isinstance(parent.userInfo, dict) else ""
+            parent_user_id = updated_parent.userInfo.get("id", "") if isinstance(updated_parent.userInfo, dict) else ""
             if self.notification_svc and parent_user_id and parent_user_id != user_id:
                 await self.notification_svc.notify_reply(user.fullName, parent_user_id, post_id)
 
-            updated_parent = await self.repo.get_comment_by_id(parent.id)
             return self._map_comment_to_response(updated_parent)
         else:
             # Create new top-level comment
@@ -162,6 +175,35 @@ class SocialService:
 
     # --- Friend management ---
     async def send_friend_request(self, user_id: str, target_user_id: str) -> dict:
+        # Block Check
+        block_exists = await self.repo.db.userblock.find_first(
+            where={
+                "OR": [
+                    {"blockerId": user_id, "blockedId": target_user_id},
+                    {"blockerId": target_user_id, "blockedId": user_id}
+                ]
+            }
+        )
+        if block_exists:
+            raise ForbiddenException("Không thể gửi lời mời kết bạn (Người dùng đã bị chặn hoặc bạn bị chặn)", "USER_BLOCKED")
+
+        # Privacy Check
+        from app.modules.account.repository import AccountRepository
+        from app.core.dependencies import db as prisma_db
+        acc_repo = AccountRepository(prisma_db)
+        privacy = await acc_repo.get_privacy_settings(target_user_id)
+        
+        if privacy and privacy.whoCanFriendReq == "friends_of_friends":
+            # Check if they have mutual friends
+            # (Simplified for now: Check if sender is friend of any of target's friends)
+            target_friend_ids = await self.repo.get_friend_ids(target_user_id)
+            sender_friend_ids = await self.repo.get_friend_ids(user_id)
+            
+            # Check intersection
+            has_mutual = any(fid in target_friend_ids for fid in sender_friend_ids)
+            if not has_mutual:
+                raise ForbiddenException("Người dùng này chỉ nhận lời mời kết bạn từ bạn của bạn bè", "MUTUAL_FRIENDS_ONLY")
+
         # Simple flow: create pending request
         await self.repo.send_friend_request(user_id, target_user_id)
         
@@ -228,13 +270,26 @@ class SocialService:
 
     # --- Block management ---
     async def block_user(self, user_id: str, target_user_id: str) -> dict:
-        # Create block entry
-        await self.repo.block_user(user_id, target_user_id)
+        try:
+            # Create block entry
+            await self.repo.block_user(user_id, target_user_id)
+        except Exception:
+            # Already blocked or other error, proceed to unfriend anyway
+            pass
+        
+        # Auto-unfriend to ensure privacy consistency
+        await self.repo.remove_friendship(user_id, target_user_id)
         return {"status": "đã chặn", "blocked": target_user_id}
 
     async def list_blocked(self, user_id: str) -> list:
         blocked = await self.repo.get_blocked_users(user_id)
-        return [b.blockedId for b in blocked]
+        return [
+            {
+                "blocked_id": b.blockedId,
+                "full_name": b.blocked.fullName if b.blocked else "Người dùng"
+            }
+            for b in blocked
+        ]
 
     async def unblock_user(self, user_id: str, target_user_id: str) -> dict:
         await self.repo.unblock_user(user_id, target_user_id)

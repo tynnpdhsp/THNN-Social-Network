@@ -26,30 +26,32 @@ class SocialRepository:
         post_type: str = "feed",
         friend_ids: list[str] | None = None,
         viewer_id: str | None = None,
+        blocked_ids: list[str] | None = None,
     ) -> List[Post]:
-        """Get feed with privacy filtering.
+        """Get feed with privacy and block filtering."""
         
-        Rules:
-        - public: everyone sees
-        - friends: only friends + post owner see
-        - private: only post owner sees
-        """
-        if viewer_id and friend_ids is not None:
-            # Logged-in user sees: public + own posts + friends' posts (if visibility=friends)
-            where = {
-                "postType": post_type,
-                "OR": [
-                    {"visibility": "public"},
-                    {"userId": viewer_id},
-                    {"visibility": "friends", "userId": {"in": friend_ids}},
-                ],
-            }
+        # Base filter
+        base_filters = [
+            {"visibility": "public"},
+        ]
+        
+        if viewer_id:
+            base_filters.append({"userId": viewer_id})
+            if friend_ids:
+                base_filters.append({"visibility": "friends", "userId": {"in": friend_ids}})
+        
+        where = {
+            "postType": post_type,
+            "NOT": {"isHidden": True},
+        }
+        
+        if len(base_filters) == 1:
+            where.update(base_filters[0])
         else:
-            # Anonymous: public only
-            where = {
-                "postType": post_type,
-                "visibility": "public",
-            }
+            where["OR"] = base_filters
+        
+        if blocked_ids:
+            where["userId"] = {"not_in": blocked_ids}
 
         return await self.db.post.find_many(
             where=where,
@@ -63,21 +65,24 @@ class SocialRepository:
         self, post_type: str = "feed",
         friend_ids: list[str] | None = None,
         viewer_id: str | None = None,
+        blocked_ids: list[str] | None = None,
     ) -> int:
-        if viewer_id and friend_ids is not None:
-            where = {
-                "postType": post_type,
-                "OR": [
-                    {"visibility": "public"},
-                    {"userId": viewer_id},
-                    {"visibility": "friends", "userId": {"in": friend_ids}},
-                ],
-            }
+        base_filters = [{"visibility": "public"}]
+        if viewer_id:
+            base_filters.append({"userId": viewer_id})
+            if friend_ids:
+                base_filters.append({"visibility": "friends", "userId": {"in": friend_ids}})
+        
+        where = {
+            "postType": post_type,
+        }
+        if len(base_filters) == 1:
+            where.update(base_filters[0])
         else:
-            where = {
-                "postType": post_type,
-                "visibility": "public",
-            }
+            where["OR"] = base_filters
+        if blocked_ids:
+            where["userId"] = {"not_in": blocked_ids}
+            
         return await self.db.post.count(where=where)
 
     async def update_post(self, post_id: str, data: PostUpdateInput) -> Optional[Post]:
@@ -179,6 +184,33 @@ class SocialRepository:
             data={"replies": Json(json.loads(replies_json))}
         )
 
+    async def add_reply_to_comment(self, comment_id: str, new_reply: dict, target_id: str = None, target_type: str = None) -> Comment:
+        from prisma import Json
+        import json
+        async with self.db.tx() as tx:
+            # Re-fetch inside transaction for better consistency
+            comment = await tx.comment.find_unique(where={"id": comment_id})
+            if not comment:
+                return None
+            
+            replies = comment.replies if isinstance(comment.replies, list) else json.loads(comment.replies) if isinstance(comment.replies, str) else []
+            replies.append(new_reply)
+            
+            updated = await tx.comment.update(
+                where={"id": comment_id},
+                data={"replies": Json(replies)}
+            )
+
+            # Increment post comment count if target is provided
+            if target_id and target_type == "post":
+                await tx.post.update(
+                    where={"id": target_id},
+                    data={"commentCount": {"increment": 1}}
+                )
+                await increment_post_comment(target_id, 1)
+            
+            return updated
+
     async def get_comments_by_target(self, target_id: str, target_type: str) -> List[Comment]:
         return await self.db.comment.find_many(
             where={"targetId": target_id, "targetType": target_type},
@@ -232,18 +264,15 @@ class SocialRepository:
             return None
 
     async def remove_friendship(self, user_a_id: str, user_b_id: str) -> bool:
-        # Try delete in both directions using the unique compound key
-        try:
-            await self.db.friendship.delete(
-                where={"requesterId_receiverId": {"requesterId": user_a_id, "receiverId": user_b_id}}
-            )
-        except Exception:
-            try:
-                await self.db.friendship.delete(
-                    where={"requesterId_receiverId": {"requesterId": user_b_id, "receiverId": user_a_id}}
-                )
-            except Exception:
-                return False
+        # Use delete_many to handle both directions and avoid "Record not found" errors
+        await self.db.friendship.delete_many(
+            where={
+                "OR": [
+                    {"requesterId": user_a_id, "receiverId": user_b_id},
+                    {"requesterId": user_b_id, "receiverId": user_a_id},
+                ]
+            }
+        )
         return True
 
     async def get_incoming_friend_requests(self, user_id: str) -> List["Friendship"]:
@@ -252,15 +281,21 @@ class SocialRepository:
             include={"requester": True},
         )
 
-    # --- Block & Reports helpers ---
     async def block_user(self, blocker_id: str, blocked_id: str):
         return await self.db.userblock.create(data={
             "blockerId": blocker_id,
             "blockedId": blocked_id,
         })
 
-    async def get_blocked_users(self, user_id: str) -> List["UserBlock"]:
-        return await self.db.userblock.find_many(where={"blockerId": user_id})
+    async def get_blocked_user_ids(self, user_id: str) -> List[str]:
+        blocks = await self.db.userblock.find_many(where={"blockerId": user_id})
+        return [b.blockedId for b in blocks]
+
+    async def get_blocked_users(self, user_id: str):
+        return await self.db.userblock.find_many(
+            where={"blockerId": user_id},
+            include={"blocked": True}
+        )
 
     async def unblock_user(self, blocker_id: str, blocked_id: str):
         try:
@@ -289,12 +324,16 @@ class SocialRepository:
     async def get_board_posts(
         self, skip: int = 0, limit: int = 20,
         tag_id: str | None = None,
+        blocked_ids: list[str] | None = None,
     ) -> List[Post]:
         where: dict = {
             "postType": "board",
+            "NOT": {"isHidden": True},
         }
         if tag_id:
             where["boardTagId"] = tag_id
+        if blocked_ids:
+            where["userId"] = {"not_in": blocked_ids}
 
         return await self.db.post.find_many(
             where=where,
@@ -304,10 +343,12 @@ class SocialRepository:
             take=limit,
         )
 
-    async def count_board_posts(self, tag_id: str | None = None) -> int:
+    async def count_board_posts(self, tag_id: str | None = None, blocked_ids: list[str] | None = None) -> int:
         where: dict = {
             "postType": "board",
         }
         if tag_id:
             where["boardTagId"] = tag_id
+        if blocked_ids:
+            where["userId"] = {"not_in": blocked_ids}
         return await self.db.post.count(where=where)

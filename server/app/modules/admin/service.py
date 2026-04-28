@@ -1,0 +1,173 @@
+from typing import List, Optional
+from fastapi import HTTPException
+from prisma.models import User, Post, Report, AuditLog
+
+from app.modules.admin.repository import AdminRepository
+from app.modules.admin.schemas import (
+    AdminStatsOverview, AdminUserResponse, PaginatedAdminUserResponse,
+    AdminReportResponse, PaginatedReportResponse,
+    AuditLogResponse, PaginatedAuditLogResponse,
+    UpdateUserRoleRequest
+)
+
+class AdminService:
+    def __init__(self, repo: AdminRepository):
+        self.repo = repo
+
+    async def get_stats_overview(self) -> AdminStatsOverview:
+        stats = await self.repo.get_overview_stats()
+        # Repository already returns snake_case keys
+        return AdminStatsOverview(**stats)
+
+    async def get_users(self, skip: int, limit: int, is_locked: Optional[bool] = None) -> PaginatedAdminUserResponse:
+        users = await self.repo.get_users(skip, limit, is_locked)
+        total = await self.repo.count_users(is_locked)
+        
+        user_list = [
+            AdminUserResponse(
+                id=u.id,
+                email=u.email,
+                full_name=u.fullName,
+                role=u.roleRef.role if u.roleRef else "unknown",
+                is_locked=u.isLocked,
+                created_at=u.createdAt,
+                last_login_at=u.lastLoginAt
+            ) for u in users
+        ]
+        
+        return PaginatedAdminUserResponse(
+            users=user_list,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
+
+    async def lock_user(self, user_id: str, admin_id: str, reason: str) -> AdminUserResponse:
+        user = await self.repo.lock_user(user_id, admin_id, reason)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        return AdminUserResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.fullName,
+            role="student", # Simplified
+            is_locked=user.isLocked,
+            created_at=user.createdAt,
+            last_login_at=user.lastLoginAt
+        )
+
+    async def unlock_user(self, user_id: str) -> AdminUserResponse:
+        user = await self.repo.unlock_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        return AdminUserResponse(
+            id=user.id,
+            email=user.email,
+            full_name=user.fullName,
+            role=user.roleRef.role if user.roleRef else "student",
+            is_locked=user.isLocked,
+            created_at=user.createdAt,
+            last_login_at=user.lastLoginAt
+        )
+
+    async def get_reports(self, skip: int, limit: int, status: Optional[str] = None) -> PaginatedReportResponse:
+        results, total = await self.repo.get_reports(skip, limit, status)
+        
+        # results is a list of dicts with snake_case keys from Repository
+        report_list = [
+            AdminReportResponse(**r) for r in results
+        ]
+        
+        return PaginatedReportResponse(
+            reports=report_list,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
+
+    async def resolve_report(self, report_id: str, admin_id: str, action: str) -> AdminReportResponse:
+        report = await self.repo.get_report_by_id(report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+            
+        resolved = await self.repo.resolve_report(report_id, admin_id, action)
+        
+        # Thực thi hành động thực tế dựa trên lựa chọn của Admin
+        if action == "hide_content":
+            if resolved.targetType == "post":
+                await self.repo.hide_post(resolved.targetId)
+            elif resolved.targetType == "comment":
+                await self.repo.hide_comment(resolved.targetId)
+        
+        elif action == "lock_account":
+            user_to_lock = None
+            if resolved.targetType == "user":
+                user_to_lock = resolved.targetId
+            elif resolved.targetType == "post":
+                post = await self.repo.db.post.find_unique(where={"id": resolved.targetId})
+                if post: user_to_lock = post.userId
+            
+            if user_to_lock:
+                await self.repo.lock_user(user_to_lock, admin_id, f"Vi phạm từ báo cáo {report_id}")
+        
+        return AdminReportResponse(
+            id=resolved.id,
+            reporter_id=resolved.reporterId,
+            reporter_name="System (Refresh to see)",
+            target_type=resolved.targetType,
+            target_id=resolved.targetId,
+            target_name="Action: " + action,
+            reason=resolved.reason,
+            description=resolved.description,
+            status=resolved.status,
+            created_at=resolved.createdAt,
+            resolved_at=resolved.resolvedAt,
+            resolved_by=resolved.resolvedBy,
+            resolved_action=resolved.resolvedAction
+        )
+
+    async def update_user_role(self, user_id: str, new_role_name: str) -> AdminUserResponse:
+        role = await self.repo.db.role.find_first(where={"role": new_role_name})
+        if not role:
+            raise HTTPException(status_code=404, detail="Role not found")
+            
+        user = await self.repo.update_user_role(user_id, role.id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        # Refetch with roleRef
+        updated = await self.repo.db.user.find_unique(where={"id": user_id}, include={"roleRef": True})
+            
+        return AdminUserResponse(
+            id=updated.id,
+            email=updated.email,
+            full_name=updated.fullName,
+            role=updated.roleRef.role if updated.roleRef else "unknown",
+            is_locked=updated.isLocked,
+            created_at=updated.createdAt,
+            last_login_at=updated.lastLoginAt
+        )
+
+    async def get_audit_logs(self, skip: int, limit: int) -> PaginatedAuditLogResponse:
+        logs = await self.repo.get_audit_logs(skip, limit)
+        total = await self.repo.count_audit_logs()
+        
+        log_list = [
+            AuditLogResponse(
+                id=l.id,
+                user_id=l.userId,
+                action=l.action,
+                severity=l.severity,
+                created_at=l.createdAt,
+                payload=l.payload
+            ) for l in logs
+        ]
+        
+        return PaginatedAuditLogResponse(
+            logs=log_list,
+            total=total,
+            skip=skip,
+            limit=limit
+        )
