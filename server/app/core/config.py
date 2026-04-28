@@ -1,4 +1,7 @@
+from typing import List
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 from functools import lru_cache
 
 
@@ -8,6 +11,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
+
+    # CORS
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 
     # MongoDB
     MONGO_DATABASE_URL: str = "mongodb://localhost:27017/thnn_social_network"
@@ -52,6 +58,15 @@ class Settings(BaseSettings):
     MAX_BIO_LENGTH: int = 500
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+
+    @model_validator(mode="after")
+    def validate_security(self):
+        if not self.DEBUG and self.JWT_SECRET_KEY == "change-me-in-production":
+            raise ValueError(
+                "JWT_SECRET_KEY must be set to a secure value in production. "
+                "Set it in .env or set DEBUG=true for development."
+            )
+        return self
 
 
 @lru_cache()

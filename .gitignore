@@ -49,3 +49,16 @@ Thumbs.db
 desktop.ini
 skills-lock.json
 .agent/
+.agents/
+# Test results
+test_results/
+minio_data/
+minio.exe
+redis/
+redis.zip
+minio/
+server/tests/verify_fixes.py
+server/debug_api.log
+dump.rdb
+run_all.bat
+server/scratch/

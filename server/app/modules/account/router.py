@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, UploadFile, File, Request, Query
 
-from app.core.dependencies import get_account_service, require_active_user
+from app.core.dependencies import get_account_service, require_active_user, get_current_user_id
 from app.core.config import get_settings
 from app.core.exceptions import BadRequestException
 from app.modules.account.service import AccountService
@@ -74,11 +74,18 @@ async def login(
 
 @router.post("/logout", response_model=MessageResponse)
 async def logout(
+    request: Request,
     user_id: str = Depends(require_active_user),
     refresh_token: Optional[str] = None,
     svc: AccountService = Depends(get_account_service),
 ):
-    message = await svc.logout(user_id, refresh_token)
+    # Extract access token from header to invalidate specific session
+    auth_header = request.headers.get("Authorization")
+    access_token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header[7:]
+        
+    message = await svc.logout(user_id, refresh_token, access_token)
     return MessageResponse(message=message)
 
 
@@ -128,6 +135,24 @@ async def update_my_profile(
     return await svc.update_profile(user_id, body)
 
 
+# --- Privacy (UC-18) ---
+
+@router.get("/privacy")
+async def get_privacy_settings(
+    user_id: str = Depends(get_current_user_id),
+    svc: AccountService = Depends(get_account_service),
+):
+    return await svc.get_privacy_settings(user_id)
+
+@router.put("/privacy")
+async def update_privacy_settings(
+    body: dict,
+    user_id: str = Depends(get_current_user_id),
+    svc: AccountService = Depends(get_account_service),
+):
+    return await svc.update_privacy_settings(user_id, body)
+
+
 @router.put("/me/avatar", response_model=ProfileResponse)
 async def update_avatar(
     file: UploadFile = File(...),
@@ -135,13 +160,13 @@ async def update_avatar(
     svc: AccountService = Depends(get_account_service),
 ):
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise BadRequestException("File must be an image", "INVALID_FILE_TYPE")
+        raise BadRequestException("Tập tin phải là hình ảnh", "INVALID_FILE_TYPE")
 
     content = await file.read()
     max_bytes = settings.MAX_AVATAR_SIZE_MB * 1024 * 1024
     if len(content) > max_bytes:
         raise BadRequestException(
-            f"Avatar must be under {settings.MAX_AVATAR_SIZE_MB}MB", "FILE_TOO_LARGE"
+            f"Ảnh đại diện phải nhỏ hơn {settings.MAX_AVATAR_SIZE_MB}MB", "FILE_TOO_LARGE"
         )
 
     from app.utils.storage import upload_file
@@ -156,13 +181,13 @@ async def update_cover(
     svc: AccountService = Depends(get_account_service),
 ):
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise BadRequestException("File must be an image", "INVALID_FILE_TYPE")
+        raise BadRequestException("Tập tin phải là hình ảnh", "INVALID_FILE_TYPE")
 
     content = await file.read()
     max_bytes = settings.MAX_COVER_SIZE_MB * 1024 * 1024
     if len(content) > max_bytes:
         raise BadRequestException(
-            f"Cover must be under {settings.MAX_COVER_SIZE_MB}MB", "FILE_TOO_LARGE"
+            f"Ảnh bìa phải nhỏ hơn {settings.MAX_COVER_SIZE_MB}MB", "FILE_TOO_LARGE"
         )
 
     from app.utils.storage import upload_file
@@ -228,3 +253,15 @@ async def get_order_history(
     svc: AccountService = Depends(get_account_service),
 ):
     return await svc.get_order_history(user_id, skip, limit)
+
+
+@router.get("/search", response_model=list[ProfileResponse])
+async def search_users(
+    query: str = Query(...),
+    limit: int = Query(10, ge=1, le=50),
+    svc: AccountService = Depends(get_account_service),
+):
+    print(f"DEBUG: Searching for '{query}'")
+    users = await svc.search_users(query, limit)
+    print(f"DEBUG: Found {len(users)} users")
+    return users

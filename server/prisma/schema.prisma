@@ -716,7 +716,7 @@ model AuditLog {
   id          String           @id @default(auto()) @map("_id") @db.ObjectId
   userId      String?          @map("user_id")
   action      String // 'LOGIN' | 'LOGOUT' | 'DELETE_POST' | 'LOCK_ACCOUNT' | 'PAYMENT' | ...
-  requestInfo Json            @map("request_info") // RequestInfoEmbed
+  requestInfo Json?           @map("request_info") // RequestInfoEmbed
   payload     Json?
   severity    String // 'INFO' | 'WARNING' | 'CRITICAL'
   createdAt   DateTime         @default(now()) @map("created_at")
@@ -727,7 +727,7 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-/// Collection: reviews  anh gia vat pham, tai lieu, ia iem
+/// Collection: reviews  anh gia vat pham, tai lieu, dia diem
 model Review {
   id         String        @id @default(auto()) @map("_id") @db.ObjectId
   targetId   String        @map("target_id")

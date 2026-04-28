@@ -75,6 +75,7 @@ class PostResponse(BaseModel):
     visibility: str
     post_type: str
     board_tag_id: Optional[str] = None
+    board_tag_name: Optional[str] = None
     like_count: int
     comment_count: int
     is_hidden: bool
@@ -84,3 +85,38 @@ class PostResponse(BaseModel):
     is_liked: bool = False # Contextual info for the current user
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Paginated Responses ---
+class PaginatedFeedResponse(BaseModel):
+    posts: List[PostResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+# --- Board ---
+class BoardTagResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BoardPostCreateRequest(BaseModel):
+    content: str
+    board_tag_id: str
+    images: List[PostImageCreate] = []
+
+
+class PaginatedBoardResponse(BaseModel):
+    posts: List[PostResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+class ReportCreateRequest(BaseModel):
+    description: Optional[str] = None
+

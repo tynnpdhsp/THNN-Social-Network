@@ -11,6 +11,10 @@ from app.modules.account.repository import AccountRepository
 from app.modules.account.service import AccountService
 from app.modules.social.repository import SocialRepository
 from app.modules.social.service import SocialService
+from app.modules.notification.repository import NotificationRepository
+from app.modules.notification.service import NotificationService
+from app.modules.admin.repository import AdminRepository
+from app.modules.admin.service import AdminService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login", auto_error=False)
@@ -62,8 +66,18 @@ async def get_current_user_id(token: Annotated[str, Depends(oauth2_scheme)]) -> 
     if payload.get("type") != "access":
         raise UnauthorizedException("Invalid token type", "INVALID_TOKEN_TYPE")
     user_id = payload.get("sub")
+    sid = payload.get("sid")
     if user_id is None:
         raise UnauthorizedException("Invalid token payload", "INVALID_TOKEN_PAYLOAD")
+    
+    # Check Redis session to support multi-device logout
+    if sid:
+        from app.core.redis import get_redis
+        r = await get_redis()
+        session_exists = await r.exists(f"auth:session:{user_id}:{sid}")
+        if not session_exists:
+            raise UnauthorizedException("Session expired or logged out", "SESSION_EXPIRED")
+            
     return user_id
 
 
@@ -81,13 +95,55 @@ async def require_active_user(
     return user_id
 
 
+# --- Notification ---
+
+def get_notification_repo(db: Prisma = Depends(get_db)) -> NotificationRepository:
+    return NotificationRepository(db)
+
+
+def get_notification_service(
+    repo: NotificationRepository = Depends(get_notification_repo),
+) -> NotificationService:
+    return NotificationService(repo)
+
+
 # --- Social Network ---
 
 def get_social_repo(db: Prisma = Depends(get_db)) -> SocialRepository:
     return SocialRepository(db)
 
-
 def get_social_service(
     repo: SocialRepository = Depends(get_social_repo),
+    notification_svc: NotificationService = Depends(get_notification_service),
 ) -> SocialService:
-    return SocialService(repo)
+    return SocialService(repo, notification_svc)
+
+
+# --- Admin Dashboard ---
+
+def get_admin_repo(db: Prisma = Depends(get_db)) -> AdminRepository:
+    return AdminRepository(db)
+
+
+def get_admin_service(
+    repo: AdminRepository = Depends(get_admin_repo),
+) -> AdminService:
+    return AdminService(repo)
+
+
+async def require_admin(
+    user_id: str = Depends(get_current_user_id),
+    repo: AccountRepository = Depends(get_account_repo),
+) -> str:
+    user = await repo.db.user.find_unique(
+        where={"id": user_id},
+        include={"roleRef": True}
+    )
+    if user is None:
+        raise UnauthorizedException("User not found", "USER_NOT_FOUND")
+    
+    # Check if admin
+    if user.roleRef and user.roleRef.role == "admin":
+        return user_id
+        
+    raise ForbiddenException("Admin privileges required", "ADMIN_REQUIRED")
