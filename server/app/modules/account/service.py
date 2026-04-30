@@ -510,13 +510,11 @@ class AccountService:
         field_map = {
             "notify_like": "notifyLike",
             "notify_comment": "notifyComment",
-            "notify_reply": "notifyLike", # Wait, usually separate, let's check schema
+            "notify_reply": "notifyReply",
             "notify_friend_req": "notifyFriendReq",
             "notify_message": "notifyMessage",
             "notify_schedule": "notifySchedule"
         }
-        # Correcting notify_reply mapping
-        field_map["notify_reply"] = "notifyReply"
 
         prisma_data = {}
         for k, v in data.items():
@@ -587,53 +585,3 @@ class AccountService:
         if email_count == 1:
             await r.expire(email_key, settings.LOGIN_RATE_LIMIT_EMAIL_WINDOW_SECONDS)
 
-    # --- Privacy Settings (UC-13) ---
-
-    async def get_privacy_settings(self, user_id: str) -> dict:
-        setting = await self.repo.db.privacysetting.find_unique(
-            where={"userId": user_id}
-        )
-        if not setting:
-            # Return defaults
-            return {
-                "who_can_see_posts": "everyone",
-                "who_can_message": "everyone",
-                "who_can_friend_req": "everyone",
-            }
-        return {
-            "who_can_see_posts": setting.whoCanSeePosts,
-            "who_can_message": setting.whoCanMessage,
-            "who_can_friend_req": setting.whoCanFriendReq,
-        }
-
-    async def update_privacy_settings(self, user_id: str, data: dict) -> dict:
-        update_data = {}
-        if "who_can_see_posts" in data:
-            update_data["whoCanSeePosts"] = data["who_can_see_posts"]
-        if "who_can_message" in data:
-            update_data["whoCanMessage"] = data["who_can_message"]
-        if "who_can_friend_req" in data:
-            update_data["whoCanFriendReq"] = data["who_can_friend_req"]
-
-        existing = await self.repo.db.privacysetting.find_unique(
-            where={"userId": user_id}
-        )
-        if existing:
-            setting = await self.repo.db.privacysetting.update(
-                where={"id": existing.id},
-                data=update_data,
-            )
-        else:
-            setting = await self.repo.db.privacysetting.create(
-                data={
-                    "userId": user_id,
-                    "whoCanSeePosts": data.get("who_can_see_posts", "everyone"),
-                    "whoCanMessage": data.get("who_can_message", "everyone"),
-                    "whoCanFriendReq": data.get("who_can_friend_req", "everyone"),
-                }
-            )
-        return {
-            "who_can_see_posts": setting.whoCanSeePosts,
-            "who_can_message": setting.whoCanMessage,
-            "who_can_friend_req": setting.whoCanFriendReq,
-        }

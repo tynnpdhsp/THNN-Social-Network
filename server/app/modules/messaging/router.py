@@ -12,6 +12,7 @@ from app.modules.messaging.schemas import (
 from app.modules.messaging.ws_manager import manager
 from app.modules.notification.repository import NotificationRepository
 from app.modules.notification.service import NotificationService
+from app.core.security import decode_token
 
 router = APIRouter(prefix="/messaging", tags=["Messaging"])
 
@@ -55,18 +56,32 @@ async def send_message(
 ):
     return await svc.send_message(user_id, conv_id, body)
 
+@router.post("/conversations/{conv_id}/read")
+async def mark_as_read(
+    conv_id: str,
+    user_id: str = Depends(require_active_user),
+    svc: MessagingService = Depends(get_messaging_service)
+):
+    return await svc.mark_conversation_as_read(user_id, conv_id)
+
 # --- WebSocket ---
 
-@router.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str):
-    # In a real app, we should verify the token here (e.g. from query param)
-    # For now, we trust the user_id for testing
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(None)):
+    if not token:
+        await websocket.close(code=4001, reason="Missing token")
+        return
+        
+    payload = decode_token(token)
+    if not payload or "sub" not in payload:
+        await websocket.close(code=4002, reason="Invalid token")
+        return
+        
+    user_id = payload["sub"]
     await manager.connect(user_id, websocket)
     try:
         while True:
-            # Keep connection alive and handle incoming heartbeats if needed
-            data = await websocket.receive_text()
-            # We don't handle client-to-server chat via WS (we use REST for that)
-            # but we could echo or handle commands here
+            # Keep connection alive
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(user_id, websocket)

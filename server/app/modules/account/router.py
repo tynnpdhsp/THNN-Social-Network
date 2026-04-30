@@ -137,20 +137,6 @@ async def update_my_profile(
 
 # --- Privacy (UC-18) ---
 
-@router.get("/privacy")
-async def get_privacy_settings(
-    user_id: str = Depends(get_current_user_id),
-    svc: AccountService = Depends(get_account_service),
-):
-    return await svc.get_privacy_settings(user_id)
-
-@router.put("/privacy")
-async def update_privacy_settings(
-    body: dict,
-    user_id: str = Depends(get_current_user_id),
-    svc: AccountService = Depends(get_account_service),
-):
-    return await svc.update_privacy_settings(user_id, body)
 
 
 @router.put("/me/avatar", response_model=ProfileResponse)

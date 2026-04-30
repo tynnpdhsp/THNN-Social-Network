@@ -150,6 +150,18 @@ class NotificationService:
             content=content,
         ))
 
+    async def notify_message(self, actor_name: str, target_user_id: str, conv_id: str, content: str) -> None:
+        """Tạo thông báo khi có tin nhắn mới."""
+        if not target_user_id:
+            return
+        await self.create_notification(CreateNotificationRequest(
+            user_id=target_user_id,
+            type="message",
+            title=f"Tin nhắn mới từ {actor_name}",
+            content=content,
+            metadata=NotificationMetadata(reference_id=conv_id, reference_type="conversation"),
+        ))
+
     # ─── Private helpers ───────────────────────────────────────────────────
 
     async def _get_unread_count(self, user_id: str) -> int:

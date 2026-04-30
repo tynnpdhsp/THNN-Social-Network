@@ -193,24 +193,30 @@ class SocialService:
         acc_repo = AccountRepository(prisma_db)
         privacy = await acc_repo.get_privacy_settings(target_user_id)
         
-        if privacy and privacy.whoCanFriendReq == "friends_of_friends":
-            # Check if they have mutual friends
-            # (Simplified for now: Check if sender is friend of any of target's friends)
-            target_friend_ids = await self.repo.get_friend_ids(target_user_id)
-            sender_friend_ids = await self.repo.get_friend_ids(user_id)
-            
-            # Check intersection
-            has_mutual = any(fid in target_friend_ids for fid in sender_friend_ids)
-            if not has_mutual:
-                raise ForbiddenException("Người dùng này chỉ nhận lời mời kết bạn từ bạn của bạn bè", "MUTUAL_FRIENDS_ONLY")
+        if privacy:
+            if privacy.whoCanFriendReq == "no_one":
+                raise ForbiddenException("Người dùng này không nhận lời mời kết bạn mới", "FRIEND_REQUESTS_DISABLED")
+                
+            if privacy.whoCanFriendReq == "friends_of_friends":
+                # Check if they have mutual friends
+                target_friend_ids = await self.repo.get_friend_ids(target_user_id)
+                sender_friend_ids = await self.repo.get_friend_ids(user_id)
+                
+                # Check intersection
+                has_mutual = any(fid in target_friend_ids for fid in sender_friend_ids)
+                if not has_mutual:
+                    raise ForbiddenException("Người dùng này chỉ nhận lời mời kết bạn từ bạn của bạn bè", "MUTUAL_FRIENDS_ONLY")
 
         # Simple flow: create pending request
         await self.repo.send_friend_request(user_id, target_user_id)
         
-        # Bắn thông báo
+        # Bắn thông báo (nếu người dùng cho phép trong cài đặt thông báo)
         if self.notification_svc:
-            actor_name = await self._get_user_name(user_id)
-            await self.notification_svc.notify_friend_request(actor_name, target_user_id, user_id)
+            # Check target's notification settings
+            notif_settings = await acc_repo.get_notification_settings(target_user_id)
+            if not notif_settings or notif_settings.notifyFriendReq:
+                actor_name = await self._get_user_name(user_id)
+                await self.notification_svc.notify_friend_request(actor_name, target_user_id, user_id)
             
         return {"status": "đã gửi yêu cầu", "to": target_user_id}
 
@@ -237,13 +243,15 @@ class SocialService:
                     f"{actor_name} đã chấp nhận lời mời kết bạn của bạn."
                 )
             return {"status": "đã chấp nhận", "from": requester_id, "to": user_id}
-        return {"status": "không tìm thấy"}
+        
+        raise NotFoundException("Không tìm thấy lời mời kết bạn hoặc lời mời không còn hiệu lực", "FRIEND_REQUEST_NOT_FOUND")
 
     async def reject_friend_request(self, user_id: str, requester_id: str) -> dict:
         updated = await self.repo.reject_friend_request(requester_id, user_id)
         if updated:
             return {"status": "đã từ chối", "from": requester_id, "to": user_id}
-        return {"status": "không tìm thấy"}
+            
+        raise NotFoundException("Không tìm thấy lời mời kết bạn hoặc lời mời không còn hiệu lực", "FRIEND_REQUEST_NOT_FOUND")
 
     async def unfriend(self, user_id: str, other_user_id: str) -> dict:
         ok = await self.repo.remove_friendship(user_id, other_user_id)
