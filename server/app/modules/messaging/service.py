@@ -138,15 +138,15 @@ class MessagingService:
             "payload": payload
         }))
         
-        # Notify inactive members (simple logic: everyone else)
+        # Chỉ tạo Notification (DB) cho những người đang offline
         if self.notification_svc:
-            # In a real app, we'd only notify if they aren't online
             other_ids = [mid for mid in member_ids if mid != user_id]
             sender_name = await self._get_user_name(user_id)
             for oid in other_ids:
-                await self.notification_svc.notify_message(
-                    sender_name, oid, conv_id, body.content[:50]
-                )
+                if oid not in manager.active_connections:
+                    await self.notification_svc.notify_message(
+                        sender_name, oid, conv_id, body.content[:50]
+                    )
 
         return res
 
