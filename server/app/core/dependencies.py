@@ -11,6 +11,8 @@ from app.modules.account.repository import AccountRepository
 from app.modules.account.service import AccountService
 from app.modules.social.repository import SocialRepository
 from app.modules.social.service import SocialService
+from app.modules.shop.repository import ShopRepository
+from app.modules.shop.service import ShopService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login", auto_error=False)
@@ -91,3 +93,12 @@ def get_social_service(
     repo: SocialRepository = Depends(get_social_repo),
 ) -> SocialService:
     return SocialService(repo)
+
+# --- Shop ---
+def get_shop_repo(db: Prisma = Depends(get_db)) -> ShopRepository:
+    return ShopRepository(db)
+
+def get_shop_service(
+    repo: ShopRepository = Depends(get_shop_repo),
+) -> ShopService:
+    return ShopService(repo)
