@@ -193,7 +193,13 @@
                         </div>
                     </div>
 
-                    <div id="content-notif" class="hidden space-y-4" id="notif-items"></div>
+                    <div id="content-notif" class="hidden space-y-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Thông báo của bạn</h3>
+                            <button onclick="markAllNotifsRead()" class="text-[10px] font-bold text-blue-600 hover:underline">Đánh dấu tất cả đã đọc</button>
+                        </div>
+                        <div id="notif-items" class="space-y-4"></div>
+                    </div>
 
                     <div id="content-profile" class="hidden glass rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div class="h-48 bg-slate-200 relative group">
@@ -257,7 +263,15 @@
                         <div class="glass p-8 rounded-3xl">
                             <div class="flex justify-between items-center mb-6">
                                 <h3 class="text-xl font-bold">🚩 Danh sách báo cáo vi phạm</h3>
-                                <button onclick="loadAdminData()" class="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition">🔄 Làm mới</button>
+                                <div class="flex gap-2">
+                                    <select id="admin-report-filter" onchange="loadAdminData()" class="p-2 bg-slate-100 rounded-xl text-xs font-bold outline-none">
+                                        <option value="pending">Đang chờ</option>
+                                        <option value="resolved">Đã xử lý</option>
+                                        <option value="dismissed">Bỏ qua</option>
+                                        <option value="">Tất cả</option>
+                                    </select>
+                                    <button onclick="loadAdminData()" class="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition">🔄</button>
+                                </div>
                             </div>
                             <div id="admin-reports-list" class="space-y-4">
                                 <p class="text-center text-slate-400 py-10 text-xs font-bold tracking-widest uppercase">ĐANG TẢI DỮ LIỆU...</p>
@@ -504,7 +518,11 @@
                 }
 
                 // Fetch Reports
-                const res = await fetch(`${API_BASE}/admin/reports`, {
+                const reportStatus = document.getElementById('admin-report-filter').value;
+                let reportUrl = `${API_BASE}/admin/reports?limit=50`;
+                if (reportStatus) reportUrl += `&status=${reportStatus}`;
+
+                const res = await fetch(reportUrl, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
@@ -1054,17 +1072,173 @@
             loadFriendsData();
         }
 
+        async function loadConversations() {
+            const res = await fetch(`${API_BASE}/messaging/conversations`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            const list = document.getElementById('conversation-list');
+            list.innerHTML = (data.conversations || []).length ? '' : '<p class="text-center text-slate-400 py-10">Chưa có cuộc hội thoại nào</p>';
+            
+            (data.conversations || []).forEach(c => {
+                let chatName = c.name;
+                let avatarLetter = '?';
+                
+                if (c.type === 'direct' && c.other_member) {
+                    chatName = c.other_member.full_name;
+                }
+                
+                avatarLetter = chatName ? chatName[0].toUpperCase() : '?';
+                
+                const lastMsgObj = c.last_message || c.lastMessage;
+                const lastMsg = lastMsgObj ? lastMsgObj.content : 'Chưa có tin nhắn';
+                
+                // Unread indicator logic
+                const member = c.members.find(m => (m.user_id || m.userId) === currentUser.id);
+                const lastRead = member ? (member.last_read_at || member.lastReadAt) : null;
+                const isUnread = lastMsgObj && (!lastRead || new Date(lastMsgObj.created_at || lastMsgObj.createdAt) > new Date(lastRead));
+
+                const updatedAt = c.updated_at || c.updatedAt;
+
+                list.innerHTML += `
+                    <div onclick="openChat('${c.id}', '${chatName}')" class="glass p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-white transition ${isUnread ? 'border-l-4 border-blue-500 bg-blue-50/20' : ''}">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-400 text-xl">${avatarLetter}</div>
+                            <div>
+                                <p class="text-sm font-bold">${chatName}</p>
+                                <p class="text-[10px] text-slate-400 truncate max-w-[150px]">${lastMsg}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[8px] text-slate-300 font-bold uppercase">${updatedAt ? new Date(updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}</p>
+                            ${isUnread ? '<span class="inline-block w-2 h-2 bg-blue-500 rounded-full mt-1"></span>' : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function openChat(convId, name) {
+            activeConvId = convId;
+            document.getElementById('chat-title').innerText = name;
+            document.getElementById('chat-avatar-letter').innerText = name[0].toUpperCase();
+            document.getElementById('chat-messages').innerHTML = '<p class="text-center text-slate-400 py-10">Đang tải tin nhắn...</p>';
+            document.getElementById('chat-modal').classList.remove('hidden');
+            
+            // Mark as read
+            fetch(`${API_BASE}/messaging/conversations/${convId}/read`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).then(() => loadConversations());
+
+            const res = await fetch(`${API_BASE}/messaging/conversations/${convId}/messages`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await res.json();
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '';
+            (data.messages || []).reverse().forEach(m => appendMessage(m));
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function closeChat() {
+            activeConvId = null;
+            document.getElementById('chat-modal').classList.add('hidden');
+        }
+
+        async function sendChatMessage() {
+            const content = document.getElementById('chat-input').value;
+            if (!content || !activeConvId) return;
+            
+            const res = await fetch(`${API_BASE}/messaging/conversations/${activeConvId}/messages`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            
+            if (res.ok) {
+                const msg = await res.json();
+                document.getElementById('chat-input').value = '';
+                appendMessage(msg);
+                document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+                loadConversations();
+            }
+        }
+
+        function appendMessage(m) {
+            const senderId = m.sender_id || m.senderId;
+            const createdAt = m.created_at || m.createdAt;
+            const isMe = senderId === currentUser.id;
+            const container = document.getElementById('chat-messages');
+            container.innerHTML += `
+                <div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                    <div class="${isMe ? 'bg-blue-600 text-white rounded-l-2xl rounded-tr-2xl shadow-lg shadow-blue-100' : 'bg-white text-slate-700 rounded-r-2xl rounded-tl-2xl border border-slate-100 shadow-sm'} p-4 max-w-[80%]">
+                        <p class="text-sm">${m.content}</p>
+                        <p class="text-[8px] mt-1 opacity-50 text-right uppercase font-bold">${createdAt ? new Date(createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}</p>
+                    </div>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function searchUsersForChat() {
+            const q = document.getElementById('chat-search-query').value;
+            const res = await fetch(`${API_BASE}/account/search?query=${q}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const users = await res.json();
+            const container = document.getElementById('chat-search-results');
+            container.innerHTML = '';
+            users.forEach(u => {
+                if(u.id === currentUser.id) return;
+                container.innerHTML += `
+                    <div onclick="startNewChat('${u.id}', '${u.full_name}')" class="p-3 bg-white border border-slate-50 rounded-xl flex items-center justify-between cursor-pointer hover:bg-blue-50 transition">
+                        <span class="text-xs font-bold">${u.full_name}</span>
+                        <span class="text-[10px] text-blue-500 font-bold">NHẮN TIN</span>
+                    </div>
+                `;
+            });
+        }
+
+        async function startNewChat(userId, name) {
+            const res = await fetch(`${API_BASE}/messaging/conversations`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'direct', participant_ids: [userId] })
+            });
+            if (res.ok) {
+                const conv = await res.json();
+                document.getElementById('chat-search-results').innerHTML = '';
+                document.getElementById('chat-search-query').value = '';
+                openChat(conv.id, name);
+            }
+        }
+
         function initWebSocket(userId) {
             if (ws) ws.close();
-            ws = new WebSocket(`${WS_BASE}/messaging/ws/${userId}`);
+            // New secure WS endpoint with token
+            ws = new WebSocket(`${WS_BASE}/messaging/ws?token=${token}`);
             ws.onmessage = (e) => {
                 const event = JSON.parse(e.data);
                 if (event.type === 'new_message') {
-                    log(`💬 Tin nhắn mới: ${event.data.content.substring(0, 20)}...`);
-                    if (activeConvId === event.data.conversation_id) appendMessage(event.data);
-                    loadConversations();
+                    const msg = event.data;
+                    const senderId = msg.sender_id || msg.senderId;
+                    
+                    log(`💬 Tin nhắn mới: ${msg.content.substring(0, 20)}...`);
+                    
+                    if (activeConvId === msg.conversation_id || activeConvId === msg.conversationId) {
+                        // Anti-duplicate: only append if NOT from me (since sendChatMessage already appends)
+                        if (senderId !== currentUser.id) {
+                            appendMessage(msg);
+                        }
+                        
+                        // Mark as read immediately if chat is open
+                        const convId = msg.conversation_id || msg.conversationId;
+                        fetch(`${API_BASE}/messaging/conversations/${convId}/read`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        }).then(() => loadConversations());
+                    } else {
+                        loadConversations();
+                    }
                 }
             };
+            ws.onclose = () => log("🔌 WebSocket disconnected", 'error');
+            ws.onerror = (e) => log("❌ WebSocket error", 'error');
         }
 
         // --- Simplified Board Tags ---
@@ -1085,16 +1259,104 @@
             btn.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-600');
         }
 
+        async function markAllNotifsRead() {
+            const res = await fetch(`${API_BASE}/notifications/read-all`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) { log("✨ Đã đánh dấu tất cả thông báo là đã đọc"); loadNotifs(); }
+        }
+
         async function loadNotifs() {
-            const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const data = await res.json();
-            const container = document.getElementById('notif-items');
-            container.innerHTML = '';
-            const unread = data.unread_count || 0;
-            const badge = document.getElementById('notif-count');
-            if (unread > 0) { badge.innerText = unread; badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
-            (data.notifications || []).forEach(n => {
-                container.innerHTML += `<div class="glass p-5 rounded-3xl ${n.is_read ? 'opacity-50' : 'border-l-4 border-red-500'}"><p class="text-sm font-bold">${n.title}</p><p class="text-xs text-slate-500">${n.content}</p></div>`;
+            try {
+                const res = await fetch(`${API_BASE}/notifications`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                const container = document.getElementById('notif-items');
+                if (!container) return;
+                
+                container.innerHTML = '';
+                const unread = data.unread_count || 0;
+                const badge = document.getElementById('notif-count');
+                if (badge) {
+                    if (unread > 0) { badge.innerText = unread; badge.classList.remove('hidden'); } 
+                    else { badge.classList.add('hidden'); }
+                }
+
+                const notifs = data.notifications || [];
+                if (notifs.length === 0) {
+                    container.innerHTML = '<p class="text-center text-slate-400 py-10 text-xs font-bold tracking-widest uppercase">KHÔNG CÓ THÔNG BÁO MỚI</p>';
+                    return;
+                }
+
+                notifs.forEach(n => {
+                    let actionHtml = '';
+                    if (n.type === 'friend_request' && n.metadata && n.metadata.reference_id) {
+                        actionHtml = `
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="acceptFriend('${n.metadata.reference_id}', '${n.id}')" class="px-4 py-2 bg-blue-600 text-white text-[10px] font-bold rounded-xl shadow-lg shadow-blue-100 transition hover:scale-105">CHẤP NHẬN</button>
+                                <button onclick="rejectFriend('${n.metadata.reference_id}', '${n.id}')" class="px-4 py-2 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-xl transition hover:bg-red-50 hover:text-red-600">TỪ CHỐI</button>
+                            </div>
+                        `;
+                    }
+
+                    container.innerHTML += `
+                        <div class="glass p-5 rounded-3xl transition hover:bg-white/80 ${n.is_read ? 'opacity-60' : 'border-l-4 border-blue-500 shadow-sm'}">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <p class="text-[10px] font-bold text-blue-500 uppercase tracking-tighter mb-1">${n.type.replace('_', ' ')}</p>
+                                    <p class="text-sm font-bold text-slate-800">${n.title}</p>
+                                    <p class="text-xs text-slate-500 mt-1">${n.content}</p>
+                                    ${actionHtml}
+                                </div>
+                                <span class="text-[9px] text-slate-300 font-bold">${new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) { console.error("Lỗi load thông báo:", err); }
+        }
+
+        async function acceptFriend(id, notifId) {
+            try {
+                log(`⏳ Đang chấp nhận lời mời từ: ${id}...`);
+                const res = await fetch(`${API_BASE}/social/friends/requests/${id}/accept`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) { 
+                    log("✅ Đã kết bạn thành công!"); 
+                    if (notifId) await deleteNotification(notifId);
+                    loadNotifs(); 
+                    if(typeof loadFriendsData === 'function') loadFriendsData(); 
+                } else {
+                    const err = await res.json();
+                    log("❌ Lỗi chấp nhận: " + (err.detail || res.statusText), 'error');
+                }
+            } catch (err) { log("❌ Lỗi kết nối: " + err.message, 'error'); }
+        }
+
+        async function rejectFriend(id, notifId) {
+            try {
+                log(`⏳ Đang từ chối lời mời từ: ${id}...`);
+                const res = await fetch(`${API_BASE}/social/friends/requests/${id}/reject`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) { 
+                    log("❌ Đã từ chối lời mời kết bạn."); 
+                    if (notifId) await deleteNotification(notifId);
+                    loadNotifs(); 
+                } else {
+                    const err = await res.json();
+                    log("❌ Lỗi từ chối: " + (err.detail || res.statusText), 'error');
+                }
+            } catch (err) { log("❌ Lỗi kết nối: " + err.message, 'error'); }
+        }
+
+        async function deleteNotification(id) {
+            await fetch(`${API_BASE}/notifications/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
             });
         }
 

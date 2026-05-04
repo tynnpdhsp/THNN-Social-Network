@@ -16,7 +16,7 @@ class AdminService:
 
     async def get_stats_overview(self) -> AdminStatsOverview:
         stats = await self.repo.get_overview_stats()
-        # Repository already returns snake_case keys
+        # Repository đã trả về các key dạng snake_case
         return AdminStatsOverview(**stats)
 
     async def get_users(self, skip: int, limit: int, is_locked: Optional[bool] = None) -> PaginatedAdminUserResponse:
@@ -46,12 +46,15 @@ class AdminService:
         user = await self.repo.lock_user(user_id, admin_id, reason)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Reload to get role info
+        user = await self.repo.db.user.find_unique(where={"id": user_id}, include={"roleRef": True})
             
         return AdminUserResponse(
             id=user.id,
             email=user.email,
             full_name=user.fullName,
-            role="student", # Simplified
+            role=user.roleRef.role if user.roleRef else "student",
             is_locked=user.isLocked,
             created_at=user.createdAt,
             last_login_at=user.lastLoginAt
@@ -61,6 +64,9 @@ class AdminService:
         user = await self.repo.unlock_user(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Reload to get role info
+        user = await self.repo.db.user.find_unique(where={"id": user_id}, include={"roleRef": True})
             
         return AdminUserResponse(
             id=user.id,
@@ -75,7 +81,6 @@ class AdminService:
     async def get_reports(self, skip: int, limit: int, status: Optional[str] = None) -> PaginatedReportResponse:
         results, total = await self.repo.get_reports(skip, limit, status)
         
-        # results is a list of dicts with snake_case keys from Repository
         report_list = [
             AdminReportResponse(**r) for r in results
         ]
@@ -88,37 +93,41 @@ class AdminService:
         )
 
     async def resolve_report(self, report_id: str, admin_id: str, action: str) -> AdminReportResponse:
-        report = await self.repo.get_report_by_id(report_id)
+        report = await self.repo.db.report.find_unique(where={"id": report_id}, include={"reporter": True})
         if not report:
             raise HTTPException(status_code=404, detail="Report not found")
             
         resolved = await self.repo.resolve_report(report_id, admin_id, action)
         
-        # Thực thi hành động thực tế dựa trên lựa chọn của Admin
+        # Execute side effects
+        target_name = f"{resolved.targetType} ID: {resolved.targetId}"
         if action == "hide_content":
             if resolved.targetType == "post":
                 await self.repo.hide_post(resolved.targetId)
+                target_name = "Bài viết (Đã ẩn)"
             elif resolved.targetType == "comment":
                 await self.repo.hide_comment(resolved.targetId)
+                target_name = "Bình luận (Đã ẩn)"
         
         elif action == "lock_account":
             user_to_lock = None
             if resolved.targetType == "user":
                 user_to_lock = resolved.targetId
             elif resolved.targetType == "post":
-                post = await self.repo.db.post.find_unique(where={"id": resolved.targetId})
-                if post: user_to_lock = post.userId
+                p = await self.repo.db.post.find_unique(where={"id": resolved.targetId})
+                if p: user_to_lock = p.userId
             
             if user_to_lock:
                 await self.repo.lock_user(user_to_lock, admin_id, f"Vi phạm từ báo cáo {report_id}")
+                target_name = "Tài khoản (Đã khóa)"
         
         return AdminReportResponse(
             id=resolved.id,
             reporter_id=resolved.reporterId,
-            reporter_name="System (Refresh to see)",
+            reporter_name=report.reporter.fullName if report.reporter else "Unknown",
             target_type=resolved.targetType,
             target_id=resolved.targetId,
-            target_name="Action: " + action,
+            target_name=target_name,
             reason=resolved.reason,
             description=resolved.description,
             status=resolved.status,
@@ -137,7 +146,7 @@ class AdminService:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
             
-        # Refetch with roleRef
+        # Tải lại dữ liệu kèm roleRef
         updated = await self.repo.db.user.find_unique(where={"id": user_id}, include={"roleRef": True})
             
         return AdminUserResponse(
