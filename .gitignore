@@ -2,7 +2,7 @@
 .env
 .env.*
 *.env
-! .env.example
+
 
 # Project-specific ignores (Requested)
 docs/
