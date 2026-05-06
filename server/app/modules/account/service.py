@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.exceptions import (
     BadRequestException,
     ConflictException,
+    ForbiddenException,
     NotFoundException,
     TooManyRequestsException,
     UnauthorizedException,
