@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Check, CheckCheck, Trash2, UserCheck, UserX } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, UserCheck, UserX, Heart, MessageCircle, UserPlus, Mail } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
 const Notifications = () => {
@@ -49,11 +49,11 @@ const Notifications = () => {
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'like': return '❤️';
-      case 'comment': return '💬';
-      case 'friend_request': return '🤝';
-      case 'message': return '✉️';
-      default: return '🔔';
+      case 'like': return <Heart size={14} color="var(--primary)" fill="var(--primary)" />;
+      case 'comment': return <MessageCircle size={14} color="var(--focus-outer)" />;
+      case 'friend_request': return <UserPlus size={14} color="#16a34a" />;
+      case 'message': return <Mail size={14} color="#f59e0b" />;
+      default: return <Bell size={14} color="var(--ash)" />;
     }
   };
 

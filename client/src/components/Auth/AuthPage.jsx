@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LogIn, UserPlus, Mail, Lock, User, Phone, Eye, EyeOff,
   ArrowRight, BookOpen, ShieldCheck, KeyRound, RotateCcw, ArrowLeft,
+  AlertCircle, CheckCircle2,
 } from 'lucide-react';
 
 // ─── Mode constants ───────────────────────────────────────────────────────────
@@ -378,12 +379,12 @@ const AuthPage = () => {
         {/* Messages */}
         {error && (
           <div style={{ ...styles.errorBox, animation: 'shake 0.4s ease' }}>
-            <span>⚠️</span> {error}
+            <AlertCircle size={18} /> {error}
           </div>
         )}
         {success && (
           <div style={{ ...styles.successBox, animation: 'fadeInUp 0.4s ease' }}>
-            <span>✅</span> {success}
+            <CheckCircle2 size={18} /> {success}
           </div>
         )}
 

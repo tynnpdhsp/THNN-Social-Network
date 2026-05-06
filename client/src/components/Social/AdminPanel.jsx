@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, FileText, AlertTriangle, Shield, Lock, Unlock, RefreshCw } from 'lucide-react';
+import { Users, FileText, AlertTriangle, Shield, Lock, Unlock, RefreshCw, Flag } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
@@ -86,7 +86,9 @@ const AdminPanel = () => {
       {/* Reports */}
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontWeight: 700, fontSize: 18 }}>🚩 Báo cáo vi phạm</h3>
+          <h3 style={{ fontWeight: 700, fontSize: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Flag size={20} color="var(--primary)" /> Báo cáo vi phạm
+          </h3>
           <div style={{ display: 'flex', gap: 8 }}>
             <select className="input-field" style={{ height: 36, width: 140, fontSize: 12, padding: '0 12px' }} value={reportFilter} onChange={e => setReportFilter(e.target.value)}>
               <option value="pending">Đang chờ</option>
@@ -124,7 +126,9 @@ const AdminPanel = () => {
       {/* User Management */}
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontWeight: 700, fontSize: 18 }}>👥 Quản lý người dùng</h3>
+          <h3 style={{ fontWeight: 700, fontSize: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Users size={20} color="var(--primary)" /> Quản lý người dùng
+          </h3>
           <div style={{ display: 'flex', gap: 8 }}>
             <input type="text" className="input-field" placeholder="Tìm..." style={{ height: 36, width: 160, fontSize: 12, padding: '0 14px' }} value={userSearch} onChange={e => setUserSearch(e.target.value)} />
             <select className="input-field" style={{ height: 36, width: 130, fontSize: 12, padding: '0 12px' }} value={userFilter} onChange={e => setUserFilter(e.target.value)}>
@@ -162,7 +166,9 @@ const AdminPanel = () => {
 
       {/* Audit Logs */}
       <div style={card}>
-        <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>📜 Nhật ký hệ thống</h3>
+        <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <FileText size={20} color="var(--primary)" /> Nhật ký hệ thống
+        </h3>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
