@@ -20,8 +20,18 @@ const Profile = () => {
     if (!file) return;
     const fd = new FormData();
     fd.append('file', file);
-    await apiFetch('/account/me/avatar', { method: 'PUT', body: fd });
-    refreshProfile();
+    try {
+      const res = await apiFetch('/account/me/avatar', { method: 'PUT', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Cập nhật ảnh đại diện thất bại: ${err.detail || res.statusText}`);
+        return;
+      }
+      refreshProfile();
+    } catch (err) {
+      alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+      console.error('Avatar upload error:', err);
+    }
   };
 
   const handleCoverUpload = async (e) => {
@@ -29,8 +39,18 @@ const Profile = () => {
     if (!file) return;
     const fd = new FormData();
     fd.append('file', file);
-    await apiFetch('/account/me/cover', { method: 'PUT', body: fd });
-    refreshProfile();
+    try {
+      const res = await apiFetch('/account/me/cover', { method: 'PUT', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Cập nhật ảnh bìa thất bại: ${err.detail || res.statusText}`);
+        return;
+      }
+      refreshProfile();
+    } catch (err) {
+      alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+      console.error('Cover upload error:', err);
+    }
   };
 
   const handleSave = async () => {

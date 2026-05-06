@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MapPin, Navigation, Info, Search, Plus, Star, X, User, Send } from 'lucide-react';
+import { resolveImageUrl } from '../../config/api';
 import AddLocationModal from './AddLocationModal';
 
 const locationTypes = ['Tất cả', 'Học tập', 'Ăn uống', 'Thể thao', 'Sự kiện', 'Nội trú'];
@@ -152,7 +153,7 @@ const Map = () => {
         <div style={{ width: 340, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {selectedLocation ? (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <img src={selectedLocation.image} style={{ width: '100%', height: 180, objectFit: 'cover' }} />
+              <img src={resolveImageUrl(selectedLocation.image_url || selectedLocation.image)} style={{ width: '100%', height: 180, objectFit: 'cover' }} />
               <div style={{ padding: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>

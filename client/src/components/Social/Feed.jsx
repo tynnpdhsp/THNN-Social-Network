@@ -42,9 +42,17 @@ const Feed = () => {
       fd.append('file', f);
       try {
         const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          alert(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
+          continue;
+        }
         const data = await res.json();
         if (data.image_url) setUploadedImages(prev => [...prev, data.image_url]);
-      } catch { /* ignore */ }
+      } catch (err) {
+        alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+        console.error('Upload error:', err);
+      }
     }
     e.target.value = '';
   };
@@ -207,7 +215,7 @@ const Feed = () => {
       )}
 
       {/* Comment Modal */}
-      <Modal isOpen={!!commentPostId} onClose={() => setCommentPostId(null)} title="Bình luận" width={520}>
+      <Modal isOpen={!!commentPostId} onClose={() => setCommentPostId(null)} title="Bình luận" width={720}>
         <div style={{ maxHeight: 400, overflowY: 'auto', marginBottom: 16 }}>
           {comments.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--ash)', padding: 32, fontSize: 13 }}>Chưa có bình luận</p>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Heart, Plus, ShoppingBag, Search, Filter, Star, Edit2, Trash2, Tag, Book, PenTool, ChevronDown } from 'lucide-react';
+import { resolveImageUrl } from '../../config/api';
 import ProductDetailModal from './ProductDetailModal';
 import AddProductModal from './AddProductModal';
 import CartModal from './CartModal';
@@ -211,7 +212,7 @@ const Shop = () => {
                 style={{ marginBottom: 16, breakInside: 'avoid', display: 'inline-block', width: '100%' }}
               >
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--rounded-md)' }}>
-                  <img src={product.image} alt={product.title} style={{ width: '100%', height: product.height, objectFit: 'cover' }} />
+                  <img src={resolveImageUrl(product.image_url || product.image)} alt={product.title} style={{ width: '100%', height: product.height, objectFit: 'cover' }} />
                   <div className="overlay" style={{ 
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
                     backgroundColor: 'rgba(0,0,0,0.2)', opacity: 0, transition: 'opacity 0.2s',
