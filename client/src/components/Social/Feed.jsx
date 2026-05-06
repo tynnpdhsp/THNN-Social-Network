@@ -401,9 +401,9 @@ function PostCard({ post: p, index = 0, currentUserId, onLike, onComment, onRepo
 
 const s = {
   container: {
-    maxWidth: 680,
+    maxWidth: 1280,
     margin: '0 auto',
-    padding: '24px 16px',
+    padding: '24px 24px',
     display: 'flex',
     flexDirection: 'column',
     gap: 20,
