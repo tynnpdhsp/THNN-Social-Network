@@ -1,321 +1,404 @@
+from app.modules.shop.schemas import (
+    CategoryCreate, CategoryResponse, CategoryUpdate,
+    ItemCreate, ItemUpdate, ItemResponse, ItemListResponse, ItemListQuery, ItemPaginationRequest,
+    ImageResponse,
+    OrderCreate, OrderResponse, OrderListResponse,
+    VNPayCreatePaymentRequest, VNPayPaymentResponse, VNPayCallbackRequest,
+    ReviewCreate, ReviewResponse, ReviewListResponse,
+    CartItemCreate, CartItemResponse, CartResponse,
+    MessageResponse, PaginatedParams,
+    UserInfoEmbed
+)
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional
+from fastapi import UploadFile
 
-from app.core.config import get_settings
 from app.core.exceptions import (
     BadRequestException,
     ConflictException,
+    ForbiddenException,
     NotFoundException,
     UnauthorizedException,
 )
 from app.modules.shop.repository import ShopRepository
-from app.modules.shop.schemas import (
-    CategoryCreate,
-    CategoryResponse,
-    ItemCreate,
-    ItemUpdate,
-    ItemResponse,
-    ItemListResponse,
-    OrderCreate,
-    OrderResponse,
-    OrderListResponse,
-    VNPayCreatePaymentRequest,
-    VNPayPaymentResponse,
-    VNPayCallbackRequest,
-    PaginatedParams,
-)
+from prisma.models import ShopItem, User # type: ignore
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 class ShopService:
     def __init__(self, repo: ShopRepository):
         self.repo = repo
 
-    # ─── Category Service ─────────────────────────────────────────────────────
-
-    async def get_all_categories(self) -> List[CategoryResponse]:
-        categories = await self.repo.get_all_categories()
-        return [CategoryResponse.model_validate(cat) for cat in categories]
-
-    async def get_category_by_id(self, category_id: str) -> CategoryResponse:
-        category = await self.repo.get_category_by_id(category_id)
-        if not category:
-            raise NotFoundException("Category not found", "CATEGORY_NOT_FOUND")
-        return CategoryResponse.model_validate(category)
-
-    async def create_category(self, data: CategoryCreate, user_id: str) -> CategoryResponse:
+    # region---- Category ----
+    async def create_category(self, data: CategoryCreate) -> CategoryResponse:
         existing = await self.repo.get_category_by_name(data.name)
         if existing:
             raise ConflictException("Category name already exists", "CATEGORY_NAME_EXISTS")
-
-        # : Check if user is admin
-        # For now, allow any user to create category
         
-        category = await self.repo.create_category(data.model_dump())
-        return CategoryResponse.model_validate(category)
+        return await self.repo.create_category(data.model_dump())
+    
+    async def get_all_categories(self) -> list[CategoryResponse]:
+        categories = await self.repo.get_all_categories()
+        return [CategoryResponse.model_validate(cate) for cate in categories]
+    
+    async def update_category(self, category_id: str, data: CategoryUpdate) -> CategoryResponse:
+        existing_category = await self.repo.get_category_by_id(category_id)
+        if not existing_category:
+            raise NotFoundException("Category not found", "CATEGORY_NOT_FOUND")
+        
+        existing_by_name = await self.repo.get_category_by_name(data.name)
+        if existing_by_name and existing_by_name.id != category_id:
+            raise ConflictException("Category name already exists", "CATEGORY_NAME_EXISTS")
+        
+        updated_category = await self.repo.update_category(category_id, data.model_dump())
+        return CategoryResponse.model_validate(updated_category)
+    
+    async def delete_category(self, category_id: str) -> CategoryResponse:
+        existing_category = await self.repo.get_category_by_id(category_id)
+        if not existing_category:
+            raise NotFoundException("Category not found", "CATEGORY_NOT_FOUND")
+        
+        deleted_category = await self.repo.delete_category(category_id)
+        return CategoryResponse.model_validate(deleted_category)
+    # endregion
 
-    # ─── Item Service ────────────────────────────────────────────────────────
-
+    # region ---- Items ----
     async def get_item_by_id(self, item_id: str) -> ItemResponse:
+        return self._map_item_to_response(await self.repo.get_item_by_id(item_id))
+    
+    async def get_items(self, query: ItemListQuery) -> ItemListResponse:
+        """Get items with pagination, sorting and filtering"""
+        # Get items and total count
+        items = await self.repo.get_items(
+            skip=query.skip,
+            limit=query.limit,
+            sort=query.sort,
+            category_id=query.category_id,
+            search=query.search
+        )
+        
+        total = await self.repo.count_items(
+            category_id=query.category_id,
+            search=query.search
+        )
+        
+        items_list = [self._map_item_to_response(item) for item in items]
+        
+        return ItemListResponse(
+            total=total,
+            items=items_list,
+            skip=query.skip,
+            limit=query.limit
+        )
+    
+    async def get_my_items(self, seller_id: str, query: ItemPaginationRequest) -> ItemListResponse:
+        items = await self.repo.get_my_items(seller_id, query.skip, query.limit)
+        total = await self.repo.count_items(None, None, seller_id)
+
+        return ItemListResponse(
+            total=total,
+            items=[self._map_item_to_response(item) for item in items],
+            skip=query.skip,
+            limit=query.limit
+        )
+
+    async def upload_item_images(
+        self,
+        user_id: str,
+        files: list[tuple[bytes, str]]
+    ) -> list[str]:
+        """Upload multiple item images to MinIO storage"""
+
+        from app.utils.storage import upload_files
+
+        try:
+            image_urls = await upload_files(
+                files=files,
+                prefix=f"shop/items/{user_id}"
+            )
+
+            return image_urls
+
+        except Exception as e:
+            logger.error(
+                f"Failed to upload item images for user {user_id}: {str(e)}"
+            )
+            raise BadRequestException(
+                "Failed to upload images",
+                "UPLOAD_FAILED"
+            )
+
+    async def create_item(self, data: ItemCreate, user_id: str) -> ItemResponse:
+        """Create item with images in transaction"""
+        item_data = {
+            "sellerId": user_id,
+            "categoryId": data.category_id,
+            "title": data.title,
+            "description": data.description,
+            "price": data.price,
+            "status": "active",
+            "deletedAt": None
+        }
+        
+        # Create item with images in transaction
+        item = await self.repo.create_item(item_data, data.image_urls)
+        
+        return self._map_item_to_response(item)
+
+    async def update_item(self, item_id: str, data: ItemUpdate, user_id: str) -> ItemResponse:
+        """Update item with cache invalidation"""
         item = await self.repo.get_item_by_id(item_id)
-        if not item or item.deletedAt:
-            raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
-        return ItemResponse.model_validate(item)
-
-    async def get_items_by_seller(
-        self, seller_id: str, params: PaginatedParams
-    ) -> ItemListResponse:
-        where_clause = {"sellerId": seller_id, "deletedAt": None}
-        
-        items = await self.repo.get_items_by_seller(seller_id, params.skip, params.limit)
-        total = await self.repo.count_items(where_clause)
-        
-        return ItemListResponse(
-            items=[ItemResponse.model_validate(item) for item in items],
-            total=total,
-            skip=params.skip,
-            limit=params.limit
-        )
-
-    async def get_items_by_category(
-        self, category_id: str, params: PaginatedParams
-    ) -> ItemListResponse:
-        # Verify category exists
-        category = await self.repo.get_category_by_id(category_id)
-        if not category:
-            raise NotFoundException("Category not found", "CATEGORY_NOT_FOUND")
-
-        where_clause = {"categoryId": category_id, "status": "active", "deletedAt": None}
-        
-        items = await self.repo.get_items_by_category(category_id, params.skip, params.limit)
-        total = await self.repo.count_items(where_clause)
-        
-        return ItemListResponse(
-            items=[ItemResponse.model_validate(item) for item in items],
-            total=total,
-            skip=params.skip,
-            limit=params.limit
-        )
-
-    async def search_items(
-        self, query: str, params: PaginatedParams
-    ) -> ItemListResponse:
-        items = await self.repo.search_items(query, params.skip, params.limit)
-        
-        # Count total items for search
-        where_clause = {"deletedAt": None, "status": "active"}
-        if query:
-            where_clause["OR"] = [
-                {"title": {"contains": query, "mode": "insensitive"}},
-                {"description": {"contains": query, "mode": "insensitive"}}
-            ]
-        
-        total = await self.repo.count_items(where_clause)
-        
-        return ItemListResponse(
-            items=[ItemResponse.model_validate(item) for item in items],
-            total=total,
-            skip=params.skip,
-            limit=params.limit
-        )
-
-    async def create_item(self, data: ItemCreate, seller_id: str) -> ItemResponse:
-        # Verify category exists
-        category = await self.repo.get_category_by_id(data.category_id)
-        if not category:
-            raise NotFoundException("Category not found", "CATEGORY_NOT_FOUND")
-
-        # Create item with seller ID
-        item_data = data.model_dump()
-        item_data["sellerId"] = seller_id
-        
-        item = await self.repo.create_item(item_data)
-        return ItemResponse.model_validate(item)
-
-    async def update_item(
-        self, item_id: str, data: ItemUpdate, user_id: str
-    ) -> ItemResponse:
-        # Get item and verify ownership
-        item = await self.repo.get_item_by_id(item_id)
-        if not item or item.deletedAt:
+        if not item:
             raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
         
+        # Check ownership (only owner can update)
         if item.sellerId != user_id:
-            raise UnauthorizedException("You can only update your own items", "NOT_ITEM_OWNER")
+            raise NotFoundException("Item not found or access denied", "ACCESS_DENIED")
+        
+        # Prepare update data (only include non-None fields)
+        update_data = {}
+        if data.title is not None:
+            update_data["title"] = data.title
+        if data.description is not None:
+            update_data["description"] = data.description
+        if data.price is not None:
+            update_data["price"] = data.price
+        if data.status is not None:
+            update_data["status"] = data.status
+        
+        if not update_data:
+            raise ValueError("No fields to update")
+        
+        try:
+            updated_item = await self.repo.update_item(item_id, update_data)
+            return self._map_item_to_response(updated_item)
+            
+        except Exception as e:
+            raise e
 
-        # Update item
-        update_data = data.model_dump(exclude_unset=True)
-        updated_item = await self.repo.update_item(item_id, update_data)
-        return ItemResponse.model_validate(updated_item)
-
-    async def delete_item(self, item_id: str, user_id: str) -> str:
-        # Get item and verify ownership
+    async def delete_item(self, item_id: str, user_id: str) -> ItemResponse:
+        """Delete item with cleanup"""
+        # Get item first to check ownership
         item = await self.repo.get_item_by_id(item_id)
-        if not item or item.deletedAt:
+        if not item:
             raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
         
+        # Check ownership (only owner can delete)
         if item.sellerId != user_id:
-            raise UnauthorizedException("You can only delete your own items", "NOT_ITEM_OWNER")
-
-        # Soft delete item
-        await self.repo.soft_delete_item(item_id)
+            raise NotFoundException("Item not found or access denied", "ACCESS_DENIED")
         
-        # Delete associated images
-        await self.repo.delete_images_by_item(item_id)
+        try:
+            # Delete item from database (soft delete)
+            deleted_item = await self.repo.delete_item(item_id)
+            return self._map_item_to_response(deleted_item)
+            
+        except Exception as e:
+            raise e
+    # endregion
+
+    # region ---- Reviews ----
+    async def create_item_review(self, item_id: str, user_id: str, data: ReviewCreate) -> ReviewResponse:
+        """Create or update review for item with transaction"""
+        item = await self.repo.get_item_by_id(item_id)
+        if not item:
+            raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
         
-        return "Item deleted successfully"
+        # Check if user purchased the item
+        has_purchased = await self.repo.check_user_purchased_item(user_id, item_id)
+        if not has_purchased:
+            raise ForbiddenException("You must purchase this item before reviewing", "MUST_PURCHASE_FIRST")
+        
+        user = await self.repo.db.user.find_unique(where={"id": user_id})
+        if not user:
+            raise NotFoundException("User not found", "USER_NOT_FOUND")
+        
+        user_info = {
+            "id": user.id,
+            "full_name": user.fullName,
+            "avatar_url": user.avatarUrl or None
+        }
+        
+        review, rating_data = await self.repo.create_review_with_transaction(
+            item_id, user_id, user_info, data.rating, data.comment
+        )
+        
+        return self._map_review_to_response(review)
+    
+    async def get_item_reviews(self, item_id: str, skip: int = 0, limit: int = 20) -> ReviewListResponse:
+        """Get reviews for a item with pagination"""
+        # Check if item exists
+        item = await self.repo.get_item_by_id(item_id)
+        if not item:
+            raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
+        
+        reviews = await self.repo.get_item_reviews(item_id, skip, limit)
+        total = await self.repo.count_reviews(item_id)
+        
+        items = [self._map_review_to_response(review) for review in reviews]
+        
+        return ReviewListResponse(
+            total=total,
+            items=items,
+            skip=skip,
+            limit=limit
+        )
+    
+    async def delete_item_review(self, review_id: str, user_id: str) -> dict:
+        """Delete review for item with transaction"""
+        review = await self.repo.get_review_by_id(review_id)
+        if not review:
+            raise NotFoundException("Review not found", "REVIEW_NOT_FOUND")
+        
+        # Check if user owns this review
+        user_info = review.userInfo if isinstance(review.userInfo, dict) else {}
+        if user_info.get("id") != user_id:
+            raise ForbiddenException("Can't access to delete review", "Forbidden_DELETE_REVIEW")
+        
+        result = await self.repo.delete_review_with_transaction(review_id)
+        
+        return result
+    # endregion
 
-    async def get_seller_stats(self, seller_id: str) -> dict:
-        stats = await self.repo.get_seller_stats(seller_id)
-        return stats
-
-    # ─── Order Service ────────────────────────────────────────────────────────
+# region ---- Order ----
+    async def create_order(self, data: OrderCreate, user_id: str) -> OrderResponse:
+        """Create new order"""
+        itemExisting = await self.repo.get_item_by_id(data.item_id)
+        if not itemExisting:
+            raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
+        
+        return self._map_order_to_response(await self.repo.create_order(data, user_id, itemExisting.sellerId))
 
     async def get_order_by_id(self, order_id: str, user_id: str) -> OrderResponse:
+        """Get order by ID (buyer or seller only)"""
         order = await self.repo.get_order_by_id(order_id)
         if not order:
             raise NotFoundException("Order not found", "ORDER_NOT_FOUND")
         
-        # Verify user is buyer or seller
+        # Check if user is buyer or seller
         if order.buyerId != user_id and order.sellerId != user_id:
-            raise UnauthorizedException("You can only view your own orders", "NOT_ORDER_PARTICIPANT")
+            raise ForbiddenException("Access denied", "ORDER_ACCESS_DENIED")
         
-        return OrderResponse.model_validate(order)
+        return self._map_order_to_response(order)
 
-    async def get_orders_by_buyer(
-        self, buyer_id: str, params: PaginatedParams
-    ) -> OrderListResponse:
-        orders = await self.repo.get_orders_by_buyer(buyer_id, params.skip, params.limit)
+    async def get_orders_by_buyer(self, buyer_id: str, skip: int = 0, limit: int = 20) -> OrderListResponse:
+        """Get orders by buyer ID"""
+        orders = await self.repo.get_orders_by_buyer(buyer_id, skip, limit)
         total = await self.repo.count_orders_by_buyer(buyer_id)
         
+        order_list = [self._map_order_to_response(order) for order in orders]
+        
         return OrderListResponse(
-            orders=[OrderResponse.model_validate(order) for order in orders],
             total=total,
-            skip=params.skip,
-            limit=params.limit
+            orders=order_list,
+            skip=skip,
+            limit=limit
         )
 
-    async def get_orders_by_seller(
-        self, seller_id: str, params: PaginatedParams
-    ) -> OrderListResponse:
-        orders = await self.repo.get_orders_by_seller(seller_id, params.skip, params.limit)
+    async def get_orders_by_seller(self, seller_id: str, skip: int = 0, limit: int = 20) -> OrderListResponse:
+        """Get orders by seller ID"""
+        orders = await self.repo.get_orders_by_seller(seller_id, skip, limit)
         total = await self.repo.count_orders_by_seller(seller_id)
         
+        order_list = [self._map_order_to_response(order) for order in orders]
+        
         return OrderListResponse(
-            orders=[OrderResponse.model_validate(order) for order in orders],
             total=total,
-            skip=params.skip,
-            limit=params.limit
+            orders=order_list,
+            skip=skip,
+            limit=limit
+        )
+    # endregion
+
+# region ---- Helper ----
+    def _map_item_to_response(self, item: ShopItem) -> ItemResponse:
+        """Map ShopItem model to ItemResponse"""
+        user_info = None
+        if hasattr(item, "seller") and item.seller:
+            user_info = UserInfoEmbed(id=item.seller.id, full_name=item.seller.fullName, avatar_url=item.seller.avatarUrl)
+
+        category = None
+        if hasattr(item, "category") and item.category:
+            category = CategoryResponse(id=item.category.id, name=item.category.name)
+
+        images = []
+        if hasattr(item, "itemImages") and item.itemImages:
+            images = [ImageResponse(image_url=img.imageUrl, display_order=img.displayOrder) for img in item.itemImages]
+
+        return ItemResponse(
+            id=item.id,
+            seller_id=item.sellerId,
+            category_id=item.categoryId,
+            title=item.title,
+            description=item.description,
+            price=item.price,
+            avg_rating=item.avgRating,
+            rating_count=item.ratingCount,
+            status=item.status,
+            created_at=item.createdAt,
+            updated_at=item.updatedAt,
+            user_info=user_info,
+            category=category,
+            images=images
         )
 
-    async def create_order(self, data: OrderCreate, buyer_id: str) -> OrderResponse:
-        # Get item and verify it's available
-        item = await self.repo.get_item_by_id(data.item_id)
-        if not item or item.deletedAt:
-            raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
+    def _map_order_to_response(self, order) -> OrderResponse:
+        """Map Order model to OrderResponse"""
+        # item = None
+        # if hasattr(order, "item") and order.item:
+        #     item = ItemResponse(
+        #         id=order.item.id,
+        #         seller_id=order.item.sellerId,
+        #         category_id=order.item.categoryId,
+        #         title=order.item.title,
+        #         description=order.item.description,
+        #         price=order.item.price,
+        #         avg_rating=order.item.avgRating,
+        #         rating_count=order.item.ratingCount,
+        #         status=order.item.status,
+        #         created_at=order.item.createdAt,
+        #         updated_at=order.item.updatedAt,
+        #         images=[],
+        #         user_info=None,
+        #         category=None
+        #     )
         
-        if item.status != "active":
-            raise BadRequestException("Item is not available for purchase", "ITEM_NOT_AVAILABLE")
-        
-        if item.sellerId == buyer_id:
-            raise BadRequestException("You cannot buy your own item", "CANNOT_BUY_OWN_ITEM")
+        sellerId = None
+        if hasattr(order, "seller") and order.seller:
+            sellerId = order.seller.id
 
-        # Create order
-        order_data = data.model_dump()
-        order_data["buyerId"] = buyer_id
-        order_data["sellerId"] = item.sellerId
-        order_data["amount"] = item.price
-        
-        order = await self.repo.create_order(order_data)
-        return OrderResponse.model_validate(order)
-
-    # ─── VNPay Payment Service ─────────────────────────────────────────────────
-
-    async def create_vnpay_payment(
-        self, data: VNPayCreatePaymentRequest, user_id: str
-    ) -> VNPayPaymentResponse:
-        # Verify order exists and belongs to user
-        order = await self.repo.get_order_by_id(data.order_id)
-        if not order:
-            raise NotFoundException("Order not found", "ORDER_NOT_FOUND")
-        
-        if order.buyerId != user_id:
-            raise UnauthorizedException("You can only pay for your own orders", "NOT_ORDER_BUYER")
-        
-        if order.status != "pending":
-            raise BadRequestException("Order is not pending payment", "ORDER_NOT_PENDING")
-
-        # Generate VNPay payment URL
-        # TODO: Implement actual VNPay integration
-        # This is a placeholder implementation
-        
-        # Generate unique transaction reference
-        txn_ref = f"{order.id}_{int(datetime.now().timestamp())}"
-        
-        # Update order with transaction reference
-        await self.repo.update_order(order.id, {"vnpayTxnRef": txn_ref})
-        
-        # Mock payment URL (replace with actual VNPay integration)
-        payment_url = f"https://sandbox.vnpayment.vn/payment?txn_ref={txn_ref}&amount={data.amount}&return_url={data.return_url}"
-        
-        return VNPayPaymentResponse(
-            payment_url=payment_url,
-            txn_ref=txn_ref
+        return OrderResponse(
+            id=order.id,
+            buyer_id=order.buyerId,
+            item_id=order.itemId,
+            seller_id=sellerId,
+            amount=order.amount,
+            status=order.status,
+            payment_method=order.paymentMethod,
+            vnpay_txn_ref=order.vnpayTxnRef or None,
+            vnpay_response_code=order.vnpayResponseCode or None,
+            paid_at=order.paidAt,
+            created_at=order.createdAt,
+            updated_at=order.updatedAt,
+            # item=item
         )
 
-    async def handle_vnpay_callback(self, data: VNPayCallbackRequest) -> str:
-        # Find order by transaction reference
-        order = await self.repo.get_order_by_vnpay_ref(data.vnp_TxnRef)
-        if not order:
-            raise NotFoundException("Order not found", "ORDER_NOT_FOUND")
-
-        # Process payment result
-        if data.vnp_ResponseCode == "00" and data.vnp_TransactionStatus == "00":
-            # Payment successful
-            await self.repo.update_order(
-                order.id,
-                {
-                    "status": "paid",
-                    "vnpayResponseCode": data.vnp_ResponseCode,
-                    "paidAt": datetime.now(timezone.utc)
-                }
-            )
-            
-            # Update item status to sold
-            await self.repo.update_item(order.itemId, {"status": "sold"})
-            
-            return "Payment successful"
-        else:
-            # Payment failed
-            await self.repo.update_order(
-                order.id,
-                {
-                    "status": "failed",
-                    "vnpayResponseCode": data.vnp_ResponseCode
-                }
-            )
-            
-            return "Payment failed"
-
-    # ─── Rating Service ───────────────────────────────────────────────────────
-
-    async def update_item_rating(self, item_id: str, new_rating: int) -> str:
-        # Get current item
-        item = await self.repo.get_item_by_id(item_id)
-        if not item:
-            raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
-
-        # Calculate new average rating
-        # This is a simplified calculation - in practice, you'd store all ratings
-        current_total = item.avgRating * item.ratingCount
-        new_total = current_total + new_rating
-        new_count = item.ratingCount + 1
-        new_avg = new_total / new_count
-
-        # Update item rating
-        await self.repo.update_item_rating(item_id, new_avg, new_count)
+    def _map_review_to_response(self, review) -> ReviewResponse:
+        """Map Review model to ReviewResponse"""
+        user_info = review.userInfo if isinstance(review.userInfo, dict) else {}
         
-        return "Rating updated successfully"
+        return ReviewResponse(
+            id=review.id,
+            target_id=review.targetId,
+            target_type=review.targetType,
+            user_info=UserInfoEmbed(
+                id=user_info.get("id", ""),
+                full_name=user_info.get("full_name", ""),
+                avatar_url=user_info.get("avatar_url")
+            ),
+            rating=review.rating,
+            comment=review.comment,
+            created_at=review.createdAt
+        )
+# endregion
