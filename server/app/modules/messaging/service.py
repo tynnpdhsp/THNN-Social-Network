@@ -62,7 +62,7 @@ class MessagingService:
             other_user_id = body.participant_ids[0]
             
             # Block Check
-            block_exists = await prisma_db.userblock.find_first(
+            block_exists = await self.repo.db.userblock.find_first(
                 where={
                     "OR": [
                         {"blockerId": user_id, "blockedId": other_user_id},
@@ -75,13 +75,13 @@ class MessagingService:
 
             # Privacy Check
             from app.modules.account.repository import AccountRepository
-            from app.core.dependencies import db as prisma_db
-            acc_repo = AccountRepository(prisma_db)
+            from app.modules.social.repository import SocialRepository
+            
+            acc_repo = AccountRepository(self.repo.db)
             privacy = await acc_repo.get_privacy_settings(other_user_id)
             if privacy and privacy.whoCanMessage == "friends":
                 # Check if they are friends
-                from app.modules.social.repository import SocialRepository
-                soc_repo = SocialRepository(prisma_db)
+                soc_repo = SocialRepository(self.repo.db)
                 friend_ids = await soc_repo.get_friend_ids(other_user_id)
                 if user_id not in friend_ids:
                     raise ForbiddenException("Người dùng này chỉ nhận tin nhắn từ bạn bè", "FRIENDS_ONLY_MESSAGE")
@@ -112,7 +112,7 @@ class MessagingService:
             raise NotFoundException("Không tìm thấy hội thoại", "CONVERSATION_NOT_FOUND")
         
         members = conv.members if isinstance(conv.members, list) else []
-        member_ids = [m.get("user_id") for m in members if m.get("user_id")]
+        member_ids = [m.get("user_id") or m.get("userId") for m in members if (m.get("user_id") or m.get("userId"))]
         if user_id not in member_ids:
             raise ForbiddenException("Bạn không có quyền gửi tin nhắn vào đây", "NOT_A_MEMBER")
             
@@ -138,17 +138,29 @@ class MessagingService:
             "payload": payload
         }))
         
-        # Notify inactive members (simple logic: everyone else)
+        # Chỉ tạo Notification (DB) cho những người đang offline
         if self.notification_svc:
-            # In a real app, we'd only notify if they aren't online
             other_ids = [mid for mid in member_ids if mid != user_id]
             sender_name = await self._get_user_name(user_id)
             for oid in other_ids:
-                await self.notification_svc.notify_system(
-                    oid, "Tin nhắn mới", f"{sender_name}: {body.content[:50]}"
-                )
+                if oid not in manager.active_connections:
+                    await self.notification_svc.notify_message(
+                        sender_name, oid, conv_id, body.content[:50]
+                    )
 
         return res
+
+    async def mark_conversation_as_read(self, user_id: str, conv_id: str):
+        conv = await self.repo.get_conversation_by_id(conv_id)
+        if not conv:
+            raise NotFoundException("Không tìm thấy hội thoại", "CONVERSATION_NOT_FOUND")
+            
+        members = conv.members if isinstance(conv.members, list) else []
+        if not any((m.get("user_id") or m.get("userId")) == user_id for m in members):
+            raise ForbiddenException("Bạn không phải thành viên hội thoại này", "NOT_A_MEMBER")
+            
+        await self.repo.update_member_last_read(conv_id, user_id)
+        return {"status": "success"}
 
     async def _map_conv_to_response(self, conv, viewer_id: str) -> ConversationResponse:
         # Map manually to be safe with Prisma MongoDB Json fields
@@ -168,7 +180,7 @@ class MessagingService:
             members.append(ConversationMember(
                 user_id=m.get("user_id") or m.get("userId"),
                 role=m.get("role", "member"),
-                last_read_at=m.get("last_read_at")
+                last_read_at=m.get("last_read_at") or m.get("lastReadAt")
             ))
 
         res = ConversationResponse(

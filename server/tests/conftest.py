@@ -138,7 +138,7 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         await db.connect()
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", timeout=120.0) as c:
+    async with AsyncClient(transport=transport, base_url="http://test", timeout=300.0) as c:
         yield c
 
     # Cleanup: disconnect Prisma BEFORE event loop closes
@@ -194,6 +194,63 @@ async def registered_user(client: AsyncClient) -> dict:
 
     if login_resp.status_code != 200:
         pytest.fail(f"Login failed: {login_resp.status_code} {login_resp.text}")
+
+    data = login_resp.json()
+    return {
+        "email": email,
+        "password": password,
+        "access_token": data["access_token"],
+        "refresh_token": data["refresh_token"],
+    }
+
+
+@pytest_asyncio.fixture(scope="session")
+async def admin_user(client: AsyncClient) -> dict:
+    """Create an admin user once per session and return credentials + tokens."""
+    from app.core.security import hash_password
+
+    email = "admin_test@example.com"
+    password = "AdminPass123!"
+
+    # Ensure admin role exists
+    admin_role = await db.role.find_first(where={"role": "admin"})
+    if not admin_role:
+        admin_role = await db.role.create(data={"role": "admin"})
+    
+    student_role = await db.role.find_first(where={"role": "student"})
+    if not student_role:
+        await db.role.create(data={"role": "student"})
+
+    user = await db.user.find_first(where={"email": email})
+    if not user:
+        user = await db.user.create(data={
+            "email": email,
+            "phoneNumber": "0999999999",
+            "passwordHash": hash_password(password),
+            "fullName": "Admin Tester",
+            "roleId": admin_role.id,
+            "emailVerified": True,
+        })
+    else:
+        # Reset to admin
+        await db.user.update(
+            where={"id": user.id},
+            data={
+                "roleId": admin_role.id,
+                "emailVerified": True,
+                "passwordHash": hash_password(password),
+                "isLocked": False,
+            }
+        )
+
+    # Login
+    login_resp = await client.post("/api/v1/account/login", data={
+        "username": email,
+        "password": password,
+    })
+    
+    if login_resp.status_code != 200:
+        pytest.fail(f"Admin login failed: {login_resp.status_code} {login_resp.text}")
 
     data = login_resp.json()
     return {

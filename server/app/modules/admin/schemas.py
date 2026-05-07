@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 
-# --- Statistics ---
+# --- Thống kê ---
 class AdminStatsOverview(BaseModel):
     total_users: int
     total_posts: int
@@ -11,7 +11,7 @@ class AdminStatsOverview(BaseModel):
     total_revenue: float
     total_banned_users: int
 
-# --- User Management ---
+# --- Quản lý người dùng ---
 class AdminUserResponse(BaseModel):
     id: str
     email: str
@@ -33,7 +33,7 @@ class LockAccountRequest(BaseModel):
 class UpdateUserRoleRequest(BaseModel):
     role: str # 'student' | 'admin'
 
-# --- Report Management ---
+# --- Quản lý báo cáo ---
 class AdminReportResponse(BaseModel):
     id: str
     reporter_id: str
@@ -60,7 +60,7 @@ class ResolveReportRequest(BaseModel):
     action: str # 'hide_content' | 'lock_account' | 'dismiss'
     note: Optional[str] = None
 
-# --- Audit Logs ---
+# --- Nhật ký hệ thống ---
 class AuditLogResponse(BaseModel):
     id: str
     user_id: Optional[str] = None
