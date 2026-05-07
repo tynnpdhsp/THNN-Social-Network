@@ -1,7 +1,7 @@
 from typing import Annotated
 
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends # type: ignore
+from fastapi.security import OAuth2PasswordBearer # type: ignore
 
 from prisma import Prisma
 
@@ -15,6 +15,12 @@ from app.modules.notification.repository import NotificationRepository
 from app.modules.notification.service import NotificationService
 from app.modules.admin.repository import AdminRepository
 from app.modules.admin.service import AdminService
+from app.modules.shop.repository import ShopRepository
+from app.modules.shop.service import ShopService
+from app.modules.documents.repository import DocumentRepository
+from app.modules.documents.service import DocumentService
+from app.modules.schedule.service import ScheduleService
+from app.modules.schedule.repository import ScheduleRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login", auto_error=False)
@@ -147,3 +153,27 @@ async def require_admin(
         return user_id
         
     raise ForbiddenException("Admin privileges required", "ADMIN_REQUIRED")
+    return SocialService(repo)
+
+# --- Shop ---
+def get_shop_repo(db: Prisma = Depends(get_db)) -> ShopRepository:
+    return ShopRepository(db)
+
+def get_shop_service(
+    repo: ShopRepository = Depends(get_shop_repo),
+) -> ShopService:
+    return ShopService(repo)
+
+# --- document ----
+def get_document_repo(db: Prisma=Depends(get_db)) -> DocumentRepository:
+    return DocumentRepository(db)
+
+def get_document_service(repo: DocumentRepository=Depends(get_document_repo)) -> DocumentService:
+    return DocumentService(repo)
+
+# --- schedule ----
+def get_schedule_repo(db: Prisma=Depends(get_db)) -> ScheduleRepository:
+    return ScheduleRepository(db)
+
+def get_schedule_service(repo: ScheduleService=Depends(get_schedule_repo)) -> ScheduleService:
+    return ScheduleService(repo)

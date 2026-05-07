@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prisma import Prisma
+from prisma import Prisma 
 
 from app.core.config import get_settings
 from app.core.redis import close_redis
@@ -13,6 +13,9 @@ from app.modules.notification.router import router as notification_router
 from app.modules.messaging.router import router as messaging_router
 from app.modules.admin.router import router as admin_router
 from app.modules.messaging.ws_manager import manager
+from app.modules.shop.router import router as shop_router
+from app.modules.documents.router import router as documents_router
+from app.modules.schedule.router import router as schedule_router
 from app.core.dependencies import db
 import asyncio
 
@@ -57,7 +60,10 @@ app.include_router(board_router, prefix=settings.API_V1_PREFIX)
 app.include_router(notification_router, prefix=settings.API_V1_PREFIX)
 app.include_router(messaging_router, prefix=settings.API_V1_PREFIX)
 app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
-
+#=====================================================================#
+app.include_router(shop_router, prefix=settings.API_V1_PREFIX)
+app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
+app.include_router(schedule_router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/health")
 async def health_check():
