@@ -61,6 +61,3 @@ server/debug_api.log
 dump.rdb
 run_all.bat
 server/scratch/
-
-gitignore
-docker-compose.yml
