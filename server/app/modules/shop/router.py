@@ -13,7 +13,7 @@ from app.modules.shop.schemas import (
     VNPayCreatePaymentRequest, VNPayPaymentResponse, VNPayCallbackRequest,
     ReviewCreate, ReviewResponse, ReviewListResponse,
     CartItemCreate, CartItemResponse, CartResponse,
-    MessageResponse, PaginatedParams,
+    MessageResponse, PaginatedParams, VNPayCallbackResponse
 )
 
 router = APIRouter(prefix="/shop", tags=["Shop"])
@@ -252,7 +252,7 @@ async def create_vnpay_payment(
     """Create VNPay payment URL"""
     return await svc.create_vnpay_payment(data, user_id)
 
-@router.get("/vnpay/callback", response_model=MessageResponse)
+@router.get("/vnpay/callback", response_model=VNPayCallbackResponse)
 async def vnpay_callback(
     vnp_TxnRef: str = Query(..., description="VNPay Transaction Reference"),
     vnp_ResponseCode: str = Query(..., description="VNPay Response Code"),
@@ -265,8 +265,8 @@ async def vnpay_callback(
         vnp_ResponseCode=vnp_ResponseCode,
         vnp_TransactionStatus=vnp_TransactionStatus
     )
-    message = await svc.handle_vnpay_callback(data)
-    return MessageResponse(message=message)
+    result = await svc.handle_vnpay_callback(data)
+    return VNPayCallbackResponse(**result)
 #endregion
 
 # region---- Cart Endpoints ----

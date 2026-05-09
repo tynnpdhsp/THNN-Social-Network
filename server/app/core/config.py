@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     MAX_COVER_SIZE_MB: int = 10
     MAX_BIO_LENGTH: int = 500
 
+    VNPAY_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+    VNPAY_TMN_CODE: str = ""
+    VNPAY_RETURN_URL: str = "http://localhost:8000/api/v1/shop/vnpay/callback"
+    VNPAY_HASH_SECRET: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
     @model_validator(mode="after")

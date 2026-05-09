@@ -1,3 +1,8 @@
+import datetime
+import hashlib
+import hmac
+import urllib
+
 from app.modules.shop.schemas import (
     CategoryCreate, CategoryResponse, CategoryUpdate,
     ItemCreate, ItemUpdate, ItemResponse, ItemListResponse, ItemListQuery, ItemPaginationRequest,
@@ -9,23 +14,20 @@ from app.modules.shop.schemas import (
     MessageResponse, PaginatedParams,
     UserInfoEmbed
 )
-import hashlib
 import logging
-from datetime import datetime, timezone
-from typing import Optional
-from fastapi import UploadFile
 
 from app.core.exceptions import (
     BadRequestException,
     ConflictException,
     ForbiddenException,
     NotFoundException,
-    UnauthorizedException,
 )
 from app.modules.shop.repository import ShopRepository
 from prisma.models import ShopItem, User # type: ignore
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 class ShopService:
     def __init__(self, repo: ShopRepository):
@@ -309,6 +311,79 @@ class ShopService:
             skip=skip,
             limit=limit
         )
+    # endregion
+
+    # region ---- VNPay Payment ----
+    async def create_vnpay_payment(self, data: VNPayCreatePaymentRequest, user_id: str) -> VNPayPaymentResponse:
+        """Create VNPay payment URL"""
+        order = await self.repo.get_order_by_id(data.order_id)
+        if not order:
+            raise NotFoundException("Order not found", "ORDER_NOT_FOUND")
+
+        now = datetime.now()
+        create_date = now.strftime("%Y%m%d%H%M%S")
+        expire_date = (now + datetime.timedelta(minutes=15)).strftime("%Y%m%d%H%M%S") # hết hạn sau 15 phút
+        amount = int(order.amount * 100)
+
+        vnp_params = {
+            "vnp_Version": "2.1.0",
+            "vnp_Command": "pay",
+            "vnp_TmnCode": settings.VNPAY_TMN_CODE, # mã merchant do VNPay cấp
+            "vnp_Amount": amount,
+            "vnp_CreateDate": create_date,
+            "vnp_CurrCode": "VND",
+            "vnp_IpAddr": data.ip_addr, # IP thật từ request
+            "vnp_Locale": "vn",
+            "vnp_OrderInfo": f"Thanh toan don hang {order.id}",
+            "vnp_OrderType": data.order_type,
+            "vnp_ReturnUrl": settings.VNPAY_RETURN_URL, # callback url public domain
+            "vnp_ExpireDate": expire_date,
+            "vnp_TxnRef": order.vnpayTxnRef,
+        }
+        sorted_params = sorted(vnp_params.items())
+        hash_data = urllib.parse.urlencode(sorted_params)
+        secure_hash = hmac.new(
+            settings.VNPAY_HASH_SECRET.encode("utf-8"),
+            hash_data.encode("utf-8"),
+            hashlib.sha512
+        ).hexdigest()
+        payment_url = (
+            f"{settings.VNPAY_URL}?"
+            f"{hash_data}"
+            f"&vnp_SecureHash={secure_hash}"
+        )
+        return payment_url
+
+    async def handle_vnpay_callback(self, data: VNPayCallbackRequest) -> dict:
+        """Handle VNPay payment callback"""
+        order = await self.repo.get_order_by_vnpay_ref(data.vnp_TxnRef)
+        if not order:
+            raise NotFoundException("Order not found", "ORDER_NOT_FOUND")
+        
+        # Check if payment is successful
+        if data.vnp_ResponseCode == "00" and data.vnp_TransactionStatus == "00":
+            # Payment successful - update order status
+            update_data = {
+                "status": "paid",
+                "vnpayResponseCode": data.vnp_ResponseCode,
+                "paidAt": datetime.now()
+            }
+        else:
+            # Payment failed - update order status
+            update_data = {
+                "status": "failed",
+                "vnpayResponseCode": data.vnp_ResponseCode
+            }
+        
+        # Update order with payment result
+        updated_order = await self.repo.update_order(order.id, update_data)
+        
+        return {
+            "success": data.vnp_ResponseCode == "00" and data.vnp_TransactionStatus == "00",
+            "order_id": updated_order.id,
+            "status": updated_order.status,
+            "response_code": data.vnp_ResponseCode
+        }
     # endregion
 
 # region ---- Helper ----

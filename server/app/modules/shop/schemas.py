@@ -145,8 +145,8 @@ class OrderListResponse(BaseModel):
 # region ---- Payment ----
 class VNPayCreatePaymentRequest(BaseModel):
     order_id: str
-    amount: float
-    return_url: str
+    ip_addr: str
+    order_type: str = Field(default="other", pattern="^(other|billpayment|wallet|card|paycard)$")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -160,6 +160,14 @@ class VNPayCallbackRequest(BaseModel):
     vnp_TxnRef: str
     vnp_ResponseCode: str
     vnp_TransactionStatus: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class VNPayCallbackResponse(BaseModel):
+    success: bool
+    order_id: str
+    status: str
+    response_code: str
 
     model_config = ConfigDict(from_attributes=True)
 #endregion

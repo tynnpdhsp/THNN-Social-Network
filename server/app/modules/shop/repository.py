@@ -222,12 +222,14 @@ class ShopRepository:
         return await self.db.order.count(where={"sellerId": seller_id})
 
     async def create_order(self, data: OrderCreate, user_id: str, seller_id: str) -> Order:
+        import uuid
         return await self.db.order.create(
             data={
                 "buyerId": user_id,
                 "sellerId": seller_id,
                 "itemId": data.item_id,
                 "paymentMethod": data.payment_method,
+                "vnpayTxnRef": uuid.uuid4().hex[:12].upper(),
                 "amount": data.amount,
                 "status": "pending"
             },
