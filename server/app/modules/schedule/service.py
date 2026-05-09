@@ -2,7 +2,7 @@ from app.modules.schedule.repository import ScheduleRepository
 from app.modules.schedule.schema import (
     ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleListQuery, ScheduleListResponse,
     ScheduleEntryCreate, ScheduleEntryUpdate, ScheduleEntryResponse, ScheduleEntryListQuery, ScheduleEntryListResponse,
-    CourseSectionCreate, CourseSectionResponse, CourseSectionListQuery, CourseSectionListResponse,
+    CourseSectionCreate, CourseSectionResponse, CourseSectionUpdate, CourseSectionListResponse,
     StudyNoteCreate, StudyNoteUpdate, StudyNoteResponse, StudyNoteListQuery, StudyNoteListResponse
 )
 from app.core.exceptions import ConflictException, NotFoundException, ForbiddenException
@@ -242,7 +242,72 @@ class ScheduleService:
     # endregion
 
     # region---- Course Section ----
+    async def create_course_section(self, data: CourseSectionCreate, user_id: str) -> CourseSectionResponse:
+        """Create a new course section"""
+        section_data = {
+            "userId": user_id,
+            "courseCode": data.course_code,
+            "courseName": data.course_name,
+            "sectionCode": data.section_code,
+            "instructor": data.instructor,
+            "dayOfWeek": data.day_of_week,
+            "startTime": data.start_time,
+            "endTime": data.end_time,
+            "room": data.room,
+            "semester": data.semester
+        }
+        
+        section = await self.repo.create_course_section(section_data)
+        return self._map_course_section_to_response(section)
     
+    async def get_all_course_sections(self, user_id: str, skip: int, limit: int, semester: str = None) -> list[CourseSectionResponse]:
+        """Get all course sections for a user"""
+        sections = await self.repo.get_course_sections(skip, limit, user_id, semester)
+        total = await self.repo.count_course_sections(user_id, semester)
+        return CourseSectionListResponse(
+            items=[self._map_course_section_to_response(section) for section in sections], 
+            total=total, 
+            skip=skip, 
+            limit=limit
+        )
+
+    async def update_course_section(self, section_id: str, data: CourseSectionUpdate, user_id: str) -> CourseSectionResponse:
+        """Update a course section"""
+        section = await self.repo.get_course_section_by_id(section_id)
+        if not section:
+            raise NotFoundException("Course section not found", "COURSE_SECTION_NOT_FOUND")
+        
+        if section.userId != user_id:
+            raise ForbiddenException("Access denied", "ACCESS_DENIED")
+        
+        update_data = {
+            "courseCode": data.course_code,
+            "courseName": data.course_name,
+            "sectionCode": data.section_code,
+            "instructor": data.instructor,
+            "dayOfWeek": data.day_of_week,
+            "startTime": data.start_time,
+            "endTime": data.end_time,
+            "room": data.room,
+            "semester": data.semester
+        }
+        
+        updated_section = await self.repo.update_course_section(section_id, update_data)
+        return self._map_course_section_to_response(updated_section)
+
+    async def delete_course_section(self, course_id: str, user_id: str) -> None:
+        """Delete a course section"""
+        course = await self.repo.get_course_section_by_id(course_id)
+
+        if not course:
+            raise NotFoundException("Course section not found", "COURSE_SECTION_NOT_FOUND")
+        
+        if course.userId != user_id:
+            raise ForbiddenException("You don't have permission to delete this course section", "ACCESS_DENIED")
+
+        result = await self.repo.delete_course_section(course_id)
+        return self._map_course_section_to_response(result)
+
     # endregion
 
     # region---- Study Note ----

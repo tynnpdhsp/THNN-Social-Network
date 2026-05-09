@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Query, UploadFile, File, Depends # type: ignore
 from app.modules.schedule.schema import (
-    ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleListQuery, ScheduleListResponse,
+    CourseSectionResponse, CourseSectionUpdate, ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleListQuery, ScheduleListResponse,
     ScheduleEntryCreate, ScheduleEntryUpdate, ScheduleEntryResponse, ScheduleEntryListQuery, ScheduleEntryListResponse,
-    StudyNoteCreate, StudyNoteUpdate, StudyNoteResponse, StudyNoteListQuery, StudyNoteListResponse
+    StudyNoteCreate, StudyNoteUpdate, StudyNoteResponse, StudyNoteListQuery, StudyNoteListResponse, CourseSectionCreate
 )
 from app.modules.schedule.service import ScheduleService
 from app.core.dependencies import Depends, get_schedule_service, require_active_user
@@ -37,7 +37,7 @@ async def get_schedules(
     
     return await svc.get_schedules(query, user_id)
 
-@router.get("/{schedule_id}", response_model=ScheduleResponse)
+@router.get("/detail/{schedule_id}", response_model=ScheduleResponse)
 async def get_schedule_by_id(
     schedule_id: str,
     user_id = Depends(require_active_user),
@@ -150,20 +150,46 @@ async def get_entries_by_schedule(
 
 # endregion
 
-# region------------- Course Section Import --------------------------
+# region------------- Course Section --------------------------
 
-@router.post("/import-course-sections")
+@router.post("/course-sections")
 async def import_course_sections(
-    file: UploadFile = File(...),
+    data: CourseSectionCreate,
     user_id = Depends(require_active_user),
     svc: ScheduleService = Depends(get_schedule_service)
 ):
-    """Import course sections from file"""
-    # TODO: Implement file processing logic
-    # 1. Read and parse file
-    # 2. Delete old course sections
-    # 4. Rollback on failure
-    pass
+    """Create course sections"""
+    return await svc.create_course_section(data, user_id)
+
+@router.get("/course-sections")
+async def get_all_course_sections(
+    skip: int = 0,
+    limit: int = 100,
+    semester: str = None,
+    user_id = Depends(require_active_user),
+    svc: ScheduleService = Depends(get_schedule_service)
+):
+    """Get all course sections"""
+    return await svc.get_all_course_sections(user_id, skip, limit, semester)
+
+@router.put("/course-sections/{section_id}", response_model=CourseSectionResponse)
+async def update_course_section(
+    section_id: str,
+    data: CourseSectionUpdate,
+    user_id = Depends(require_active_user),
+    svc: ScheduleService = Depends(get_schedule_service)
+):
+    """Update course section by ID"""
+    return await svc.update_course_section(section_id, data, user_id)
+
+@router.delete("/course-sections/{section_id}", response_model=CourseSectionResponse)
+async def delete_course_section(
+    section_id: str,
+    user_id = Depends(require_active_user),
+    svc: ScheduleService = Depends(get_schedule_service)
+):
+    """Delete course section by ID"""
+    return await svc.delete_course_section(section_id, user_id)
 
 # endregion
 

@@ -1,7 +1,7 @@
 from prisma import Prisma
 from prisma.models import Schedule, ScheduleEntry, CourseSection, StudyNote, User # type: ignore
 from app.modules.schedule.schema import (
-    ScheduleCreate, ScheduleEntryCreate, CourseSectionCreate, StudyNoteCreate
+    CourseSectionListResponse, ScheduleCreate, ScheduleEntryCreate, CourseSectionCreate, StudyNoteCreate
 )
 from datetime import datetime
 
@@ -157,12 +157,14 @@ class ScheduleRepository:
         if semester:
             where_conditions["semester"] = semester
         
-        return await self.db.coursesection.find_many(
+        items = await self.db.coursesection.find_many(
             where=where_conditions,
             skip=skip,
             take=limit,
             order={"createdAt": "desc"}
         )
+        
+        return items
     
     async def count_course_sections(self, user_id: str = None, semester: str = None) -> int:
         """Count course sections with filtering"""
@@ -183,6 +185,10 @@ class ScheduleRepository:
     async def delete_course_section(self, section_id: str) -> CourseSection:
         """Delete course section by ID"""
         return await self.db.coursesection.delete(where={"id": section_id})
+
+    async def update_course_section(self, section_id: str, data: dict) -> CourseSection:
+        """Update course section by ID"""
+        return await self.db.coursesection.update(where={"id": section_id}, data=data)
     
     # endregion
 

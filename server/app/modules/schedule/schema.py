@@ -127,6 +127,19 @@ class CourseSectionListResponse(BaseModel):
     limit: int
 
     model_config = ConfigDict(from_attributes=True)
+
+class CourseSectionUpdate(CourseSectionCreate):
+    course_code: Optional[str] = Field(None, min_length=1, max_length=20)
+    course_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    section_code: Optional[str] = Field(None, max_length=20)
+    instructor: Optional[str] = Field(None, max_length=100)
+    day_of_week: Optional[int] = Field(None, ge=1, le=7, description="Day of week (1-7)")
+    start_time: Optional[str] = Field(None, description="Start time in HH:mm format")
+    end_time: Optional[str] = Field(None, description="End time in HH:mm format")
+    room: Optional[str] = Field(None, max_length=100)
+    semester: Optional[str] = Field(None, max_length=50)
+    
+    model_config = ConfigDict(from_attributes=True)
 # endregion
 
 # region --------- Study Note -------------
