@@ -31,7 +31,7 @@ class DocumentRepository:
         return await self.db.documentcategory.delete(where={"id": category_id})
     # endregion
     
-    # --- Documents -----
+    # region --- Documents -----
     async def create_document(self, data: dict) -> Document:
         return await self.db.document.create(data=data)
     

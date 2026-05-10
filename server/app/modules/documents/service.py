@@ -3,7 +3,7 @@ from app.modules.documents.schema import (
     DocumentCategoryResponse, DocumentCategoryRequest, DocumentCreate, DocumentUpdate, DocumentResponse, DocumentListQuery, DocumentListResponse,
     UserInfoEmbed, DocumentPaginationRequest, ReviewCreate, ReviewResponse, ReviewListResponse)
 from app.core.exceptions import ConflictException, NotFoundException, ForbiddenException
-from prisma.models import Document, User # type: ignore
+from prisma.models import Document # type: ignore
 import os
 
 class DocumentService:
@@ -214,13 +214,6 @@ class DocumentService:
         review, rating_data = await self.repo.create_review_with_transaction(
             document_id, user_id, user_info, data.rating, data.comment
         )
-        
-        # Invalidate cache
-        # try:
-        #     from app.utils.cache import invalidate_document_cache
-        #     await invalidate_document_cache(document_id)
-        # except Exception as e:
-        #     print(f"Failed to invalidate cache for document {document_id}: {e}")
         
         return self._map_review_to_response(review)
     

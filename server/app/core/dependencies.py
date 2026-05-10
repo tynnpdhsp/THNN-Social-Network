@@ -21,6 +21,8 @@ from app.modules.documents.repository import DocumentRepository
 from app.modules.documents.service import DocumentService
 from app.modules.schedule.service import ScheduleService
 from app.modules.schedule.repository import ScheduleRepository
+from app.modules.place.repository import PlaceRepository
+from app.modules.place.service import PlaceService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/account/login", auto_error=False)
@@ -175,5 +177,12 @@ def get_document_service(repo: DocumentRepository=Depends(get_document_repo)) ->
 def get_schedule_repo(db: Prisma=Depends(get_db)) -> ScheduleRepository:
     return ScheduleRepository(db)
 
-def get_schedule_service(repo: ScheduleService=Depends(get_schedule_repo)) -> ScheduleService:
+def get_schedule_service(repo: ScheduleRepository=Depends(get_schedule_repo)) -> ScheduleService:
     return ScheduleService(repo)
+
+# --- place ----
+def get_place_repo(db: Prisma=Depends(get_db)) -> PlaceRepository:
+    return PlaceRepository(db)
+
+def get_place_service(repo: PlaceRepository=Depends(get_place_repo)) -> PlaceService:
+    return PlaceService(repo)

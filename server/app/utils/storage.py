@@ -113,6 +113,36 @@ async def upload_files(files: list[tuple[bytes, str]], prefix: str) -> list[str]
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _sync_upload_multiple)
 
+async def delete_file(file_url: str) -> bool:
+    """Delete a file from MinIO storage
+    
+    Args:
+        file_url: The file URL in format /bucket/object_name or object_name
+        
+    Returns:
+        bool: True if deletion successful, False otherwise
+    """
+    client = get_minio_client()
+    
+    def _sync_delete():
+        try:
+            # Extract object name from URL
+            if file_url.startswith(f"/{settings.MINIO_BUCKET}/"):
+                object_name = file_url[len(f"/{settings.MINIO_BUCKET}/"):]
+            else:
+                object_name = file_url
+            
+            # Remove the object
+            client.remove_object(settings.MINIO_BUCKET, object_name)
+            return True
+        except S3Error:
+            return False
+    
+    # Run synchronous MinIO operations in thread pool
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _sync_delete)
+
+
 def _guess_content_type(ext: str) -> str:
     types = {
         "jpg": "image/jpeg",
