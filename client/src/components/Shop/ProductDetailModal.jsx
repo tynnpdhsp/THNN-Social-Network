@@ -1,14 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Star, ShoppingCart, MessageSquare, Send, User } from 'lucide-react';
+import * as shopService from '../../services/shopService';
 
-const ProductDetailModal = ({ isOpen, onClose, product }) => {
+const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
-  
-  const mockComments = [
-    { id: 1, user: 'Nguyễn Văn A', rating: 5, content: 'Sản phẩm rất tốt, giao hàng nhanh!', date: '2 ngày trước' },
-    { id: 2, user: 'Trần Thị B', rating: 4, content: 'Chất lượng ổn, đúng như mô tả.', date: '5 ngày trước' },
-  ];
+  const [reviews, setReviews] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && product?.id) {
+      fetchReviews();
+    }
+  }, [isOpen, product?.id]);
+
+  const fetchReviews = async () => {
+    try {
+      const res = await shopService.getReviews(product.id);
+      setReviews(res.items || []);
+    } catch (error) {
+      console.error("Lỗi khi tải nhận xét:", error);
+    }
+  };
+
+  const handleReviewSubmit = async () => {
+    if (!comment.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await shopService.createReview(product.id, {
+        rating: rating,
+        comment: comment
+      });
+      setComment('');
+      setRating(5);
+      fetchReviews();
+      alert("Cảm ơn bạn đã đánh giá!");
+    } catch (error) {
+      if (error.message.includes("MUST_PURCHASE_FIRST") || error.message.includes("purchase")) {
+        alert("Bạn phải mua và thanh toán sản phẩm này mới có thể đánh giá!");
+      } else {
+        alert("Lỗi đăng nhận xét: " + error.message);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -45,7 +81,7 @@ const ProductDetailModal = ({ isOpen, onClose, product }) => {
         {/* Left: Image Area */}
         <div style={{ flex: 1, background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img 
-            src={product.image} 
+            src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} 
             alt={product.title} 
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
           />
@@ -56,7 +92,7 @@ const ProductDetailModal = ({ isOpen, onClose, product }) => {
           <div style={{ padding: '32px', overflowY: 'auto', flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                <div>
-                 <span className="caption-sm" style={{ textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 700 }}>{product.category === 'docs' ? 'Tài liệu' : product.category === 'books' ? 'Giáo trình' : 'Vật dụng'}</span>
+                 <span className="caption-sm" style={{ textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 700 }}>{product.category?.name || 'Vật dụng'}</span>
                  <h2 className="heading-xl" style={{ marginTop: 4 }}>{product.title}</h2>
                </div>
             </div>
@@ -64,11 +100,11 @@ const ProductDetailModal = ({ isOpen, onClose, product }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
               <div style={{ display: 'flex', color: '#ffc107' }}>
                 {[1, 2, 3, 4, 5].map(i => (
-                  <Star key={i} size={18} fill={i <= Math.round(product.rating) ? "#ffc107" : "none"} stroke={i <= Math.round(product.rating) ? "#ffc107" : "#ccc"} />
+                  <Star key={i} size={18} fill={i <= Math.round(product.avg_rating || 0) ? "#ffc107" : "none"} stroke={i <= Math.round(product.avg_rating || 0) ? "#ffc107" : "#ccc"} />
                 ))}
               </div>
-              <span style={{ fontWeight: 700, fontSize: 18 }}>{product.rating}</span>
-              <span style={{ color: 'var(--mute)' }}>({product.reviews} nhận xét)</span>
+              <span style={{ fontWeight: 700, fontSize: 18 }}>{product.avg_rating || 0}</span>
+              <span style={{ color: 'var(--mute)' }}>({product.rating_count || 0} nhận xét)</span>
             </div>
 
             <p className="heading-xl" style={{ color: 'var(--primary)', marginBottom: 24 }}>
@@ -80,8 +116,12 @@ const ProductDetailModal = ({ isOpen, onClose, product }) => {
               <p className="body-md" style={{ color: 'var(--body)', opacity: 0.8 }}>{product.description}</p>
             </div>
 
-            <button className="btn-primary" style={{ width: '100%', height: 56, fontSize: 18, marginBottom: 32 }}>
-              <ShoppingCart size={20} /> Thêm vào giỏ hàng
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', height: 56, fontSize: 18, marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              onClick={() => onBuyNow(product)}
+            >
+              <ShoppingCart size={20} /> Mua ngay
             </button>
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--hairline)', marginBottom: 32 }} />
@@ -93,23 +133,31 @@ const ProductDetailModal = ({ isOpen, onClose, product }) => {
               </h3>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {mockComments.map(c => (
-                  <div key={c.id} style={{ display: 'flex', gap: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <User size={20} color="var(--mute)" />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontWeight: 700, fontSize: 14 }}>{c.user}</span>
-                        <span className="caption-sm">{c.date}</span>
+                {reviews.length === 0 ? (
+                  <p style={{ color: 'var(--mute)' }}>Chưa có nhận xét nào.</p>
+                ) : (
+                  reviews.map(c => (
+                    <div key={c.id} style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {c.user_info?.avatar_url ? (
+                          <img src={c.user_info.avatar_url} alt={c.user_info.full_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <User size={20} color="var(--mute)" />
+                        )}
                       </div>
-                      <div style={{ display: 'flex', color: '#ffc107', marginBottom: 4 }}>
-                        {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} fill={i <= c.rating ? "#ffc107" : "none"} stroke={i <= c.rating ? "#ffc107" : "#ccc"} />)}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontWeight: 700, fontSize: 14 }}>{c.user_info?.full_name || 'Khách'}</span>
+                          <span className="caption-sm">{new Date(c.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', color: '#ffc107', marginBottom: 4 }}>
+                          {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} fill={i <= c.rating ? "#ffc107" : "none"} stroke={i <= c.rating ? "#ffc107" : "#ccc"} />)}
+                        </div>
+                        <p style={{ fontSize: 14 }}>{c.comment}</p>
                       </div>
-                      <p style={{ fontSize: 14 }}>{c.content}</p>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -140,12 +188,16 @@ const ProductDetailModal = ({ isOpen, onClose, product }) => {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
               />
-              <button style={{ 
-                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '50%',
-                width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer'
-              }}>
+              <button 
+                style={{ 
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: isSubmitting || !comment.trim() ? 'var(--ash)' : 'var(--primary)', color: 'white', border: 'none', borderRadius: '50%',
+                  width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: isSubmitting || !comment.trim() ? 'not-allowed' : 'pointer'
+                }}
+                onClick={handleReviewSubmit}
+                disabled={isSubmitting || !comment.trim()}
+              >
                 <Send size={18} />
               </button>
             </div>

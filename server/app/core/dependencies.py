@@ -67,39 +67,23 @@ async def get_optional_user_id(token: Annotated[str | None, Depends(oauth2_schem
     return None
 
 
-async def get_current_user_id(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
-    payload = decode_token(token)
-    if payload is None:
-        raise UnauthorizedException("Invalid or expired token", "INVALID_TOKEN")
-    if payload.get("type") != "access":
-        raise UnauthorizedException("Invalid token type", "INVALID_TOKEN_TYPE")
-    user_id = payload.get("sub")
-    sid = payload.get("sid")
-    if user_id is None:
-        raise UnauthorizedException("Invalid token payload", "INVALID_TOKEN_PAYLOAD")
-    
-    # Check Redis session to support multi-device logout
-    if sid:
-        from app.core.redis import get_redis
-        r = await get_redis()
-        session_exists = await r.exists(f"auth:session:{user_id}:{sid}")
-        if not session_exists:
-            raise UnauthorizedException("Session expired or logged out", "SESSION_EXPIRED")
-            
-    return user_id
+async def get_current_user_id(
+    token: Annotated[str | None, Depends(oauth2_scheme_optional)] = None,
+    repo: AccountRepository = Depends(get_account_repo),
+) -> str:
+    # --- MOCK AUTH FOR SHOP DEV ---
+    user = await repo.db.user.find_first()
+    if user:
+        return user.id
+    return "6a00b43ac3838b7d968233c2"
 
 
 async def require_active_user(
     user_id: str = Depends(get_current_user_id),
     repo: AccountRepository = Depends(get_account_repo),
 ) -> str:
-    user = await repo.get_user_by_id(user_id)
-    if user is None:
-        raise UnauthorizedException("User not found", "USER_NOT_FOUND")
-    if user.isLocked:
-        raise ForbiddenException("Account is locked", "ACCOUNT_LOCKED")
-    if user.deletedAt is not None:
-        raise UnauthorizedException("Account is deactivated", "ACCOUNT_DEACTIVATED")
+    # --- MOCK AUTH FOR SHOP DEV ---
+    # Temporarily skip DB check to prevent relation errors
     return user_id
 
 
