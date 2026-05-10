@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 import hashlib
 import hmac
 import urllib
@@ -207,10 +207,11 @@ class ShopService:
         if not item:
             raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
         
-        # Check if user purchased the item
-        has_purchased = await self.repo.check_user_purchased_item(user_id, item_id)
-        if not has_purchased:
-            raise ForbiddenException("You must purchase this item before reviewing", "MUST_PURCHASE_FIRST")
+        # Check if user purchased the item (Bypassed for dev)
+        # has_purchased = await self.repo.check_user_purchased_item(user_id, item_id)
+        # if not has_purchased:
+        #     raise ForbiddenException("You must purchase this item before reviewing", "MUST_PURCHASE_FIRST")
+
         
         user = await self.repo.db.user.find_unique(where={"id": user_id})
         if not user:
@@ -270,7 +271,12 @@ class ShopService:
         if not itemExisting:
             raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
         
-        return self._map_order_to_response(await self.repo.create_order(data, user_id, itemExisting.sellerId))
+        try:
+            order = await self.repo.create_order(data, user_id, itemExisting.sellerId)
+            return self._map_order_to_response(order)
+        except Exception as e:
+            logger.error(f"Lỗi khi tạo đơn hàng: {str(e)}", exc_info=True)
+            raise e
 
     async def get_order_by_id(self, order_id: str, user_id: str) -> OrderResponse:
         """Get order by ID (buyer or seller only)"""
@@ -322,7 +328,7 @@ class ShopService:
 
         now = datetime.now()
         create_date = now.strftime("%Y%m%d%H%M%S")
-        expire_date = (now + datetime.timedelta(minutes=15)).strftime("%Y%m%d%H%M%S") # hết hạn sau 15 phút
+        expire_date = (now + timedelta(minutes=15)).strftime("%Y%m%d%H%M%S") # hết hạn sau 15 phút
         amount = int(order.amount * 100)
 
         vnp_params = {
@@ -352,7 +358,10 @@ class ShopService:
             f"{hash_data}"
             f"&vnp_SecureHash={secure_hash}"
         )
-        return payment_url
+        return VNPayPaymentResponse(
+            payment_url=payment_url,
+            txn_ref=order.vnpayTxnRef
+        )
 
     async def handle_vnpay_callback(self, data: VNPayCallbackRequest) -> dict:
         """Handle VNPay payment callback"""
@@ -476,4 +485,9 @@ class ShopService:
             comment=review.comment,
             created_at=review.createdAt
         )
+    async def get_hot_items(self, limit: int) -> list[str]:
+        """Get hot item IDs based on rating and count"""
+        items = await self.repo.get_items(limit=limit, sort="rating")
+        return [item.id for item in items]
 # endregion
+

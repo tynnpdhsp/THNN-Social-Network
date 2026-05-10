@@ -2,31 +2,96 @@ import React, { useState } from 'react';
 import { Camera, DollarSign } from 'lucide-react';
 import Modal from '../Common/Modal';
 
-const AddProductModal = ({ isOpen, onClose, onAdd }) => {
+const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdit = null }) => {
   const [formData, setFormData] = useState({
     title: '',
     price: '',
-    category: 'supplies',
+    category: categories.length > 0 ? categories[0].id : '',
     description: '',
-    image: null
   });
+  const [images, setImages] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [displayPrice, setDisplayPrice] = useState('');
+  const fileInputRef = React.useRef(null);
 
-  const handleSubmit = (e) => {
+  React.useEffect(() => {
+    if (isOpen) {
+      if (productToEdit) {
+        setFormData({
+          title: productToEdit.title,
+          price: productToEdit.price,
+          category: productToEdit.category_id || '',
+          description: productToEdit.description,
+        });
+        setDisplayPrice(productToEdit.price?.toLocaleString() || '');
+      } else {
+        setFormData({
+          title: '',
+          price: '',
+          category: categories.length > 0 ? categories[0].id : '',
+          description: '',
+        });
+        setDisplayPrice('');
+      }
+      setImages([]);
+    }
+  }, [isOpen, productToEdit, categories]);
+
+  const handlePriceChange = (e) => {
+    const rawValue = e.target.value.replace(/,/g, '');
+    if (!isNaN(rawValue) || rawValue === '') {
+      setFormData({ ...formData, price: rawValue });
+      setDisplayPrice(rawValue ? Number(rawValue).toLocaleString() : '');
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.title && formData.price) {
-      onAdd(formData);
-      onClose();
+      setIsSubmitting(true);
+      try {
+        await onAdd(formData, images);
+        setFormData({ title: '', price: '', category: categories.length > 0 ? categories[0].id : '', description: '' });
+        setImages([]);
+        onClose();
+      } catch (error) {
+        alert("Failed to add product: " + error.message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleImageChange = (e) => {
+    if (e.target.files) {
+      setImages(Array.from(e.target.files));
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Đăng bán vật phẩm mới" width={500}>
+    <Modal isOpen={isOpen} onClose={onClose} title={productToEdit ? "Cập nhật vật phẩm" : "Đăng bán vật phẩm mới"} width={500}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ border: '2px dashed var(--hairline)', padding: '40px 20px', borderRadius: 'var(--rounded-md)', textAlign: 'center', cursor: 'pointer', background: 'var(--surface-soft)' }}>
-           <Camera size={40} color="var(--ash)" style={{ marginBottom: 12 }} />
-           <p className="body-strong" style={{ color: 'var(--mute)' }}>Tải lên hình ảnh sản phẩm</p>
-           <p className="caption-sm">PNG, JPG tối đa 10MB</p>
-        </div>
+        {!productToEdit && (
+          <>
+            <div 
+              onClick={() => fileInputRef.current.click()}
+              style={{ border: '2px dashed var(--hairline)', padding: '40px 20px', borderRadius: 'var(--rounded-md)', textAlign: 'center', cursor: 'pointer', background: 'var(--surface-soft)' }}
+            >
+               <Camera size={40} color="var(--ash)" style={{ marginBottom: 12 }} />
+               <p className="body-strong" style={{ color: 'var(--mute)' }}>Tải lên hình ảnh sản phẩm</p>
+               <p className="caption-sm">PNG, JPG tối đa 10MB</p>
+               {images.length > 0 && <p style={{ color: 'var(--primary)', marginTop: 8 }}>Đã chọn {images.length} ảnh</p>}
+            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              multiple 
+              accept="image/png, image/jpeg" 
+              onChange={handleImageChange} 
+            />
+          </>
+        )}
 
         <div>
           <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Tên sản phẩm</label>
@@ -46,11 +111,11 @@ const AddProductModal = ({ isOpen, onClose, onAdd }) => {
             <div className="search-container">
               <DollarSign size={18} />
               <input 
-                type="number" 
+                type="text" 
                 placeholder="0" 
                 className="input-field search-bar"
-                value={formData.price}
-                onChange={e => setFormData({...formData, price: e.target.value})}
+                value={displayPrice}
+                onChange={handlePriceChange}
                 required
               />
             </div>
@@ -61,10 +126,11 @@ const AddProductModal = ({ isOpen, onClose, onAdd }) => {
               className="input-field"
               value={formData.category}
               onChange={e => setFormData({...formData, category: e.target.value})}
+              disabled={!!productToEdit}
             >
-              <option value="docs">Tài liệu</option>
-              <option value="books">Giáo trình</option>
-              <option value="supplies">Vật dụng</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -81,8 +147,10 @@ const AddProductModal = ({ isOpen, onClose, onAdd }) => {
         </div>
 
         <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-          <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1 }}>Hủy</button>
-          <button type="submit" className="btn-primary" style={{ flex: 1 }}>Đăng bán ngay</button>
+          <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1 }} disabled={isSubmitting}>Hủy</button>
+          <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={isSubmitting}>
+            {isSubmitting ? 'Đang xử lý...' : (productToEdit ? 'Lưu thay đổi' : 'Đăng bán ngay')}
+          </button>
         </div>
       </form>
     </Modal>
