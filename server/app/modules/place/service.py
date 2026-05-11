@@ -328,6 +328,12 @@ class PlaceService:
         if hasattr(place, "category") and place.category:
             category = PlaceCategoryResponse(id=place.category.id, name=place.category.name, icon=place.category.icon)
 
+        images = None
+        if hasattr(place, "placeImages") and place.placeImages:
+            images = [self._map_place_image_to_response(img) for img in place.placeImages]
+        elif hasattr(place, "images") and place.images:
+            images = [self._map_place_image_to_response(img) for img in place.images]
+
         return PlaceResponse(
             id=place.id,
             name=place.name,
@@ -340,7 +346,8 @@ class PlaceService:
             created_at=place.createdAt,
             updated_at=place.updatedAt,
             user_info=user_info or None,
-            category=category or None
+            category=category or None,
+            images=images
         )
 
     def _map_review_to_response(self, review) -> ReviewResponse:

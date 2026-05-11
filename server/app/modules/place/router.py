@@ -77,7 +77,7 @@ async def delete_place(
 async def get_nearby_places(
     lat: float = Query(..., description="User latitude"),
     lng: float = Query(..., description="User longitude"),
-    radius: float = Query(2.0, ge=0.1, le=50, description="Search radius in km"),
+    radius: float = Query(2.0, ge=0.1, le=2000, description="Search radius in km"),
     category_id: Optional[str] = Query(None, description="Filter by category ID"),
     svc: PlaceService = Depends(get_place_service)
 ):

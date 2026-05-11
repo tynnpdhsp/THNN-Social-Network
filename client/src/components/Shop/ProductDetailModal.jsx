@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Star, ShoppingCart, MessageSquare, Send, User } from 'lucide-react';
+import toast from 'react-hot-toast';
 import * as shopService from '../../services/shopService';
 
 const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
@@ -7,6 +8,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
   const [rating, setRating] = useState(5);
   const [reviews, setReviews] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const overlayRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && product?.id) {
@@ -34,12 +36,12 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
       setComment('');
       setRating(5);
       fetchReviews();
-      alert("Cảm ơn bạn đã đánh giá!");
+      toast.success("Cảm ơn bạn đã đánh giá!");
     } catch (error) {
       if (error.message.includes("MUST_PURCHASE_FIRST") || error.message.includes("purchase")) {
-        alert("Bạn phải mua và thanh toán sản phẩm này mới có thể đánh giá!");
+        toast.error("Bạn phải mua và thanh toán sản phẩm này mới có thể đánh giá!");
       } else {
-        alert("Lỗi đăng nhận xét: " + error.message);
+        toast.error("Lỗi đăng nhận xét: " + error.message);
       }
     } finally {
       setIsSubmitting(false);
@@ -48,24 +50,39 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
 
   if (!isOpen) return null;
 
+  const handleOverlayClick = (e) => {
+    if (e.target === overlayRef.current) {
+      onClose();
+    }
+  };
+
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 2000,
-      backdropFilter: 'blur(8px)'
-    }} onClick={onClose}>
+    <div 
+      ref={overlayRef}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        zIndex: 2000,
+        backdropFilter: 'blur(8px)',
+        overflowY: 'auto',
+        padding: '40px 20px'
+      }} 
+      onMouseDown={handleOverlayClick}
+    >
       <div style={{
         background: 'white',
         width: '900px',
-        maxWidth: '95vw',
-        height: '80vh',
+        maxWidth: '100%',
+        minHeight: '600px',
+        height: 'auto',
+        maxHeight: 'none',
         borderRadius: 'var(--rounded-lg)',
         display: 'flex',
         overflow: 'hidden',
         position: 'relative',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.3)'
+        boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+        marginBottom: '40px'
       }} onClick={e => e.stopPropagation()}>
         
         <button onClick={onClose} style={{ 
@@ -79,7 +96,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
         </button>
 
         {/* Left: Image Area */}
-        <div style={{ flex: 1, background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <img 
             src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} 
             alt={product.title} 
@@ -88,8 +105,8 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
         </div>
 
         {/* Right: Info Area */}
-        <div style={{ width: '450px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div style={{ padding: '32px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ width: '450px', display: 'flex', flexDirection: 'column', height: '100%', borderLeft: '1px solid var(--hairline)' }}>
+          <div style={{ padding: '32px', overflowY: 'auto', flex: 1, scrollbarWidth: 'thin' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                <div>
                  <span className="caption-sm" style={{ textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 700 }}>{product.category?.name || 'Vật dụng'}</span>

@@ -1,4 +1,10 @@
-from fastapi import APIRouter, Query, UploadFile, File, Depends # type: ignore
+from fastapi import APIRouter, Query, UploadFile, File, Depends, HTTPException # type: ignore
+try:
+    import pandas as pd
+    import io
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
 from app.modules.schedule.schema import (
     CourseSectionResponse, CourseSectionUpdate, ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleListQuery, ScheduleListResponse,
     ScheduleEntryCreate, ScheduleEntryUpdate, ScheduleEntryResponse, ScheduleEntryListQuery, ScheduleEntryListResponse,
@@ -152,14 +158,46 @@ async def get_entries_by_schedule(
 
 # region------------- Course Section --------------------------
 
-@router.post("/course-sections")
+@router.post("/course-sections", response_model=list[CourseSectionResponse])
 async def import_course_sections(
-    data: CourseSectionCreate,
+    data: list[CourseSectionCreate],
     user_id = Depends(require_active_user),
     svc: ScheduleService = Depends(get_schedule_service)
 ):
-    """Create course sections"""
-    return await svc.create_course_section(data, user_id)
+    """Bulk import course sections from JSON"""
+    return await svc.bulk_create_course_sections(data, user_id)
+
+@router.post("/course-sections/excel", response_model=list[CourseSectionResponse])
+async def import_course_sections_excel(
+    file: UploadFile = File(...),
+    user_id = Depends(require_active_user),
+    svc: ScheduleService = Depends(get_schedule_service)
+):
+    """Bulk import course sections from Excel"""
+    if not PANDAS_AVAILABLE:
+        raise HTTPException(status_code=501, detail="Excel import is not available. Please install pandas and openpyxl on the server.")
+    
+    content = await file.read()
+    df = pd.read_excel(io.BytesIO(content))
+    
+    # Convert dataframe to list of CourseSectionCreate
+    # Mapping columns (case insensitive search for best match)
+    data = []
+    for _, row in df.iterrows():
+        # Simple mapping, assuming columns are named correctly or similar
+        # course_code, course_name, day_of_week, start_time, end_time, room
+        data.append(CourseSectionCreate(
+            course_code=str(row.get('Mã môn', row.get('course_code', ''))),
+            course_name=str(row.get('Tên môn', row.get('course_name', ''))),
+            day_of_week=int(row.get('Thứ', row.get('day_of_week', 2))),
+            start_time=str(row.get('Bắt đầu', row.get('start_time', '07:00'))),
+            end_time=str(row.get('Kết thúc', row.get('end_time', '09:00'))),
+            room=str(row.get('Phòng', row.get('room', ''))),
+            instructor=str(row.get('Giảng viên', row.get('instructor', ''))),
+            semester=str(row.get('Học kỳ', row.get('semester', '')))
+        ))
+    
+    return await svc.bulk_create_course_sections(data, user_id)
 
 @router.get("/course-sections")
 async def get_all_course_sections(
