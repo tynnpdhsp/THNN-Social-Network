@@ -140,7 +140,8 @@ class AccountService:
                 f"Mã OTP không hợp lệ. Còn lại {remaining} lần thử.", "INVALID_OTP"
             )
 
-        await delete_cached_otp(body.email, body.purpose)
+        if body.purpose != "reset_password":
+            await delete_cached_otp(body.email, body.purpose)
         
         if body.purpose == "register":
             user = await self.repo.get_user_by_email(body.email)
@@ -343,35 +344,91 @@ class AccountService:
 
     # ─── Profile ───────────────────────────────────────────────────────────
 
-    async def search_users(self, query: str, limit: int = 10) -> list[ProfileResponse]:
+    async def search_users(self, query: str, requesting_user_id: Optional[str] = None, limit: int = 10) -> list[ProfileResponse]:
         users = await self.repo.search_users(query, limit)
-        return [
-            ProfileResponse(
+        
+        friend_ids = []
+        sent_req_ids = []
+        recv_req_ids = []
+        
+        if requesting_user_id:
+            # Get all friend-related IDs for the requesting user
+            from app.modules.social.repository import SocialRepository
+            soc_repo = SocialRepository(self.repo.db)
+            friend_ids = await soc_repo.get_friend_ids(requesting_user_id)
+            
+            # Get pending requests
+            reqs = await self.repo.db.friendship.find_many(
+                where={
+                    "OR": [
+                        {"requesterId": requesting_user_id, "status": "pending"},
+                        {"receiverId": requesting_user_id, "status": "pending"}
+                    ]
+                }
+            )
+            for r in reqs:
+                if r.requesterId == requesting_user_id:
+                    sent_req_ids.append(r.receiverId)
+                else:
+                    recv_req_ids.append(r.requesterId)
+
+        results = []
+        for u in users:
+            status = "none"
+            if u.id == requesting_user_id:
+                status = "me"
+            elif u.id in friend_ids:
+                status = "accepted"
+            elif u.id in sent_req_ids:
+                status = "pending"
+            elif u.id in recv_req_ids:
+                status = "pending_received"
+
+            results.append(ProfileResponse(
                 id=u.id,
-                email="",  # Masked for privacy
+                email="", 
                 full_name=u.fullName,
-                phone_number="",  # Masked for privacy
+                phone_number="",
                 avatar_url=u.avatarUrl,
                 cover_url=u.coverUrl,
                 email_verified=u.emailVerified,
                 role=u.roleRef.role if u.roleRef else "student",
                 created_at=u.createdAt,
-            )
-            for u in users
-        ]
+                friend_status=status
+            ))
+        return results
 
-    async def get_profile(self, user_id: str) -> ProfileResponse:
+    async def get_profile(self, user_id: str, requesting_user_id: Optional[str] = None) -> ProfileResponse:
         from app.core.cache import get_user_profile_cache, set_user_profile_cache
-        cached = await get_user_profile_cache(user_id)
-        if cached:
-            # Need to convert string dates back if necessary, but model_validate is smart
-            return ProfileResponse.model_validate(cached)
+        # Skip cache if requesting_user_id is present to avoid status leakage or stale status
+        if requesting_user_id is None:
+            cached = await get_user_profile_cache(user_id)
+            if cached:
+                return ProfileResponse.model_validate(cached)
 
         user = await self.repo.get_user_by_id(user_id)
         if user is None:
             raise NotFoundException("Không tìm thấy người dùng", "USER_NOT_FOUND")
 
         role = await self.repo.db.role.find_unique(where={"id": user.roleId})
+        
+        friend_status = "none"
+        if requesting_user_id and requesting_user_id != user_id:
+            # Check both directions
+            f = await self.repo.db.friendship.find_first(
+                where={
+                    "OR": [
+                        {"requesterId": requesting_user_id, "receiverId": user_id},
+                        {"requesterId": user_id, "receiverId": requesting_user_id}
+                    ]
+                }
+            )
+            if f:
+                friend_status = f.status
+                # If I am the receiver and it's pending, distinguish it? 
+                # For now just return status. UI can decide.
+                if f.status == "pending" and f.receiverId == requesting_user_id:
+                    friend_status = "pending_received"
 
         profile = ProfileResponse(
             id=user.id,
@@ -384,8 +441,10 @@ class AccountService:
             role=role.role if role else "unknown",
             email_verified=user.emailVerified,
             created_at=user.createdAt,
+            friend_status=friend_status
         )
-        await set_user_profile_cache(user_id, profile.model_dump())
+        if requesting_user_id is None:
+            await set_user_profile_cache(user_id, profile.model_dump())
         return profile
 
     async def update_profile(self, user_id: str, body: UpdateProfileRequest) -> ProfileResponse:

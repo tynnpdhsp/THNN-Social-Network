@@ -235,6 +235,9 @@ class SocialService:
     async def accept_friend_request(self, user_id: str, requester_id: str) -> dict:
         updated = await self.repo.accept_friend_request(requester_id, user_id)
         if updated:
+            from app.core.cache import invalidate_user_friend_cache
+            await invalidate_user_friend_cache(user_id)
+            await invalidate_user_friend_cache(requester_id)
             if self.notification_svc:
                 actor_name = await self._get_user_name(user_id)
                 await self.notification_svc.notify_system(
@@ -255,6 +258,9 @@ class SocialService:
 
     async def unfriend(self, user_id: str, other_user_id: str) -> dict:
         ok = await self.repo.remove_friendship(user_id, other_user_id)
+        from app.core.cache import invalidate_user_friend_cache
+        await invalidate_user_friend_cache(user_id)
+        await invalidate_user_friend_cache(other_user_id)
         return {"status": "đã hủy kết bạn" if ok else "không tìm thấy"}
 
     async def list_friends(self, user_id: str) -> list:
@@ -287,6 +293,9 @@ class SocialService:
         
         # Auto-unfriend to ensure privacy consistency
         await self.repo.remove_friendship(user_id, target_user_id)
+        from app.core.cache import invalidate_user_friend_cache
+        await invalidate_user_friend_cache(user_id)
+        await invalidate_user_friend_cache(target_user_id)
         return {"status": "đã chặn", "blocked": target_user_id}
 
     async def list_blocked(self, user_id: str) -> list:

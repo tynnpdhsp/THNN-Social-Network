@@ -95,15 +95,16 @@ class MessagingService:
                 {"user_id": user_id, "role": "member"},
                 {"user_id": other_user_id, "role": "member"}
             ]
-            conv = await self.repo.create_conversation("direct", members)
+            conv = await self.repo.create_conversation("direct", members, participant_ids=[user_id, other_user_id])
             return await self._map_conv_to_response(conv, user_id)
         else:
             # Group chat
+            participant_ids = [user_id] + body.participant_ids
             members = [{"user_id": user_id, "role": "admin"}]
             for pid in body.participant_ids:
                 members.append({"user_id": pid, "role": "member"})
             
-            conv = await self.repo.create_conversation("group", members, body.name)
+            conv = await self.repo.create_conversation("group", members, body.name, participant_ids=participant_ids)
             return await self._map_conv_to_response(conv, user_id)
 
     async def send_message(self, user_id: str, conv_id: str, body: SendMessageRequest) -> MessageResponse:
@@ -111,8 +112,13 @@ class MessagingService:
         if not conv:
             raise NotFoundException("Không tìm thấy hội thoại", "CONVERSATION_NOT_FOUND")
         
-        members = conv.members if isinstance(conv.members, list) else []
-        member_ids = [m.get("user_id") or m.get("userId") for m in members if (m.get("user_id") or m.get("userId"))]
+        # Sử dụng getattr để tránh lỗi nếu Prisma Client chưa cập nhật
+        member_ids = getattr(conv, 'participantIds', None)
+        if member_ids is None:
+            # Fallback về cách cũ (lấy từ JSON members)
+            members = conv.members if isinstance(conv.members, list) else []
+            member_ids = [m.get("user_id") or m.get("userId") for m in members if (m.get("user_id") or m.get("userId"))]
+            
         if user_id not in member_ids:
             raise ForbiddenException("Bạn không có quyền gửi tin nhắn vào đây", "NOT_A_MEMBER")
             
@@ -127,36 +133,50 @@ class MessagingService:
             created_at=msg.createdAt
         )
         
-        # Real-time delivery
+        # Real-time delivery (chỉ gửi cho người khác, người gửi đã nhận qua REST)
         redis = await get_redis()
         payload = {
             "type": "new_message",
             "data": res.model_dump(mode='json')
         }
+        other_member_ids = [mid for mid in member_ids if mid != user_id]
         await redis.publish("chat_updates", json.dumps({
-            "target_user_ids": member_ids,
+            "target_user_ids": other_member_ids,
             "payload": payload
         }))
         
-        # Chỉ tạo Notification (DB) cho những người đang offline
-        if self.notification_svc:
-            other_ids = [mid for mid in member_ids if mid != user_id]
-            sender_name = await self._get_user_name(user_id)
-            for oid in other_ids:
-                if oid not in manager.active_connections:
-                    await self.notification_svc.notify_message(
-                        sender_name, oid, conv_id, body.content[:50]
-                    )
+        # Không tạo notification DB cho tin nhắn nữa
+        # (Tin nhắn chưa đọc sẽ hiển thị bằng dấu chấm đỏ trên tab Tin nhắn)
 
         return res
+
+    async def has_unread_messages(self, user_id: str) -> dict:
+        """Kiểm tra xem user có tin nhắn chưa đọc không (cho dấu chấm đỏ trên Navbar)."""
+        convs = await self.repo.get_user_conversations(user_id, skip=0, limit=50)
+        for c in convs:
+            members = c.members if isinstance(c.members, list) else []
+            member = next((m for m in members if (m.get("user_id") or m.get("userId")) == user_id), None)
+            if not member:
+                continue
+            last_read = member.get("last_read_at") or member.get("lastReadAt")
+            last_msg = c.lastMessage
+            if last_msg:
+                msg_time = last_msg.get("created_at") or last_msg.get("createdAt")
+                if msg_time and (not last_read or msg_time > last_read):
+                    return {"has_unread": True}
+        return {"has_unread": False}
 
     async def mark_conversation_as_read(self, user_id: str, conv_id: str):
         conv = await self.repo.get_conversation_by_id(conv_id)
         if not conv:
             raise NotFoundException("Không tìm thấy hội thoại", "CONVERSATION_NOT_FOUND")
             
-        members = conv.members if isinstance(conv.members, list) else []
-        if not any((m.get("user_id") or m.get("userId")) == user_id for m in members):
+        member_ids = getattr(conv, 'participantIds', None)
+        if member_ids is None:
+            members = conv.members if isinstance(conv.members, list) else []
+            member_ids = [m.get("user_id") or m.get("userId") for m in members if (m.get("user_id") or m.get("userId"))]
+            
+        if user_id not in member_ids:
             raise ForbiddenException("Bạn không phải thành viên hội thoại này", "NOT_A_MEMBER")
             
         await self.repo.update_member_last_read(conv_id, user_id)
