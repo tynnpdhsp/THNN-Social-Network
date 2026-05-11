@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Camera, Edit3 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Camera, Edit3, Heart, MessageCircle, Image as ImageIcon, Globe, Users, Lock, Check } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -11,10 +11,14 @@ const Profile = ({ targetUserId, onStartChat }) => {
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [friendCount, setFriendCount] = useState(0);
 
   const isOwnProfile = !targetUserId || targetUserId === currentUser?.id;
+  const userId = isOwnProfile ? currentUser?.id : targetUserId;
 
-  const loadProfile = React.useCallback(async () => {
+  const loadProfile = useCallback(async () => {
     if (isOwnProfile) {
       setProfileUser(currentUser);
       setFullName(currentUser?.full_name || '');
@@ -37,9 +41,42 @@ const Profile = ({ targetUserId, onStartChat }) => {
     }
   }, [targetUserId, currentUser, isOwnProfile]);
 
-  React.useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  const loadPosts = useCallback(async () => {
+    if (!userId) return;
+    setPostsLoading(true);
+    try {
+      const res = await apiFetch(`/social/users/${userId}/posts?limit=50`);
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data.posts || []);
+      }
+    } catch {}
+    setPostsLoading(false);
+  }, [userId]);
+
+  const loadFriendCount = useCallback(async () => {
+    if (!userId) return;
+    try {
+      // Use the target user's friends list if viewing another profile
+      const endpoint = isOwnProfile ? '/social/friends' : `/social/friends?user_id=${userId}`;
+      const res = await apiFetch('/social/friends');
+      if (res.ok) {
+        const data = await res.json();
+        setFriendCount(Array.isArray(data) ? data.length : 0);
+      }
+    } catch {}
+  }, [userId, isOwnProfile]);
+
+  useEffect(() => { loadProfile(); }, [loadProfile]);
+  useEffect(() => { loadPosts(); }, [loadPosts]);
+  useEffect(() => { loadFriendCount(); }, [loadFriendCount]);
+
+  const handleLike = async (postId) => {
+    try {
+      await apiFetch(`/social/posts/${postId}/like`, { method: 'POST' });
+      loadPosts();
+    } catch {}
+  };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><div style={{ width: 32, height: 32, border: '3px solid var(--hairline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /></div>;
   if (!profileUser) return <div style={{ textAlign: 'center', padding: 64, color: 'var(--ash)' }}>Không tìm thấy người dùng</div>;
@@ -113,6 +150,12 @@ const Profile = ({ targetUserId, onStartChat }) => {
         loadProfile();
       }
     } catch {}
+  };
+
+  const visIcon = (v) => {
+    if (v === 'friends') return <Users size={11} />;
+    if (v === 'private') return <Lock size={11} />;
+    return <Globe size={11} />;
   };
 
   return (
@@ -204,7 +247,7 @@ const Profile = ({ targetUserId, onStartChat }) => {
                   {profileUser.friend_status === 'accepted' && (
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-soft)', padding: '8px 20px', borderRadius: 'var(--rounded-full)', color: '#16a34a', fontWeight: 700, fontSize: 14 }}>
-                        ✓ Bạn bè
+                        <Check size={14} /> Bạn bè
                       </div>
                       <button className="btn-secondary" style={{ padding: '8px 20px', color: 'var(--primary)' }} onClick={() => confirm('Hủy kết bạn?') && handleFriendAction('unfriend')}>Hủy kết bạn</button>
                     </>
@@ -222,12 +265,12 @@ const Profile = ({ targetUserId, onStartChat }) => {
           {/* Stats */}
           <div style={s.statsRow}>
             <div style={s.stat}>
-              <p style={s.statNum}>—</p>
+              <p style={s.statNum}>{posts.length}</p>
               <p style={s.statLabel}>Bài viết</p>
             </div>
             <div style={{ width: 1, height: 32, background: 'var(--hairline)' }} />
             <div style={s.stat}>
-              <p style={s.statNum}>—</p>
+              <p style={s.statNum}>{friendCount}</p>
               <p style={s.statLabel}>Bạn bè</p>
             </div>
           </div>
@@ -248,6 +291,109 @@ const Profile = ({ targetUserId, onStartChat }) => {
         }}>
           {profileUser.role}
         </span>
+      </div>
+
+      {/* User Posts */}
+      <div style={{ marginTop: 24 }}>
+        <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MessageCircle size={18} color="var(--primary)" /> Bài viết
+        </h3>
+
+        {postsLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+            <div style={{ width: 28, height: 28, border: '3px solid var(--hairline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          </div>
+        ) : posts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 48, background: 'var(--surface-soft)', borderRadius: 'var(--rounded-lg)', border: '1px dashed var(--hairline)' }}>
+            <p style={{ fontWeight: 700, color: 'var(--mute)' }}>Chưa có bài viết nào</p>
+            <p style={{ fontSize: 13, color: 'var(--ash)', marginTop: 4 }}>{isOwnProfile ? 'Hãy chia sẻ bài viết đầu tiên của bạn!' : 'Người dùng này chưa đăng bài viết nào.'}</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {posts.map((p, idx) => {
+              const postAvatar = resolveImageUrl(p.user_info?.avatar_url) || getDefaultAvatar(p.user_info?.full_name);
+              const images = p.images || [];
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    background: 'white',
+                    borderRadius: 'var(--rounded-lg)',
+                    border: '1px solid var(--hairline)',
+                    overflow: 'hidden',
+                    animation: `fadeInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${idx * 0.06}s both`,
+                    transition: 'box-shadow 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.06)'}
+                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
+                >
+                  {/* Post Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px 12px' }}>
+                    <img src={postAvatar} alt="" style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover' }} />
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 700, fontSize: 14 }}>{p.user_info?.full_name}</p>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--mute)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {new Date(p.created_at).toLocaleDateString('vi-VN')} • {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {visIcon(p.visibility)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Post Content */}
+                  <div style={{ padding: '0 20px 12px' }}>
+                    <p style={{ fontSize: 15, lineHeight: 1.6, color: 'var(--body)', whiteSpace: 'pre-wrap' }}>{p.content}</p>
+                  </div>
+
+                  {/* Post Images */}
+                  {images.length > 0 && (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: images.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                      gap: 2,
+                    }}>
+                      {images.map((img, i) => (
+                        <img
+                          key={i}
+                          src={resolveImageUrl(img.image_url)}
+                          alt=""
+                          style={{
+                            width: '100%',
+                            height: images.length === 1 ? 360 : 200,
+                            objectFit: 'cover',
+                            cursor: 'pointer',
+                            transition: 'opacity 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Post Actions */}
+                  <div style={{ display: 'flex', gap: 16, padding: '12px 20px', borderTop: '1px solid var(--surface-card)' }}>
+                    <button
+                      onClick={() => handleLike(p.id)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        color: p.is_liked ? 'var(--primary)' : 'var(--mute)',
+                        fontWeight: 700, fontSize: 13,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <Heart size={16} fill={p.is_liked ? 'var(--primary)' : 'none'} />
+                      {p.like_count || 0}
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--mute)', fontSize: 13, fontWeight: 700 }}>
+                      <MessageCircle size={16} />
+                      {p.comment_count || 0}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

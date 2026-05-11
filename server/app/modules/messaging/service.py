@@ -79,12 +79,15 @@ class MessagingService:
             
             acc_repo = AccountRepository(self.repo.db)
             privacy = await acc_repo.get_privacy_settings(other_user_id)
-            if privacy and privacy.whoCanMessage == "friends":
-                # Check if they are friends
-                soc_repo = SocialRepository(self.repo.db)
-                friend_ids = await soc_repo.get_friend_ids(other_user_id)
-                if user_id not in friend_ids:
-                    raise ForbiddenException("Người dùng này chỉ nhận tin nhắn từ bạn bè", "FRIENDS_ONLY_MESSAGE")
+            if privacy:
+                if privacy.whoCanMessage == "only_me":
+                    raise ForbiddenException("Người dùng này không nhận tin nhắn từ bất kỳ ai", "MESSAGING_DISABLED")
+                if privacy.whoCanMessage == "friends":
+                    # Check if they are friends
+                    soc_repo = SocialRepository(self.repo.db)
+                    friend_ids = await soc_repo.get_friend_ids(other_user_id)
+                    if user_id not in friend_ids:
+                        raise ForbiddenException("Người dùng này chỉ nhận tin nhắn từ bạn bè", "FRIENDS_ONLY_MESSAGE")
             
             # Check for existing DM
             existing = await self.repo.find_direct_conversation(user_id, other_user_id)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Send, ArrowLeft, MessageSquare, Image, Users } from 'lucide-react';
+import { Search, Send, ArrowLeft, MessageSquare, Image, Users, X, CheckCheck } from 'lucide-react';
 import { apiFetch, WS_BASE, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -333,7 +333,7 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
                           const other = activeConv.members?.find(mem => (mem.user_id || mem.userId) !== user.id);
                           const lastRead = other?.last_read_at || other?.lastReadAt;
                           if (lastRead && new Date(lastRead) >= new Date(createdAt)) {
-                            return <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.8 }}>● Đã xem</span>;
+                            return <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.8, display: 'inline-flex', alignItems: 'center', gap: 2 }}><CheckCheck size={10} /> Đã xem</span>;
                           }
                           return null;
                         })()}
@@ -352,7 +352,7 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
                   {attachments.map((at, ati) => (
                     <div key={ati} style={{ position: 'relative' }}>
                       <img src={resolveImageUrl(at)} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
-                      <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== ati))} style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: 'var(--primary)', color: 'white', border: 'none', fontSize: 10 }}>×</button>
+                      <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== ati))} style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: 'var(--primary)', color: 'white', border: 'none', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={10} /></button>
                     </div>
                   ))}
                 </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, MessageCircle, Send, Image, MoreHorizontal, Flag, Ban, UserPlus, Trash2, Edit3 } from 'lucide-react';
+import { Heart, MessageCircle, Send, Image, MoreHorizontal, Flag, Ban, UserPlus, Trash2, Edit3, X } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
@@ -211,7 +211,7 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
                 <button
                   onClick={() => setUploadedImages(prev => prev.filter((_, j) => j !== i))}
                   style={s.previewRemove}
-                >×</button>
+                ><X size={12} /></button>
               </div>
             ))}
           </div>
@@ -233,9 +233,9 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
                 outline: 'none', cursor: 'pointer'
               }}
             >
-              <option value="public">🌍 Công khai</option>
-              <option value="friends">👥 Bạn bè</option>
-              <option value="private">🔒 Riêng tư</option>
+              <option value="public">Công khai</option>
+              <option value="friends">Bạn bè</option>
+              <option value="private">Riêng tư</option>
             </select>
             <button
               id="feed-post-submit"
@@ -433,7 +433,7 @@ function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, on
               onClick={() => onViewProfile?.(p.user_id)}
             >{p.user_info?.full_name}</p>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--mute)' }}>
-              {new Date(p.created_at).toLocaleDateString('vi-VN')} • {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {p.visibility === 'public' ? '🌍' : p.visibility === 'friends' ? '👥' : '🔒'}
+              {new Date(p.created_at).toLocaleDateString('vi-VN')} • {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         </div>

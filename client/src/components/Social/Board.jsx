@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tag, Send, Heart, MessageCircle, Image, MoreHorizontal, Flag } from 'lucide-react';
+import { Tag, Send, Heart, MessageCircle, Image, MoreHorizontal, Flag, X } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
@@ -164,7 +164,7 @@ const Board = () => {
             {uploadedImages.map((img, i) => (
               <div key={i} style={{ position: 'relative', animation: 'popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1)' }}>
                 <img src={resolveImageUrl(img)} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover' }} />
-                <button onClick={() => setUploadedImages(prev => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12 }}>×</button>
+                <button onClick={() => setUploadedImages(prev => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>
               </div>
             ))}
           </div>
@@ -185,9 +185,9 @@ const Board = () => {
                 outline: 'none', cursor: 'pointer'
               }}
             >
-              <option value="public">🌍 Công khai</option>
-              <option value="friends">👥 Bạn bè</option>
-              <option value="private">🔒 Riêng tư</option>
+              <option value="public">Công khai</option>
+              <option value="friends">Bạn bè</option>
+              <option value="private">Riêng tư</option>
             </select>
           </div>
           <button className="btn-primary" style={{ padding: '10px 28px', fontSize: 14 }} onClick={handleCreatePost} disabled={posting}>
