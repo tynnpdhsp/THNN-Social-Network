@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Plus, ShoppingBag, Search, Filter, Star, Edit2, Trash2, Tag, Book, PenTool, ChevronDown, Loader } from 'lucide-react';
+// import Select from 'react-select';
+import toast from 'react-hot-toast';
 import ProductDetailModal from './ProductDetailModal';
 import AddProductModal from './AddProductModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
@@ -21,7 +23,7 @@ const Shop = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [priceRange, setPriceRange] = useState(100000000); 
+  const [priceRange, setPriceRange] = useState(10000000); 
   const [sortBy, setSortBy] = useState('popular');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -68,15 +70,23 @@ const Shop = () => {
 
   const filteredProducts = products
     .filter(p => {
+      if (!p) return false;
+      const title = p.title || '';
+      const price = p.price || 0;
       const matchesCategory = activeCategory === 'all' || p.category_id === activeCategory;
-      const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPrice = p.price <= priceRange;
+      const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPrice = price <= priceRange;
       return matchesCategory && matchesSearch && matchesPrice;
     })
     .sort((a, b) => {
-      if (sortBy === 'rating') return (b.avg_rating || 0) - (a.avg_rating || 0);
-      if (sortBy === 'price-asc') return a.price - b.price;
-      if (sortBy === 'price-desc') return b.price - a.price;
+      if (!a || !b) return 0;
+      const priceA = a.price || 0;
+      const priceB = b.price || 0;
+      const ratingA = a.avg_rating || 0;
+      const ratingB = b.avg_rating || 0;
+      if (sortBy === 'rating') return ratingB - ratingA;
+      if (sortBy === 'price-asc') return priceA - priceB;
+      if (sortBy === 'price-desc') return priceB - priceA;
       return 0;
     });
 
@@ -102,13 +112,15 @@ const Shop = () => {
       const vnpayRes = await shopService.createVNPayUrl(paymentData);
       
       if (vnpayRes.payment_url) {
-        alert("Đang chuyển hướng đến cổng thanh toán VNPAY...");
-        window.location.href = vnpayRes.payment_url;
+        toast.loading("Đang chuyển hướng đến cổng thanh toán VNPAY...", { duration: 2000 });
+        setTimeout(() => {
+          window.location.href = vnpayRes.payment_url;
+        }, 1000);
       } else {
         throw new Error("Không lấy được link thanh toán");
       }
     } catch (error) {
-      alert("Lỗi khi thanh toán: " + error.message);
+      toast.error("Lỗi khi thanh toán: " + error.message);
     }
   };
 
@@ -122,7 +134,7 @@ const Shop = () => {
           description: newProduct.description,
         };
         await shopService.updateItem(productToEdit.id, itemData);
-        alert("Cập nhật thành công");
+        toast.success("Cập nhật thành công");
       } else {
         // Create mode
         let imageUrls = [];
@@ -142,10 +154,11 @@ const Shop = () => {
         };
 
         await shopService.createItem(itemData);
-        alert("Đăng bán thành công");
+        toast.success("Đăng bán thành công");
       }
       fetchProducts();
     } catch (error) {
+      toast.error("Lỗi: " + error.message);
       throw error;
     }
   };
@@ -162,9 +175,9 @@ const Shop = () => {
       setIsDeleteModalOpen(false);
       setProductToDelete(null);
       fetchProducts();
-      alert("Đã xoá vật phẩm");
+      toast.success("Đã xoá vật phẩm");
     } catch (error) {
-      alert("Lỗi xoá vật phẩm: " + error.message);
+      toast.error("Lỗi xoá vật phẩm: " + error.message);
     }
   };
 
@@ -193,7 +206,7 @@ const Shop = () => {
               type="text" 
               placeholder="Nhập từ khóa..." 
               className="input-field search-bar" 
-              style={{ height: 44 }}
+              style={{ height: 44, background: 'white', border: '1px solid var(--hairline)' }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -240,7 +253,7 @@ const Shop = () => {
           <input 
             type="range" 
             min="0" 
-            max="100000000" 
+            max="10000000" 
             step="50000"
             value={priceRange}
             onChange={(e) => setPriceRange(parseInt(e.target.value))}
@@ -248,7 +261,7 @@ const Shop = () => {
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--mute)' }}>
             <span>0đ</span>
-            <span>100.000.000đ</span>
+            <span>10.000.000đ</span>
           </div>
         </div>
       </div>
@@ -268,7 +281,7 @@ const Shop = () => {
                   justifyContent: 'space-between', padding: '10px 20px' 
                 }}
               >
-                {sortOptions.find(o => o.value === sortBy).label}
+                {sortOptions.find(o => o.value === sortBy)?.label || 'Sắp xếp'}
                 <ChevronDown size={18} style={{ transform: isSortOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
               
@@ -314,11 +327,11 @@ const Shop = () => {
             <p>Không tìm thấy vật phẩm nào phù hợp.</p>
           </div>
         ) : (
-          <div style={{ columnCount: 3, columnGap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
             {filteredProducts.map((product) => (
               <div key={product.id} className="pin-card" 
                 onClick={() => setSelectedProduct(product)}
-                style={{ marginBottom: 16, breakInside: 'avoid', display: 'inline-block', width: '100%' }}
+                style={{ width: '100%' }}
               >
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--rounded-md)' }}>
                   <img src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} alt={product.title} style={{ width: '100%', height: 350, objectFit: 'cover' }} />
@@ -354,7 +367,7 @@ const Shop = () => {
                     <span style={{ fontSize: 12, fontWeight: 700 }}>{product.avg_rating || 0}</span>
                     <span style={{ fontSize: 12, color: 'var(--mute)' }}>({product.rating_count || 0})</span>
                   </div>
-                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>{product.price.toLocaleString()}đ</p>
+                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>{(product.price || 0).toLocaleString()}đ</p>
                 </div>
               </div>
             ))}
@@ -376,8 +389,6 @@ const Shop = () => {
         categories={categories}
         productToEdit={productToEdit}
       />
-
-
 
       <DeleteConfirmModal
         isOpen={isDeleteModalOpen}

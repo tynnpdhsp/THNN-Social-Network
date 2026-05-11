@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Common/Navbar';
 import Shop from './components/Shop/Shop';
 import StudyDocs from './components/StudyDocs/StudyDocs';
@@ -25,6 +26,7 @@ function App() {
 
   return (
     <div className="App">
+      <Toaster position="top-right" reverseOrder={false} />
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
       <main style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--canvas)' }}>
         {renderContent()}
