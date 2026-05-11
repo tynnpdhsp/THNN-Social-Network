@@ -54,8 +54,12 @@ class ScheduleRepository:
         )
     
     async def delete_schedule(self, schedule_id: str) -> Schedule:
-        """Delete schedule by ID"""
-        return await self.db.schedule.delete(where={"id": schedule_id})
+        """Delete schedule by ID with cascading delete for entries"""
+        async with self.db.tx() as tx:
+            # Delete all entries first to avoid constraint errors
+            await tx.scheduleentry.delete_many(where={"scheduleId": schedule_id})
+            # Then delete the schedule
+            return await tx.schedule.delete(where={"id": schedule_id})
     
     async def set_active_schedule(self, user_id: str, schedule_id: str) -> None:
         """Set a schedule as active and deactivate others"""

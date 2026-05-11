@@ -18,7 +18,7 @@ const Modal = ({ isOpen, onClose, title, children, width = 450 }) => {
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
         backgroundColor: 'rgba(0,0,0,0.6)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 2000,
         backdropFilter: 'blur(8px)',
         overflowY: 'auto',

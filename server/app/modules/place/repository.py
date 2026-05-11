@@ -33,7 +33,8 @@ class PlaceRepository:
             data=data,
             include={
                 "category": True,
-                "user": True
+                "user": True,
+                "placeImages": True
             }
         )
     
@@ -42,7 +43,8 @@ class PlaceRepository:
             where={"id": place_id},
             include={
                 "category": True,
-                "user": True
+                "user": True,
+                "placeImages": True
             }
         )
     
@@ -52,7 +54,8 @@ class PlaceRepository:
             data=data,
             include={
                 "category": True,
-                "user": True
+                "user": True,
+                "placeImages": True
             }
         )
     
@@ -61,7 +64,8 @@ class PlaceRepository:
             where={"id": place_id},
             include={
                 "category": True,
-                "user": True
+                "user": True,
+                "placeImages": True
             }
         )
     
@@ -72,7 +76,8 @@ class PlaceRepository:
             where=filters,
             include={
                 "category": True,
-                "user": True
+                "user": True,
+                "placeImages": True
             }
         )
     # endregion
@@ -341,7 +346,8 @@ class PlaceRepository:
             where=where_condition,
             include={
                 "category": True,
-                "user": True
+                "user": True,
+                "placeImages": True
             }
         )
         
@@ -386,6 +392,12 @@ class PlaceRepository:
         if hasattr(place, "category") and place.category:
             category = PlaceCategoryResponse(id=place.category.id, name=place.category.name, icon=place.category.icon)
 
+        images = None
+        if hasattr(place, "placeImages") and place.placeImages:
+            images = [PlaceImageResponse.model_validate(img) for img in place.placeImages]
+        elif hasattr(place, "images") and place.images: # Fallback just in case
+             images = [PlaceImageResponse.model_validate(img) for img in place.images]
+
         return NearbyPlaceResponse(
             id=place.id,
             name=place.name,
@@ -397,5 +409,6 @@ class PlaceRepository:
             rating_count=place.ratingCount,
             distance=distance,  # Distance calculated by Haversine
             user_info=user_info or None,
-            category=category or None
+            category=category or None,
+            images=images
         )

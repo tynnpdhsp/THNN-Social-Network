@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pydantic import BaseModel, Field, ConfigDict # type: ignore
 from datetime import datetime
 from typing import Optional, Literal, List
@@ -22,6 +23,24 @@ class PlaceCategoryResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 # endregion    
+
+# region --------- place image -------------
+class PlaceImageRequest(BaseModel):
+    place_id: str = Field(..., min_length=1)
+    display_order: Optional[int] = Field(0, ge=0)
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PlaceImageResponse(BaseModel):
+    id: str
+    place_id: str
+    image_url: str
+    display_order: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+# endregion
 
 # region --------- place -------------
 class PlaceRequest(BaseModel):
@@ -57,27 +76,10 @@ class PlaceResponse(BaseModel):
     updated_at: datetime
     category: Optional[PlaceCategoryResponse]
     user_info: Optional[UserInfoEmbed]
+    images: Optional[List[PlaceImageResponse]] = None
 
     model_config = ConfigDict(from_attributes=True)
     
-# endregion
-
-# region --------- place image -------------
-class PlaceImageRequest(BaseModel):
-    place_id: str = Field(..., min_length=1)
-    display_order: Optional[int] = Field(0, ge=0)
-
-    model_config = ConfigDict(from_attributes=True)
-
-class PlaceImageResponse(BaseModel):
-    id: str
-    place_id: str
-    image_url: str
-    display_order: int
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
 # endregion
 
 # region ------------ review ----------------
@@ -159,6 +161,7 @@ class NearbyPlaceResponse(BaseModel):
     distance: float  # distance in km
     category: Optional[PlaceCategoryResponse]
     user_info: Optional[UserInfoEmbed]
+    images: Optional[List[PlaceImageResponse]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

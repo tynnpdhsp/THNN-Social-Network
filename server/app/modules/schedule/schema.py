@@ -43,7 +43,7 @@ class ScheduleListResponse(BaseModel):
 
 # region --------- Schedule Entry -------------
 class ScheduleEntryCreate(BaseModel):
-    schedule_id: str
+    schedule_id: Optional[str] = None
     section_id: Optional[str] = None
     entry_type: Literal["class", "exam", "custom"] = Field(..., description="Entry type")
     title: str = Field(..., min_length=1, max_length=200)

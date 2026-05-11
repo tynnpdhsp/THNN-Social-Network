@@ -120,6 +120,35 @@ export const createScheduleEntry = async (scheduleId, data) => {
   }
 };
 
+export const updateScheduleEntry = async (entryId, data) => {
+  try {
+    const response = await fetch(`${API_URL}/schedules/entries/${entryId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update schedule entry');
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating schedule entry:', error);
+    throw error;
+  }
+};
+
+export const deleteScheduleEntry = async (entryId) => {
+  try {
+    const response = await fetch(`${API_URL}/schedules/entries/${entryId}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to delete schedule entry');
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting schedule entry:', error);
+    throw error;
+  }
+};
+
 // --- Study Note ---
 export const getStudyNotes = async (params = {}) => {
   try {
@@ -160,6 +189,41 @@ export const deleteStudyNote = async (id) => {
     return await response.json();
   } catch (error) {
     console.error('Error deleting study note:', error);
+    throw error;
+  }
+};
+
+export const importCourseSections = async (data) => {
+  try {
+    const response = await fetch(`${API_URL}/schedules/course-sections`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to import course sections');
+    return await response.json();
+  } catch (error) {
+    console.error('Error importing course sections:', error);
+    throw error;
+  }
+};
+
+export const importCourseSectionsExcel = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_URL}/schedules/course-sections/excel`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer dummy-token' // Mock token
+      },
+      body: formData
+    });
+    if (!response.ok) throw new Error('Failed to import course sections from Excel');
+    return await response.json();
+  } catch (error) {
+    console.error('Error importing Excel:', error);
     throw error;
   }
 };

@@ -1,38 +1,44 @@
-import React from 'react';
-import { Search, Bell, MessageCircle, User, ShoppingCart, BookOpen, Calendar, MapPin } from 'lucide-react';
+import { NavLink, Link } from 'react-router-dom';
+import { Search, Bell, MessageCircle, ShoppingCart, BookOpen, Calendar, MapPin } from 'lucide-react';
 
-const Navbar = ({ activeTab, setActiveTab }) => {
+const Navbar = () => {
   const tabs = [
-    { id: 'shop', label: 'Cửa hàng', icon: <ShoppingCart size={20} /> },
-    { id: 'docs', label: 'Tài liệu', icon: <BookOpen size={20} /> },
-    { id: 'timetable', label: 'Thời khóa biểu', icon: <Calendar size={20} /> },
-    { id: 'map', label: 'Bản đồ', icon: <MapPin size={20} /> },
+    { id: 'shop', label: 'Cửa hàng', icon: <ShoppingCart size={20} />, path: '/shop' },
+    { id: 'docs', label: 'Tài liệu', icon: <BookOpen size={20} />, path: '/docs' },
+    { id: 'timetable', label: 'Thời khóa biểu', icon: <Calendar size={20} />, path: '/timetable' },
+    { id: 'map', label: 'Bản đồ', icon: <MapPin size={20} />, path: '/map' },
   ];
 
   return (
     <nav className="navbar">
-      <div className="logo">
-        <div style={{ background: 'var(--primary)', color: 'white', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: 20 }}>P</div>
-      </div>
+      <Link to="/" style={{ textDecoration: 'none' }}>
+        <div className="logo">
+          <div style={{ background: 'var(--primary)', color: 'white', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>P</div>
+        </div>
+      </Link>
       
       <div style={{ display: 'flex', gap: 8 }}>
         {tabs.map((tab) => (
-          <button
+          <NavLink
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className="btn-secondary"
-            style={{
-              backgroundColor: activeTab === tab.id ? 'var(--ink)' : 'transparent',
-              color: activeTab === tab.id ? 'white' : 'var(--ink)',
+            to={tab.path}
+            style={({ isActive }) => ({
+              backgroundColor: isActive ? 'var(--ink)' : 'transparent',
+              color: isActive ? 'white' : 'var(--ink)',
               padding: '12px 16px',
               display: 'flex',
               alignItems: 'center',
-              gap: 8
-            }}
+              gap: 8,
+              textDecoration: 'none',
+              borderRadius: 'var(--rounded-full)',
+              fontWeight: 600,
+              fontSize: 16,
+              transition: 'all 0.2s'
+            })}
           >
             {tab.icon}
-            <span style={{ fontWeight: 600 }}>{tab.label}</span>
-          </button>
+            <span>{tab.label}</span>
+          </NavLink>
         ))}
       </div>
 

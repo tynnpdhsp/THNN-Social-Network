@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Plus, Check, Save, AlertCircle, Trash2, Loader2, ChevronDown, Info, Calendar } from 'lucide-react';
+import { Clock, Plus, Check, Save, AlertCircle, Trash2, Loader2, ChevronDown, Info, Calendar, Upload, AlertTriangle, X } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import Modal from '../Common/Modal';
 import * as scheduleService from '../../services/scheduleService';
 
-const timeSlots = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+const timeSlots = Array.from({ length: 16 }, (_, i) => `Tiết ${i + 1}`);
 const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 
 const Timetable = () => {
@@ -15,6 +16,10 @@ const Timetable = () => {
   const [showDeadlineModal, setShowDeadlineModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showEntryModal, setShowEntryModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importFile, setImportFile] = useState(null);
+  const [importType, setImportType] = useState('excel'); // 'excel' or 'json'
   const [newDeadline, setNewDeadline] = useState({ title: '', subject: '', date: '', time: '08:00', description: '', remind_before_minutes: '30' });
   const [newScheduleName, setNewScheduleName] = useState('');
   const [newEntry, setNewEntry] = useState({ title: '', room: '', day_of_week: 1, start_time: '07:00', end_time: '08:00', entry_type: 'custom' });
@@ -26,13 +31,32 @@ const Timetable = () => {
   const [isEndTimeOpen, setIsEndTimeOpen] = useState(false);
   const [isDeadlineTimeOpen, setIsDeadlineTimeOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const dateInputRef = React.useRef(null);
+  const startTimeInputRef = React.useRef(null);
+  const endTimeInputRef = React.useRef(null);
+  const deadlineTimeInputRef = React.useRef(null);
 
   useEffect(() => {
     fetchInitialData();
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  const getTimeOffset = (timeStr) => {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(':').map(Number);
+    return ((h - 7) * 60 + m) * (80 / 60); // 80px per period (1 hour)
+  };
+
+  const gridScrollRef = React.useRef(null);
+
+  useEffect(() => {
+    // No need to scroll by default if only 16 periods
+    if (gridScrollRef.current) {
+      gridScrollRef.current.scrollTop = 0;
+    }
+  }, [isLoading]);
 
   const fetchInitialData = async () => {
     try {
@@ -55,6 +79,7 @@ const Timetable = () => {
       }
     } catch (error) {
       console.error('Error loading timetable data:', error);
+      toast.error('Không thể tải dữ liệu thời khóa biểu');
     } finally {
       setIsLoading(false);
     }
@@ -66,39 +91,50 @@ const Timetable = () => {
       setCurrentEntries(entries);
     } catch (error) {
       console.error('Error fetching entries:', error);
+      toast.error('Lỗi khi tải các tiết học');
     }
   };
 
-  const handleDeleteSchedule = async (id) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa phương án này?')) return;
-    try {
-      await scheduleService.deleteSchedule(id);
-      const updatedSchedules = schedules.filter(s => s.id !== id);
-      setSchedules(updatedSchedules);
-      if (activeScheduleId === id) {
-        const next = updatedSchedules[0];
-        if (next) {
-          setActiveScheduleId(next.id);
-          fetchEntries(next.id);
-        } else {
-          setActiveScheduleId(null);
-          setCurrentEntries([]);
+  const handleDeleteSchedule = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xác nhận xóa phương án',
+      message: 'Bạn có chắc chắn muốn xóa phương án lịch này không? Hành động này không thể hoàn tác.',
+      onConfirm: async () => {
+        try {
+          await scheduleService.deleteSchedule(id);
+          const updatedSchedules = schedules.filter(s => s.id !== id);
+          setSchedules(updatedSchedules);
+          if (activeScheduleId === id) {
+            const next = updatedSchedules[0];
+            if (next) {
+              setActiveScheduleId(next.id);
+              fetchEntries(next.id);
+            } else {
+              setActiveScheduleId(null);
+              setCurrentEntries([]);
+            }
+          }
+          toast.success('Đã xóa phương án');
+        } catch (error) {
+          console.error('Error deleting schedule:', error);
+          toast.error('Lỗi khi xóa phương án');
         }
       }
-    } catch (error) {
-      console.error('Error deleting schedule:', error);
-    }
+    });
   };
 
-  const handleGridClick = (dayIndex, time) => {
-    const endIdx = timeSlots.indexOf(time) + 1;
-    const endTime = timeSlots[endIdx] || '18:00';
+  const handleGridClick = (dayIndex, timeLabel) => {
+    const period = parseInt(timeLabel.replace('Tiết ', ''));
+    const startTime = `${(period + 6).toString().padStart(2, '0')}:00`;
+    const endTime = `${(period + 7).toString().padStart(2, '0')}:00`;
+    
     setEditingEntry(null);
     setNewEntry({
       title: '',
       room: '',
       day_of_week: dayIndex + 1,
-      start_time: time,
+      start_time: startTime,
       end_time: endTime,
       entry_type: 'custom'
     });
@@ -120,9 +156,39 @@ const Timetable = () => {
 
   const handleAddEntry = async () => {
     if (!activeScheduleId || !newEntry.title) return;
+    
+    // Validate time format and logical order
+    const [startH, startM] = newEntry.start_time.split(':').map(Number);
+    const [endH, endM] = newEntry.end_time.split(':').map(Number);
+    const startVal = startH * 60 + startM;
+    const endVal = endH * 60 + endM;
+
+    if (endVal <= startVal) {
+      toast.error('Giờ kết thúc phải sau giờ bắt đầu');
+      return;
+    }
+
+    // Check for overlap
+    const hasOverlap = currentEntries.some(entry => {
+      if (editingEntry && entry.id === editingEntry.id) return false;
+      if (parseInt(entry.day_of_week) !== parseInt(newEntry.day_of_week)) return false;
+
+      const [eStartH, eStartM] = entry.start_time.split(':').map(Number);
+      const [eEndH, eEndM] = entry.end_time.split(':').map(Number);
+      const eStartVal = eStartH * 60 + eStartM;
+      const eEndVal = eEndH * 60 + eEndM;
+
+      return Math.max(startVal, eStartVal) < Math.min(endVal, eEndVal);
+    });
+
+    if (hasOverlap) {
+      toast.error('⚠️ Trùng lịch! Tiết học này bị chồng chéo thời gian.');
+      return;
+    }
+
     try {
       if (editingEntry) {
-        const updated = await scheduleService.updateScheduleEntry(activeScheduleId, editingEntry.id, {
+        const updated = await scheduleService.updateScheduleEntry(editingEntry.id, {
           ...newEntry,
           day_of_week: parseInt(newEntry.day_of_week)
         });
@@ -136,21 +202,33 @@ const Timetable = () => {
       }
       setShowEntryModal(false);
       setEditingEntry(null);
+      toast.success(editingEntry ? 'Đã cập nhật tiết học' : 'Đã thêm tiết học mới');
     } catch (error) {
       console.error('Error saving entry:', error);
+      toast.error('Lỗi khi lưu tiết học');
     }
   };
 
-  const handleDeleteEntry = async () => {
-    if (!editingEntry || !activeScheduleId) return;
-    try {
-      await scheduleService.deleteScheduleEntry(activeScheduleId, editingEntry.id);
-      setCurrentEntries(currentEntries.filter(e => e.id !== editingEntry.id));
-      setShowEntryModal(false);
-      setEditingEntry(null);
-    } catch (error) {
-      console.error('Error deleting entry:', error);
-    }
+  const handleDeleteEntry = () => {
+    if (!editingEntry) return;
+    
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xác nhận xóa tiết học',
+      message: `Bạn muốn xóa tiết học "${newEntry.title}"?`,
+      onConfirm: async () => {
+        try {
+          await scheduleService.deleteScheduleEntry(editingEntry.id);
+          setCurrentEntries(currentEntries.filter(e => e.id !== editingEntry.id));
+          setShowEntryModal(false);
+          setEditingEntry(null);
+          toast.success('Đã xóa tiết học');
+        } catch (error) {
+          console.error('Error deleting entry:', error);
+          toast.error('Lỗi khi xóa tiết học');
+        }
+      }
+    });
   };
 
   const handleSwitchSchedule = (id) => {
@@ -206,12 +284,44 @@ const Timetable = () => {
     }
   };
 
-  const handleDeleteDeadline = async (id) => {
+  const handleDeleteDeadline = (id) => {
+    const deadline = deadlines.find(d => d.id === id);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xác nhận xóa nhắc nhở',
+      message: `Bạn muốn xóa nhắc nhở "${deadline?.title}"?`,
+      onConfirm: async () => {
+        try {
+          await scheduleService.deleteStudyNote(id);
+          setDeadlines(deadlines.filter(d => d.id !== id));
+          toast.success('Đã xóa nhắc nhở');
+        } catch (error) {
+          console.error('Error deleting deadline:', error);
+          toast.error('Lỗi khi xóa nhắc nhở');
+        }
+      }
+    });
+  };
+
+  const handleImportData = async () => {
     try {
-      await scheduleService.deleteStudyNote(id);
-      setDeadlines(deadlines.filter(d => d.id !== id));
+      if (importType === 'json') {
+        const data = JSON.parse(importJson);
+        if (!Array.isArray(data)) throw new Error('Dữ liệu phải là một mảng các lớp học phần');
+        await scheduleService.importCourseSections(data);
+      } else {
+        if (!importFile) throw new Error('Vui lòng chọn file Excel');
+        await scheduleService.importCourseSectionsExcel(importFile);
+      }
+      
+      toast.success('Nhập dữ liệu thành công!');
+      setShowImportModal(false);
+      setImportJson('');
+      setImportFile(null);
+      fetchInitialData();
     } catch (error) {
-      console.error('Error deleting deadline:', error);
+      console.error('Error importing data:', error);
+      toast.error('Lỗi: ' + error.message);
     }
   };
 
@@ -236,16 +346,23 @@ const Timetable = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
           <div>
             <h1 className="heading-xl">Quản lý Thời khóa biểu</h1>
+            <button 
+              className="btn-secondary" 
+              style={{ padding: '4px 12px', fontSize: 12, height: 'auto', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+              onClick={() => setShowImportModal(true)}
+            >
+              <Upload size={14} /> Nhập dữ liệu học phần
+            </button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-card)', borderRadius: 'var(--rounded-full)', padding: 4, gap: 4 }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {schedules.map((schedule) => (
-                  <div key={schedule.id} style={{ display: 'flex', alignItems: 'center', gap: 2, background: activeScheduleId === schedule.id ? 'white' : 'transparent', borderRadius: 'var(--rounded-full)', paddingRight: 4 }}>
+                  <div key={schedule.id} style={{ display: 'flex', alignItems: 'center', background: activeScheduleId === schedule.id ? 'white' : 'transparent', borderRadius: 'var(--rounded-full)', paddingRight: 4 }}>
                     <button
                       onClick={() => handleSwitchSchedule(schedule.id)}
                       style={{
-                        padding: '8px 12px 8px 16px', border: 'none',
+                        padding: '8px 16px', border: 'none',
                         background: 'transparent',
                         borderRadius: 'var(--rounded-full)',
                         fontWeight: activeScheduleId === schedule.id ? 700 : 500,
@@ -254,19 +371,6 @@ const Timetable = () => {
                       }}
                     >
                       {schedule.source === 'ai' ? `✨ ${schedule.name}` : schedule.name}
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDeleteSchedule(schedule.id); }}
-                      style={{ 
-                        width: 24, height: 24, borderRadius: '50%', border: 'none', 
-                        background: 'transparent', display: 'flex', alignItems: 'center', 
-                        justifyContent: 'center', cursor: 'pointer', color: 'var(--mute)',
-                        opacity: activeScheduleId === schedule.id ? 1 : 0.5
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--mute)'}
-                    >
-                      <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
@@ -287,44 +391,73 @@ const Timetable = () => {
               )}
             </div>
             {activeScheduleId && (
-              <div style={{ display: 'flex', gap: 12, width: '100%' }}>
+              <div style={{ display: 'flex', gap: 8, width: '100%', flexWrap: 'nowrap' }}>
                 <button
                   className="btn-secondary"
-                  style={{ gap: 8, flex: 1, borderRadius: 'var(--rounded-full)', fontSize: 14 }}
+                  style={{ borderRadius: 'var(--rounded-full)', fontSize: 13, padding: '0 20px', height: 44, fontWeight: 700 }}
                   onClick={() => setShowEntryModal(true)}
                 >
-                  <Plus size={18} /> Thêm tiết học
+                  <Plus size={18} /> Tiết học
                 </button>
                 <button
                   className="btn-primary"
-                  style={{ gap: 8, flex: 1.5, background: isSaved ? '#103c25' : 'var(--primary)' }}
+                  style={{ gap: 8, flex: 1, height: 40, background: isSaved ? '#103c25' : 'var(--primary)', borderRadius: 'var(--rounded-full)', fontSize: 13 }}
                   onClick={handleSetActive}
                 >
                   {isSaved ? <Check size={18} /> : <Save size={18} />}
                   {isSaved ? 'Đã lưu' : 'Lưu phương án'}
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ width: 40, height: 40, padding: 0, borderRadius: 'var(--rounded-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', border: '1px solid #fee2e2' }}
+                  onClick={() => handleDeleteSchedule(activeScheduleId)}
+                  title="Xóa phương án này"
+                >
+                  <Trash2 size={18} />
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'white', borderRadius: 'var(--rounded-md)', border: '1px solid var(--hairline)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', borderBottom: '1px solid var(--hairline)' }}>
-            <div style={{ padding: 12, borderRight: '1px solid var(--hairline)' }}></div>
-            {days.map(day => (
-              <div key={day} style={{ padding: 12, textAlign: 'center', fontWeight: 700, borderRight: '1px solid var(--hairline)', background: 'var(--surface-soft)' }}>{day}</div>
-            ))}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', position: 'relative' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {timeSlots.map(time => (
-                <div key={time} style={{ height: 80, padding: 8, borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)', fontSize: 12, color: 'var(--mute)' }}>{time}</div>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'white', borderRadius: 'var(--rounded-md)', border: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 250px)' }}>
+          <div ref={gridScrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', position: 'relative', minHeight: 16 * 80 }}>
+              {/* Sticky Headers */}
+              <div style={{ 
+                position: 'sticky', top: 0, left: 0, zIndex: 50, background: 'var(--surface-soft)', 
+                borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)', 
+                height: 48, position: 'relative'
+              }}>
+                <span style={{ position: 'absolute', top: 4, right: 8, fontSize: 12, fontWeight: 700, color: 'var(--mute)' }}>Thứ</span>
+                <span style={{ position: 'absolute', bottom: 4, left: 8, fontSize: 12, fontWeight: 700, color: 'var(--mute)' }}>Tiết</span>
+                <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+                  <line x1="0" y1="0" x2="80" y2="48" stroke="var(--hairline)" strokeWidth="1" />
+                </svg>
+              </div>
+              {days.map(day => (
+                <div key={day} style={{ 
+                  position: 'sticky', top: 0, zIndex: 40, background: 'var(--surface-soft)', 
+                  borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)', 
+                  padding: '12px 8px', textAlign: 'center', fontWeight: 700, fontSize: 13, height: 48,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>{day}</div>
               ))}
-            </div>
+
+              {/* Time Column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gridRow: '2 / span 16' }}>
+                {timeSlots.map(time => (
+                  <div key={time} style={{ 
+                    height: 80, padding: 8, borderBottom: '1px solid var(--hairline)', 
+                    borderRight: '1px solid var(--hairline)', fontSize: 13, color: 'var(--mute)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600,
+                    background: 'var(--surface-soft)'
+                  }}>{time}</div>
+                ))}
+              </div>
 
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} style={{ position: 'relative', borderRight: '1px solid var(--hairline)' }}>
+              <div key={i} style={{ position: 'relative', borderRight: '1px solid var(--hairline)', gridRow: '2 / span 16', gridColumn: i + 2 }}>
                 {timeSlots.map(time => (
                   <div 
                     key={time} 
@@ -342,8 +475,9 @@ const Timetable = () => {
                   const now = currentTime;
                   const currentHour = now.getHours();
                   const currentMin = now.getMinutes();
-                  if (currentHour >= 7 && currentHour < 18) {
-                    const top = (currentHour - 7) * 80 + (currentMin / 60) * 80;
+                  if (currentHour >= 7 && currentHour < 23) {
+                    const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+                    const top = getTimeOffset(timeStr);
                     return (
                       <div style={{
                         position: 'absolute', top, left: 0, right: 0,
@@ -369,11 +503,9 @@ const Timetable = () => {
                 {currentEntries.filter(e => e.day_of_week === i + 1).map(event => {
                   const startTime = event.start_time?.substring(0, 5) || '07:00';
                   const endTime = event.end_time?.substring(0, 5) || '08:00';
-                  const startIndex = timeSlots.indexOf(startTime);
-                  const endIndex = timeSlots.indexOf(endTime);
-                  if (startIndex === -1 || endIndex === -1) return null;
-                  const height = (endIndex - startIndex) * 80;
-                  const top = startIndex * 80;
+                  const top = getTimeOffset(startTime);
+                  const bottom = getTimeOffset(endTime);
+                  const height = bottom - top;
 
                   return (
                     <div 
@@ -382,8 +514,9 @@ const Timetable = () => {
                       style={{
                         position: 'absolute', top: top + 4, left: 4, right: 4, height: height - 8,
                         background: event.entry_type === 'ai' ? 'linear-gradient(135deg, #fef9c3 0%, #fde68a 100%)' : '#e0f2fe',
-                        borderRadius: 8, padding: 12, fontSize: 12, border: '1px solid rgba(0,0,0,0.05)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 10, cursor: 'pointer'
+                        borderRadius: 8, padding: '8px 12px', fontSize: 12, border: '1px solid rgba(0,0,0,0.05)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 10, cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', justifyContent: 'center'
                       }}
                     >
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>{event.title}</div>
@@ -396,6 +529,7 @@ const Timetable = () => {
           </div>
         </div>
       </div>
+    </div>
 
       <div style={{ width: 320 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -519,11 +653,25 @@ const Timetable = () => {
               <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Giờ</label>
               <div className="search-container" style={{ position: 'relative' }}>
                 <Clock size={18} style={{ zIndex: 1 }} />
+                <input 
+                  ref={deadlineTimeInputRef}
+                  type="time" 
+                  style={{ 
+                    position: 'absolute', top: 0, left: 0, opacity: 0, 
+                    width: '100%', height: '100%', zIndex: 2,
+                    pointerEvents: 'none' 
+                  }}
+                  value={newDeadline.time} 
+                  onChange={e => setNewDeadline({...newDeadline, time: e.target.value})} 
+                />
                 <button 
                   type="button"
                   onClick={() => {
-                    setIsDeadlineTimeOpen(!isDeadlineTimeOpen);
-                    setIsReminderOpen(false);
+                    if (deadlineTimeInputRef.current?.showPicker) {
+                      deadlineTimeInputRef.current.showPicker();
+                    } else {
+                      deadlineTimeInputRef.current?.click();
+                    }
                   }}
                   className="input-field search-bar" 
                   style={{ 
@@ -534,39 +682,6 @@ const Timetable = () => {
                 >
                   {newDeadline.time}
                 </button>
-                {isDeadlineTimeOpen && (
-                  <div style={{ 
-                    position: 'absolute', top: '105%', left: 0, width: '100%', 
-                    maxHeight: 200, overflowY: 'auto',
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
-                    padding: '8px', border: '1px solid var(--hairline)'
-                  }}>
-                    {timeSlots
-                      .filter(t => {
-                        if (newDeadline.date === new Date().toISOString().split('T')[0]) {
-                          const [h, m] = t.split(':').map(Number);
-                          const now = new Date();
-                          return h > now.getHours() || (h === now.getHours() && m > now.getMinutes());
-                        }
-                        return true;
-                      })
-                      .map(t => (
-                        <div 
-                          key={t}
-                          onClick={() => { setNewDeadline({...newDeadline, time: t}); setIsDeadlineTimeOpen(false); }}
-                          style={{ 
-                            padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                            cursor: 'pointer', fontSize: 14, background: newDeadline.time === t ? 'var(--surface-soft)' : 'transparent'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = newDeadline.time === t ? 'var(--surface-soft)' : 'transparent'}
-                        >
-                          {t}
-                        </div>
-                      ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -752,16 +867,12 @@ const Timetable = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ position: 'relative' }}>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Giờ bắt đầu</label>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tiết bắt đầu</label>
               <div className="search-container" style={{ position: 'relative' }}>
                 <Clock size={18} style={{ zIndex: 1 }} />
                 <button 
                   type="button"
-                  onClick={() => {
-                    setIsStartTimeOpen(!isStartTimeOpen);
-                    setIsDayOpen(false);
-                    setIsEndTimeOpen(false);
-                  }}
+                  onClick={() => setIsStartTimeOpen(!isStartTimeOpen)}
                   className="input-field search-bar" 
                   style={{ 
                     background: 'white', border: '1px solid var(--hairline)', 
@@ -769,28 +880,29 @@ const Timetable = () => {
                     paddingRight: 20, cursor: 'pointer', textAlign: 'left'
                   }}
                 >
-                  {newEntry.start_time}
+                  {`Tiết ${parseInt(newEntry.start_time.split(':')[0]) - 6}`}
+                  <ChevronDown size={16} />
                 </button>
                 {isStartTimeOpen && (
-                  <div style={{ 
-                    position: 'absolute', top: '105%', left: 0, width: '100%', 
-                    maxHeight: 200, overflowY: 'auto',
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
-                    padding: '8px', border: '1px solid var(--hairline)'
-                  }}>
-                    {timeSlots.map(t => (
+                  <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 200, overflowY: 'auto', zIndex: 100, background: 'white', border: '1px solid var(--hairline)', borderRadius: 'var(--rounded-md)', marginTop: 4, boxShadow: 'var(--shadow-lg)' }}>
+                    {Array.from({ length: 16 }).map((_, i) => (
                       <div 
-                        key={t}
-                        onClick={() => { setNewEntry({...newEntry, start_time: t}); setIsStartTimeOpen(false); }}
-                        style={{ 
-                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                          cursor: 'pointer', fontSize: 14, background: newEntry.start_time === t ? 'var(--surface-soft)' : 'transparent'
+                        key={i} 
+                        className="dropdown-item" 
+                        onClick={() => {
+                          const h = i + 7;
+                          const startTime = `${h.toString().padStart(2, '0')}:00`;
+                          const [currH] = newEntry.end_time.split(':').map(Number);
+                          let endTime = newEntry.end_time;
+                          if (currH <= h) {
+                            endTime = `${(h + 1).toString().padStart(2, '0')}:00`;
+                          }
+                          setNewEntry({ ...newEntry, start_time: startTime, end_time: endTime });
+                          setIsStartTimeOpen(false);
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = newEntry.start_time === t ? 'var(--surface-soft)' : 'transparent'}
+                        style={{ padding: '10px 16px', cursor: 'pointer' }}
                       >
-                        {t}
+                        Tiết {i + 1}
                       </div>
                     ))}
                   </div>
@@ -798,16 +910,12 @@ const Timetable = () => {
               </div>
             </div>
             <div style={{ position: 'relative' }}>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Giờ kết thúc</label>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tiết kết thúc</label>
               <div className="search-container" style={{ position: 'relative' }}>
                 <Clock size={18} style={{ zIndex: 1 }} />
                 <button 
                   type="button"
-                  onClick={() => {
-                    setIsEndTimeOpen(!isEndTimeOpen);
-                    setIsDayOpen(false);
-                    setIsStartTimeOpen(false);
-                  }}
+                  onClick={() => setIsEndTimeOpen(!isEndTimeOpen)}
                   className="input-field search-bar" 
                   style={{ 
                     background: 'white', border: '1px solid var(--hairline)', 
@@ -815,30 +923,29 @@ const Timetable = () => {
                     paddingRight: 20, cursor: 'pointer', textAlign: 'left'
                   }}
                 >
-                  {newEntry.end_time}
+                  {`Tiết ${parseInt(newEntry.end_time.split(':')[0]) - 6}`}
+                  <ChevronDown size={16} />
                 </button>
                 {isEndTimeOpen && (
-                  <div style={{ 
-                    position: 'absolute', top: '105%', left: 0, width: '100%', 
-                    maxHeight: 200, overflowY: 'auto',
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
-                    padding: '8px', border: '1px solid var(--hairline)'
-                  }}>
-                    {timeSlots.map(t => (
-                      <div 
-                        key={t}
-                        onClick={() => { setNewEntry({...newEntry, end_time: t}); setIsEndTimeOpen(false); }}
-                        style={{ 
-                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                          cursor: 'pointer', fontSize: 14, background: newEntry.end_time === t ? 'var(--surface-soft)' : 'transparent'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = newEntry.end_time === t ? 'var(--surface-soft)' : 'transparent'}
-                      >
-                        {t}
-                      </div>
-                    ))}
+                  <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 200, overflowY: 'auto', zIndex: 100, background: 'white', border: '1px solid var(--hairline)', borderRadius: 'var(--rounded-md)', marginTop: 4, boxShadow: 'var(--shadow-lg)' }}>
+                    {Array.from({ length: 16 }).map((_, i) => {
+                      const h = i + 7;
+                      const startH = parseInt(newEntry.start_time.split(':')[0]);
+                      if (h < startH) return null;
+                      return (
+                        <div 
+                          key={i} 
+                          className="dropdown-item" 
+                          onClick={() => {
+                            setNewEntry({ ...newEntry, end_time: `${h.toString().padStart(2, '0')}:00` });
+                            setIsEndTimeOpen(false);
+                          }}
+                          style={{ padding: '10px 16px', cursor: 'pointer' }}
+                        >
+                          Tiết {i + 1}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -860,6 +967,99 @@ const Timetable = () => {
             <button className="btn-secondary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={() => { setShowEntryModal(false); setEditingEntry(null); }}>Hủy</button>
             <button className="btn-primary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={handleAddEntry}>
               {editingEntry ? 'Cập nhật' : 'Lưu lại'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="Nhập dữ liệu thời khóa biểu" width={600}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 12, background: 'var(--surface-soft)', padding: 4, borderRadius: 'var(--rounded-full)' }}>
+            <button 
+              onClick={() => setImportType('excel')}
+              style={{ flex: 1, padding: '8px', border: 'none', background: importType === 'excel' ? 'white' : 'transparent', borderRadius: 'var(--rounded-full)', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: importType === 'excel' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
+            >
+              Nhập từ Excel
+            </button>
+            <button 
+              onClick={() => setImportType('json')}
+              style={{ flex: 1, padding: '8px', border: 'none', background: importType === 'json' ? 'white' : 'transparent', borderRadius: 'var(--rounded-full)', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: importType === 'json' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
+            >
+              Nhập từ JSON
+            </button>
+          </div>
+
+          {importType === 'excel' ? (
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 12, color: 'var(--mute)' }}>Chọn file Excel (.xlsx, .xls)</label>
+              <div style={{ border: '2px dashed var(--hairline)', borderRadius: 16, padding: '40px 20px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
+                <Upload size={32} style={{ color: 'var(--primary)', marginBottom: 12 }} />
+                <p style={{ fontSize: 14, color: 'var(--body)', marginBottom: 4 }}>{importFile ? importFile.name : 'Nhấn để chọn hoặc kéo thả file vào đây'}</p>
+                <p style={{ fontSize: 12, color: 'var(--mute)' }}>Hỗ trợ các cột: Mã môn, Tên môn, Thứ, Bắt đầu, Kết thúc, Phòng</p>
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls"
+                  onChange={(e) => setImportFile(e.target.files[0])}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} 
+                />
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Dán mã JSON học phần vào đây</label>
+              <textarea 
+                className="input-field" 
+                placeholder='[{"course_code": "IT101", "course_name": "Lập trình C", "day_of_week": 2, "start_time": "07:00", "end_time": "09:00", "room": "A1-101"}]' 
+                style={{ height: 250, resize: 'none', padding: 16, fontFamily: 'monospace', fontSize: 13, background: 'var(--surface-soft)', border: '1px solid var(--hairline)', borderRadius: 12 }} 
+                value={importJson} 
+                onChange={e => setImportJson(e.target.value)} 
+              />
+            </div>
+          )}
+          
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="btn-secondary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={() => setShowImportModal(false)}>Hủy</button>
+            <button className="btn-primary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={handleImportData}>Bắt đầu nhập</button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={confirmModal.isOpen} 
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
+        width={400}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            width: 80, height: 80, borderRadius: '50%', background: '#fff1f0',
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            margin: '0 auto 24px', color: '#ff4d4f',
+            boxShadow: '0 0 0 8px #fff1f033'
+          }}>
+            <AlertTriangle size={40} strokeWidth={2.5} />
+          </div>
+
+          <h2 className="heading-lg" style={{ marginBottom: 12, fontWeight: 800 }}>{confirmModal.title}</h2>
+          <p className="body-md" style={{ color: 'var(--mute)', marginBottom: 32, lineHeight: 1.6, padding: '0 10px' }}>
+            {confirmModal.message}
+          </p>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button 
+              className="btn-secondary" 
+              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, fontWeight: 700 }} 
+              onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+            >
+              Hủy
+            </button>
+            <button 
+              className="btn-primary" 
+              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, background: '#ff4d4f', borderColor: '#ff4d4f', fontWeight: 700 }} 
+              onClick={() => {
+                confirmModal.onConfirm();
+                setConfirmModal({ ...confirmModal, isOpen: false });
+              }}
+            >
+              Xác nhận xóa
             </button>
           </div>
         </div>

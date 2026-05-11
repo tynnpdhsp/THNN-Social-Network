@@ -259,6 +259,26 @@ class ScheduleService:
         
         section = await self.repo.create_course_section(section_data)
         return self._map_course_section_to_response(section)
+
+    async def bulk_create_course_sections(self, data: list[CourseSectionCreate], user_id: str) -> list[CourseSectionResponse]:
+        """Bulk create course sections"""
+        results = []
+        for section_data in data:
+            section_dict = {
+                "userId": user_id,
+                "courseCode": section_data.course_code,
+                "courseName": section_data.course_name,
+                "sectionCode": section_data.section_code,
+                "instructor": section_data.instructor,
+                "dayOfWeek": section_data.day_of_week,
+                "startTime": section_data.start_time,
+                "endTime": section_data.end_time,
+                "room": section_data.room,
+                "semester": section_data.semester
+            }
+            section = await self.repo.create_course_section(section_dict)
+            results.append(self._map_course_section_to_response(section))
+        return results
     
     async def get_all_course_sections(self, user_id: str, skip: int, limit: int, semester: str = None) -> list[CourseSectionResponse]:
         """Get all course sections for a user"""
