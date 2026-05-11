@@ -12,6 +12,7 @@ from app.modules.shop.schemas import (
     OrderCreate, OrderResponse, OrderListResponse,
     VNPayCreatePaymentRequest, VNPayPaymentResponse,
     ReviewCreate, ReviewResponse, ReviewListResponse,
+    CartItemCreate, CartItemResponse, CartResponse,
     MessageResponse, PaginatedParams, VNPayCallbackResponse
 )
 
@@ -239,6 +240,52 @@ async def create_order(
 ):
     """Create new order"""
     return await svc.create_order(data, user_id)
+#endregion
+
+# region---- Cart Endpoints ----
+@router.get("/cart", response_model=CartResponse)
+async def get_cart(
+    user_id: str = Depends(require_active_user),
+    svc: ShopService = Depends(get_shop_service),
+):
+    """Get current user's cart"""
+    return await svc.get_cart(user_id)
+
+@router.post("/cart", response_model=CartItemResponse)
+async def add_to_cart(
+    data: CartItemCreate,
+    user_id: str = Depends(require_active_user),
+    svc: ShopService = Depends(get_shop_service),
+):
+    """Add item to cart"""
+    return await svc.add_to_cart(user_id, data)
+
+@router.patch("/cart/{item_id}", response_model=CartItemResponse)
+async def update_cart_item(
+    item_id: str,
+    quantity: int = Body(..., embed=True),
+    user_id: str = Depends(require_active_user),
+    svc: ShopService = Depends(get_shop_service),
+):
+    """Update item quantity in cart"""
+    return await svc.update_cart_item(user_id, item_id, quantity)
+
+@router.delete("/cart/{item_id}", response_model=MessageResponse)
+async def remove_from_cart(
+    item_id: str,
+    user_id: str = Depends(require_active_user),
+    svc: ShopService = Depends(get_shop_service),
+):
+    """Remove item from cart"""
+    return await svc.remove_from_cart(user_id, item_id)
+
+@router.delete("/cart", response_model=MessageResponse)
+async def clear_cart(
+    user_id: str = Depends(require_active_user),
+    svc: ShopService = Depends(get_shop_service),
+):
+    """Clear entire cart"""
+    return await svc.clear_cart(user_id)
 #endregion
 
 # region---- Payment Endpoints ----

@@ -23,7 +23,7 @@ from app.core.exceptions import (
     NotFoundException,
 )
 from app.modules.shop.repository import ShopRepository
-from prisma.models import ShopItem, User # type: ignore
+from prisma.models import ShopItem, User, CartItem # type: ignore
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -422,9 +422,72 @@ class ShopService:
             hash_data.encode("utf-8"),
             hashlib.sha512
         ).hexdigest()
-        
         return calculated_hash.lower() == secure_hash.lower()
 
+    # endregion
+
+    # region ---- Cart ----
+    async def get_cart(self, user_id: str) -> CartResponse:
+        """Get user's cart with total amount"""
+        cart_items = await self.repo.get_cart_items(user_id)
+        
+        items = []
+        total_amount = 0.0
+        
+        for item in cart_items:
+            # Map item to response
+            item_resp = self._map_item_to_response(item.item)
+            items.append(CartItemResponse(
+                item_id=item.itemId,
+                quantity=item.quantity,
+                item=item_resp
+            ))
+            total_amount += item.item.price * item.quantity
+            
+        return CartResponse(
+            items=items,
+            total_amount=total_amount,
+            expires_at=None # Can be implemented later if needed
+        )
+
+    async def add_to_cart(self, user_id: str, data: CartItemCreate) -> CartItemResponse:
+        """Add item to cart"""
+        item_existing = await self.repo.get_item_by_id(data.item_id)
+        if not item_existing:
+            raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
+            
+        cart_item = await self.repo.add_to_cart(user_id, data.item_id, data.quantity)
+        
+        return CartItemResponse(
+            item_id=cart_item.itemId,
+            quantity=cart_item.quantity,
+            item=self._map_item_to_response(cart_item.item)
+        )
+
+    async def update_cart_item(self, user_id: str, item_id: str, quantity: int) -> CartItemResponse:
+        """Update quantity of an item in cart"""
+        try:
+            cart_item = await self.repo.update_cart_item(user_id, item_id, quantity)
+            return CartItemResponse(
+                item_id=cart_item.itemId,
+                quantity=cart_item.quantity,
+                item=self._map_item_to_response(cart_item.item)
+            )
+        except Exception:
+            raise NotFoundException("Item not found in cart", "CART_ITEM_NOT_FOUND")
+
+    async def remove_from_cart(self, user_id: str, item_id: str) -> MessageResponse:
+        """Remove item from cart"""
+        try:
+            await self.repo.remove_from_cart(user_id, item_id)
+            return MessageResponse(message="Item removed from cart")
+        except Exception:
+            raise NotFoundException("Item not found in cart", "CART_ITEM_NOT_FOUND")
+
+    async def clear_cart(self, user_id: str) -> MessageResponse:
+        """Clear user's cart"""
+        await self.repo.clear_cart(user_id)
+        return MessageResponse(message="Cart cleared")
     # endregion
 
 # region ---- Helper ----

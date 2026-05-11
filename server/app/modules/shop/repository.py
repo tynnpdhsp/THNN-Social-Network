@@ -1,6 +1,6 @@
 from typing import Optional
 from prisma import Prisma
-from prisma.models import ItemCategory, ShopItem, ItemImage, Order, Review, User
+from prisma.models import ItemCategory, ShopItem, ItemImage, Order, Review, User, CartItem
 from prisma import Json
 from datetime import datetime
 
@@ -431,5 +431,56 @@ class ShopRepository:
                 "message": "Review deleted successfully"
             }
     # endregion
+
+    # region ---- Cart ----
+    async def get_cart_items(self, user_id: str) -> list:
+        """Get all cart items for a user"""
+        return await self.db.cartitem.find_many(
+            where={"userId": user_id},
+            include={"item": {"include": {"itemImages": {"take": 1}, "category": True}}},
+            order={"createdAt": "desc"}
+        )
+
+    async def add_to_cart(self, user_id: str, item_id: str, quantity: int):
+        """Add item to cart or update quantity if exists"""
+        existing = await self.db.cartitem.find_unique(
+            where={"userId_itemId": {"userId": user_id, "itemId": item_id}}
+        )
+
+        if existing:
+            return await self.db.cartitem.update(
+                where={"id": existing.id},
+                data={"quantity": existing.quantity + quantity},
+                include={"item": True}
+            )
+        
+        return await self.db.cartitem.create(
+            data={
+                "userId": user_id,
+                "itemId": item_id,
+                "quantity": quantity
+            },
+            include={"item": True}
+        )
+
+    async def update_cart_item(self, user_id: str, item_id: str, quantity: int):
+        """Update cart item quantity"""
+        return await self.db.cartitem.update(
+            where={"userId_itemId": {"userId": user_id, "itemId": item_id}},
+            data={"quantity": quantity},
+            include={"item": True}
+        )
+
+    async def remove_from_cart(self, user_id: str, item_id: str) -> None:
+        """Remove item from cart"""
+        await self.db.cartitem.delete(
+            where={"userId_itemId": {"userId": user_id, "itemId": item_id}}
+        )
+
+    async def clear_cart(self, user_id: str) -> None:
+        """Clear all items in user's cart"""
+        await self.db.cartitem.delete_many(where={"userId": user_id})
+    # endregion
+
 
     

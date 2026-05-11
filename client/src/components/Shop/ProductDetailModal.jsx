@@ -3,7 +3,7 @@ import { X, Star, ShoppingCart, MessageSquare, Send, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as shopService from '../../services/shopService';
 
-const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
+const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart }) => {
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [reviews, setReviews] = useState([]);
@@ -133,13 +133,22 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow }) => {
               <p className="body-md" style={{ color: 'var(--body)', opacity: 0.8 }}>{product.description}</p>
             </div>
 
-            <button 
-              className="btn-primary" 
-              style={{ width: '100%', height: 56, fontSize: 18, marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              onClick={() => onBuyNow(product)}
-            >
-              <ShoppingCart size={20} /> Mua ngay
-            </button>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
+              <button 
+                className="btn-primary" 
+                style={{ flex: 1, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                onClick={() => onBuyNow(product)}
+              >
+                Mua ngay
+              </button>
+              <button 
+                className="btn-secondary" 
+                style={{ width: 56, height: 56, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={() => onAddToCart(product)}
+              >
+                <ShoppingCart size={24} color="var(--primary)" />
+              </button>
+            </div>
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--hairline)', marginBottom: 32 }} />
 
