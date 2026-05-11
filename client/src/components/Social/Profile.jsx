@@ -3,17 +3,49 @@ import { Camera, Edit3 } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
-const Profile = () => {
-  const { user, refreshProfile } = useAuth();
+const Profile = ({ targetUserId, onStartChat }) => {
+  const { user: currentUser, refreshProfile } = useAuth();
+  const [profileUser, setProfileUser] = useState(null);
+  const [loading, setLoading] = useState(!!targetUserId);
   const [editing, setEditing] = useState(false);
-  const [fullName, setFullName] = useState(user?.full_name || '');
-  const [bio, setBio] = useState(user?.bio || '');
+  const [fullName, setFullName] = useState('');
+  const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
 
-  if (!user) return null;
+  const isOwnProfile = !targetUserId || targetUserId === currentUser?.id;
 
-  const avatar = resolveImageUrl(user.avatar_url) || getDefaultAvatar(user.full_name);
-  const cover = resolveImageUrl(user.cover_url);
+  const loadProfile = React.useCallback(async () => {
+    if (isOwnProfile) {
+      setProfileUser(currentUser);
+      setFullName(currentUser?.full_name || '');
+      setBio(currentUser?.bio || '');
+      setLoading(false);
+    } else {
+      setLoading(true);
+      try {
+        const res = await apiFetch(`/account/${targetUserId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProfileUser(data);
+          setFullName(data.full_name);
+          setBio(data.bio || '');
+        }
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      }
+      setLoading(false);
+    }
+  }, [targetUserId, currentUser, isOwnProfile]);
+
+  React.useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><div style={{ width: 32, height: 32, border: '3px solid var(--hairline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /></div>;
+  if (!profileUser) return <div style={{ textAlign: 'center', padding: 64, color: 'var(--ash)' }}>Không tìm thấy người dùng</div>;
+
+  const avatar = resolveImageUrl(profileUser.avatar_url) || getDefaultAvatar(profileUser.full_name);
+  const cover = resolveImageUrl(profileUser.cover_url);
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
@@ -64,6 +96,25 @@ const Profile = () => {
     setEditing(false);
   };
 
+  const handleFriendAction = async (action) => {
+    let url = '';
+    let method = 'POST';
+    if (action === 'add') url = `/social/friends/requests/${targetUserId}`;
+    if (action === 'accept') url = `/social/friends/requests/${targetUserId}/accept`;
+    if (action === 'reject') url = `/social/friends/requests/${targetUserId}/reject`;
+    if (action === 'unfriend') {
+      url = `/social/friends/${targetUserId}`;
+      method = 'DELETE';
+    }
+
+    try {
+      const res = await apiFetch(url, { method });
+      if (res.ok) {
+        loadProfile();
+      }
+    } catch {}
+  };
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px' }}>
       <div style={{ ...s.card, animation: 'fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
@@ -74,11 +125,13 @@ const Profile = () => {
           ) : (
             <div style={s.coverPlaceholder} />
           )}
-          <label style={s.coverBtn}>
-            <Camera size={16} color="white" />
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Đổi ảnh bìa</span>
-            <input type="file" accept="image/*" hidden onChange={handleCoverUpload} />
-          </label>
+          {isOwnProfile && (
+            <label style={s.coverBtn}>
+              <Camera size={16} color="white" />
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Đổi ảnh bìa</span>
+              <input type="file" accept="image/*" hidden onChange={handleCoverUpload} />
+            </label>
+          )}
         </div>
 
         {/* Avatar & Info */}
@@ -88,10 +141,12 @@ const Profile = () => {
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.18)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.12)'; }}
             />
-            <label style={s.avatarBtn}>
-              <Camera size={14} color="white" />
-              <input type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
-            </label>
+            {isOwnProfile && (
+              <label style={s.avatarBtn}>
+                <Camera size={14} color="white" />
+                <input type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+              </label>
+            )}
           </div>
 
           {editing ? (
@@ -120,16 +175,47 @@ const Profile = () => {
             </div>
           ) : (
             <>
-              <h2 style={{ fontSize: 24, fontWeight: 800, marginTop: 12 }}>{user.full_name}</h2>
-              <p style={{ fontSize: 14, color: 'var(--mute)', marginTop: 2 }}>{user.email}</p>
-              {user.bio && <p style={{ fontSize: 14, color: 'var(--body)', marginTop: 8, maxWidth: 400, textAlign: 'center' }}>{user.bio}</p>}
-              <button
-                onClick={() => { setFullName(user.full_name); setBio(user.bio || ''); setEditing(true); }}
-                className="btn-secondary"
-                style={{ marginTop: 16, gap: 8, display: 'flex', alignItems: 'center' }}
-              >
-                <Edit3 size={16} /> Chỉnh sửa thông tin
-              </button>
+              <h2 style={{ fontSize: 24, fontWeight: 800, marginTop: 12 }}>{profileUser.full_name}</h2>
+              <p style={{ fontSize: 14, color: 'var(--mute)', marginTop: 2 }}>{profileUser.email}</p>
+              {profileUser.bio && <p style={{ fontSize: 14, color: 'var(--body)', marginTop: 8, maxWidth: 400, textAlign: 'center' }}>{profileUser.bio}</p>}
+              
+              {isOwnProfile ? (
+                <button
+                  onClick={() => { setFullName(profileUser.full_name); setBio(profileUser.bio || ''); setEditing(true); }}
+                  className="btn-secondary"
+                  style={{ marginTop: 16, gap: 8, display: 'flex', alignItems: 'center' }}
+                >
+                  <Edit3 size={16} /> Chỉnh sửa thông tin
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                  {profileUser.friend_status === 'none' && (
+                    <button className="btn-primary" style={{ padding: '8px 24px' }} onClick={() => handleFriendAction('add')}>Kết bạn</button>
+                  )}
+                  {profileUser.friend_status === 'pending' && (
+                    <button className="btn-secondary" style={{ padding: '8px 24px', opacity: 0.8 }} disabled>Đã gửi yêu cầu</button>
+                  )}
+                  {profileUser.friend_status === 'pending_received' && (
+                    <>
+                      <button className="btn-primary" style={{ padding: '8px 20px' }} onClick={() => handleFriendAction('accept')}>Chấp nhận</button>
+                      <button className="btn-secondary" style={{ padding: '8px 20px' }} onClick={() => handleFriendAction('reject')}>Từ chối</button>
+                    </>
+                  )}
+                  {profileUser.friend_status === 'accepted' && (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-soft)', padding: '8px 20px', borderRadius: 'var(--rounded-full)', color: '#16a34a', fontWeight: 700, fontSize: 14 }}>
+                        ✓ Bạn bè
+                      </div>
+                      <button className="btn-secondary" style={{ padding: '8px 20px', color: 'var(--primary)' }} onClick={() => confirm('Hủy kết bạn?') && handleFriendAction('unfriend')}>Hủy kết bạn</button>
+                    </>
+                  )}
+                  <button 
+                    className="btn-secondary" 
+                    style={{ padding: '8px 24px' }}
+                    onClick={() => onStartChat?.(profileUser)}
+                  >Nhắn tin</button>
+                </div>
+              )}
             </>
           )}
 
@@ -153,14 +239,14 @@ const Profile = () => {
         <span style={{
           padding: '6px 20px',
           borderRadius: 'var(--rounded-full)',
-          background: user.role === 'admin' ? '#fef2f2' : 'var(--surface-card)',
-          color: user.role === 'admin' ? 'var(--primary)' : 'var(--body)',
+          background: profileUser.role === 'admin' ? '#fef2f2' : 'var(--surface-card)',
+          color: profileUser.role === 'admin' ? 'var(--primary)' : 'var(--body)',
           fontWeight: 700,
           fontSize: 12,
           textTransform: 'uppercase',
           letterSpacing: 1,
         }}>
-          {user.role}
+          {profileUser.role}
         </span>
       </div>
     </div>

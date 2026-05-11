@@ -1,16 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageCircle, Send, Image, MoreHorizontal, Flag, Ban, UserPlus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Heart, MessageCircle, Send, Image, MoreHorizontal, Flag, Ban, UserPlus, Trash2, Edit3 } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
 
-const Feed = () => {
+const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [newContent, setNewContent] = useState('');
   const [uploadedImages, setUploadedImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const [visibility, setVisibility] = useState('public');
+  
+  // Edit post
+  const [editPost, setEditPost] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [editVisibility, setEditVisibility] = useState('public');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Comment modal
   const [commentPostId, setCommentPostId] = useState(null);
@@ -34,6 +41,25 @@ const Feed = () => {
   }, []);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
+
+  // Scroll to focused post from notification
+  useEffect(() => {
+    if (focusPostId && posts.length > 0) {
+      // Small delay to ensure DOM is rendered
+      setTimeout(() => {
+        const el = document.getElementById(`post-${focusPostId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.transition = 'box-shadow 0.5s ease';
+          el.style.boxShadow = '0 0 0 3px var(--primary), 0 8px 32px rgba(230,0,35,0.15)';
+          setTimeout(() => {
+            el.style.boxShadow = '';
+          }, 3000);
+        }
+        onPostFocused?.();
+      }, 300);
+    }
+  }, [focusPostId, posts.length, onPostFocused]);
 
   const handleUploadImages = async (e) => {
     const files = e.target.files;
@@ -63,7 +89,7 @@ const Feed = () => {
     try {
       const body = {
         content: newContent,
-        visibility: 'public',
+        visibility: visibility,
         images: uploadedImages.map((u, i) => ({ image_url: u, display_order: i })),
       };
       const res = await apiFetch('/social/posts', {
@@ -88,6 +114,22 @@ const Feed = () => {
     if (!confirm('Xóa bài viết này?')) return;
     await apiFetch(`/social/posts/${postId}`, { method: 'DELETE' });
     loadFeed();
+  };
+
+  const handleUpdatePost = async () => {
+    if (!editPost || !editContent.trim()) return;
+    setSavingEdit(true);
+    try {
+      const res = await apiFetch(`/social/posts/${editPost.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content: editContent, visibility: editVisibility }),
+      });
+      if (res.ok) {
+        setEditPost(null);
+        loadFeed();
+      }
+    } catch { /* ignore */ }
+    setSavingEdit(false);
   };
 
   // Comments
@@ -181,15 +223,30 @@ const Feed = () => {
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--mute)' }}>Ảnh/Video</span>
             <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
           </label>
-          <button
-            id="feed-post-submit"
-            className="btn-primary"
-            style={{ padding: '10px 28px', fontSize: 14 }}
-            onClick={handleCreatePost}
-            disabled={posting}
-          >
-            {posting ? 'Đang đăng...' : 'Đăng bài'}
-          </button>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <select 
+              value={visibility} 
+              onChange={(e) => setVisibility(e.target.value)}
+              style={{ 
+                border: 'none', background: 'var(--surface-soft)', borderRadius: 8, 
+                padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--mute)',
+                outline: 'none', cursor: 'pointer'
+              }}
+            >
+              <option value="public">🌍 Công khai</option>
+              <option value="friends">👥 Bạn bè</option>
+              <option value="private">🔒 Riêng tư</option>
+            </select>
+            <button
+              id="feed-post-submit"
+              className="btn-primary"
+              style={{ padding: '10px 28px', fontSize: 14 }}
+              onClick={handleCreatePost}
+              disabled={posting}
+            >
+              {posting ? 'Đang đăng...' : 'Đăng bài'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -202,6 +259,7 @@ const Feed = () => {
       ) : (
         posts.map((p, idx) => <PostCard
           key={p.id}
+          id={`post-${p.id}`}
           post={p}
           index={idx}
           currentUserId={user?.id}
@@ -211,8 +269,40 @@ const Feed = () => {
           onBlock={handleBlock}
           onAddFriend={handleAddFriend}
           onDelete={handleDeletePost}
+          onEdit={(p) => { setEditPost(p); setEditContent(p.content); setEditVisibility(p.visibility); }}
+          onViewProfile={onViewProfile}
         />)
       )}
+
+      {/* Edit Modal */}
+      <Modal isOpen={!!editPost} onClose={() => setEditPost(null)} title="Chỉnh sửa bài viết" width={500}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <textarea
+            className="input-field"
+            style={{ height: 120, resize: 'none', padding: '12px 20px' }}
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <select 
+              value={editVisibility} 
+              onChange={(e) => setEditVisibility(e.target.value)}
+              className="input-field"
+              style={{ width: 140, height: 40, fontSize: 13 }}
+            >
+              <option value="public">Công khai</option>
+              <option value="friends">Bạn bè</option>
+              <option value="private">Riêng tư</option>
+            </select>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn-secondary" onClick={() => setEditPost(null)}>Hủy</button>
+              <button className="btn-primary" onClick={handleUpdatePost} disabled={savingEdit}>
+                {savingEdit ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       {/* Comment Modal */}
       <Modal isOpen={!!commentPostId} onClose={() => setCommentPostId(null)} title="Bình luận" width={720}>
@@ -305,7 +395,7 @@ const Feed = () => {
 };
 
 // ─── Post Card Component ──────────────────────────────────────────
-function PostCard({ post: p, index = 0, currentUserId, onLike, onComment, onReport, onBlock, onAddFriend, onDelete }) {
+function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, onReport, onBlock, onAddFriend, onDelete, onEdit, onViewProfile }) {
   const [showMenu, setShowMenu] = useState(false);
   const [likeAnim, setLikeAnim] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -320,6 +410,7 @@ function PostCard({ post: p, index = 0, currentUserId, onLike, onComment, onRepo
 
   return (
     <div
+      id={id}
       style={{
         ...s.postCard,
         animation: `fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) ${index * 0.08}s both`,
@@ -330,11 +421,19 @@ function PostCard({ post: p, index = 0, currentUserId, onLike, onComment, onRepo
     >
       <div style={s.postHeader}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src={avatar} alt="" style={s.postAvatar} />
+          <img 
+            src={avatar} 
+            alt="" 
+            style={{ ...s.postAvatar, cursor: 'pointer' }} 
+            onClick={() => onViewProfile?.(p.user_id)}
+          />
           <div>
-            <p style={{ fontWeight: 700, fontSize: 14 }}>{p.user_info?.full_name}</p>
+            <p 
+              style={{ fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              onClick={() => onViewProfile?.(p.user_id)}
+            >{p.user_info?.full_name}</p>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--mute)' }}>
-              {new Date(p.created_at).toLocaleDateString('vi-VN')} • {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {new Date(p.created_at).toLocaleDateString('vi-VN')} • {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {p.visibility === 'public' ? '🌍' : p.visibility === 'friends' ? '👥' : '🔒'}
             </p>
           </div>
         </div>
@@ -360,10 +459,15 @@ function PostCard({ post: p, index = 0, currentUserId, onLike, onComment, onRepo
                   </button>
                 </>
               )}
-              {isOwn && (
-                <button onClick={() => { onDelete(p.id); setShowMenu(false); }} style={{ ...s.menuItem, color: 'var(--primary)' }}>
-                  <Trash2 size={14} /> Xóa bài
-                </button>
+               {isOwn && (
+                <>
+                  <button onClick={() => { onEdit(p); setShowMenu(false); }} style={s.menuItem}>
+                    <Edit3 size={14} /> Sửa bài
+                  </button>
+                  <button onClick={() => { onDelete(p.id); setShowMenu(false); }} style={{ ...s.menuItem, color: 'var(--primary)' }}>
+                    <Trash2 size={14} /> Xóa bài
+                  </button>
+                </>
               )}
               </div>
             </>

@@ -70,15 +70,17 @@ const AdminPanel = () => {
       </h2>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Người dùng', value: stats.total_users || 0, color: 'var(--focus-outer)', icon: <Users size={20} /> },
           { label: 'Bài viết', value: stats.total_posts || 0, color: '#f59e0b', icon: <FileText size={20} /> },
           { label: 'Báo cáo mới', value: stats.pending_reports || 0, color: 'var(--primary)', icon: <AlertTriangle size={20} /> },
+          { label: 'Doanh thu', value: (stats.total_revenue || 0).toLocaleString('vi-VN') + ' đ', color: '#10b981', icon: <Shield size={20} /> },
+          { label: 'Bị khóa', value: stats.total_banned_users || 0, color: '#6b7280', icon: <Lock size={20} /> },
         ].map((s, i) => (
           <div key={i} style={{ ...card, marginBottom: 0, borderBottom: `3px solid ${s.color}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: s.color, marginBottom: 8 }}>{s.icon}<span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--ash)' }}>{s.label}</span></div>
-            <p style={{ fontSize: 32, fontWeight: 800 }}>{s.value}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: s.color, marginBottom: 8 }}>{s.icon}<span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--ash)' }}>{s.label}</span></div>
+            <p style={{ fontSize: 24, fontWeight: 800 }}>{s.value}</p>
           </div>
         ))}
       </div>

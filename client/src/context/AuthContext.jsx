@@ -116,7 +116,7 @@ export function AuthProvider({ children }) {
     });
     const data = await res.json();
     if (res.ok) return { success: true, message: data.message };
-    return { success: false, error: extractError(data, 'Đặt lại mật khẩu thất bại') };
+    return { success: false, error: extractError(data, 'Đặt lại mật khẩu thất bại') }; 
   };
 
   const logout = () => {

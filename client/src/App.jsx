@@ -18,6 +18,9 @@ import Map from './components/Map/Map';
 function App() {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('feed');
+  const [viewingUserId, setViewingUserId] = useState(null);
+  const [chatTarget, setChatTarget] = useState(null);
+  const [focusPostId, setFocusPostId] = useState(null);
 
   // Loading state
   if (loading) {
@@ -45,27 +48,44 @@ function App() {
     return <AuthPage />;
   }
 
+  const handleSetTab = (tab) => {
+    if (tab === 'profile') setViewingUserId(null);
+    if (tab !== 'messaging') setChatTarget(null);
+    if (tab !== 'feed') setFocusPostId(null);
+    setActiveTab(tab);
+  };
+
+  const onViewProfile = (userId) => {
+    setViewingUserId(userId);
+    setActiveTab('profile');
+  };
+
+  const onStartChat = (targetUser) => {
+    setChatTarget(targetUser);
+    setActiveTab('messaging');
+  };
+
   const renderContent = () => {
     switch (activeTab) {
-      case 'feed': return <Feed />;
-      case 'board': return <Board />;
-      case 'profile': return <Profile />;
-      case 'friends': return <Friends />;
-      case 'messaging': return <Messaging />;
-      case 'notifications': return <Notifications />;
+      case 'feed': return <Feed onViewProfile={onViewProfile} focusPostId={focusPostId} onPostFocused={() => setFocusPostId(null)} />;
+      case 'board': return <Board onViewProfile={onViewProfile} />;
+      case 'profile': return <Profile targetUserId={viewingUserId} onStartChat={onStartChat} />;
+      case 'friends': return <Friends onViewProfile={onViewProfile} />;
+      case 'messaging': return <Messaging onViewProfile={onViewProfile} preselectedUser={chatTarget} />;
+      case 'notifications': return <Notifications onViewProfile={onViewProfile} onNavigate={(tab, ctx) => { if (ctx?.scrollToPost) setFocusPostId(ctx.scrollToPost); setActiveTab(tab); }} />;
       case 'settings': return <Settings />;
-      case 'admin': return <AdminPanel />;
+      case 'admin': return <AdminPanel onViewProfile={onViewProfile} />;
       case 'shop': return <Shop />;
       case 'docs': return <StudyDocs />;
       case 'timetable': return <Timetable />;
       case 'map': return <Map />;
-      default: return <Feed />;
+      default: return <Feed onViewProfile={onViewProfile} />;
     }
   };
 
   return (
     <div className="App">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar activeTab={activeTab} setActiveTab={handleSetTab} />
       <main style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--canvas)' }}>
         {/* Page transition: key change triggers re-mount → CSS animation fires */}
         <div

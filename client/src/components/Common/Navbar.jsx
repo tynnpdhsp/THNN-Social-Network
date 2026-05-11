@@ -6,22 +6,39 @@ import { resolveImageUrl, getDefaultAvatar, apiFetch } from '../../config/api';
 const Navbar = ({ activeTab, setActiveTab }) => {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasUnreadMsg, setHasUnreadMsg] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const load = async () => {
       try {
-        const res = await apiFetch('/notifications/unread-count');
-        if (res.ok) {
-          const data = await res.json();
+        const [notifRes, msgRes] = await Promise.all([
+          apiFetch('/notifications/unread-count'),
+          apiFetch('/messaging/has-unread'),
+        ]);
+        if (notifRes.ok) {
+          const data = await notifRes.json();
           setUnreadCount(data.unread_count || 0);
+        }
+        if (msgRes.ok) {
+          const data = await msgRes.json();
+          setHasUnreadMsg(data.has_unread || false);
         }
       } catch {}
     };
     load();
     const interval = setInterval(load, 30000);
-    return () => clearInterval(interval);
+
+    // Lắng nghe sự kiện để refresh ngay lập tức
+    window.addEventListener('refreshNotifs', load);
+    window.addEventListener('refreshMsgs', load);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refreshNotifs', load);
+      window.removeEventListener('refreshMsgs', load);
+    };
   }, [user]);
 
   const mainTabs = [
@@ -90,11 +107,14 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         <button
           id="nav-messages"
           onClick={() => setActiveTab('messaging')}
-          style={{ background: activeTab === 'messaging' ? 'var(--surface-card)' : 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: 8, borderRadius: '50%', transition: 'transform 0.2s ease, background 0.2s ease' }}
+          style={{ background: activeTab === 'messaging' ? 'var(--surface-card)' : 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', padding: 8, borderRadius: '50%', position: 'relative', transition: 'transform 0.2s ease, background 0.2s ease' }}
           onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           <MessageCircle size={22} />
+          {hasUnreadMsg && (
+            <span style={{ position: 'absolute', top: 4, right: 4, width: 10, height: 10, borderRadius: '50%', background: 'var(--primary)', boxShadow: '0 0 0 2px white', animation: 'pulse 2s infinite' }} />
+          )}
         </button>
 
         <button

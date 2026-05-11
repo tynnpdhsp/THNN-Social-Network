@@ -6,6 +6,7 @@ const Settings = () => {
   const [privacy, setPrivacy] = useState({ whoCanSeePosts: 'everyone', whoCanMessage: 'everyone', whoCanFriendReq: 'everyone' });
   const [notifSettings, setNotifSettings] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [saved, setSaved] = useState(false);
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -13,12 +14,16 @@ const Settings = () => {
 
   const load = useCallback(async () => {
     try {
-      const [p, n, b] = await Promise.all([
-        apiFetch('/account/me/privacy'), apiFetch('/account/me/notification-settings'), apiFetch('/social/blocks'),
+      const [p, n, b, o] = await Promise.all([
+        apiFetch('/account/me/privacy'), 
+        apiFetch('/account/me/notification-settings'), 
+        apiFetch('/social/blocks'),
+        apiFetch('/account/me/orders'),
       ]);
       if (p.ok) setPrivacy(await p.json());
       if (n.ok) setNotifSettings(await n.json());
       if (b.ok) setBlockedUsers(await b.json());
+      if (o.ok) { const d = await o.json(); setOrders(d.orders || []); }
     } catch {}
   }, []);
 
@@ -99,11 +104,47 @@ const Settings = () => {
           {blockedUsers.length === 0 ? <p style={{ fontSize: 13, color: 'var(--ash)', textAlign: 'center', padding: 20 }}>Trống</p> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 250, overflowY: 'auto' }}>
               {blockedUsers.map(u => (
-                <div key={u.blocked_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-soft)', padding: '10px 14px', borderRadius: 12 }}>
+                <div key={u.blocked_id || u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-soft)', padding: '10px 14px', borderRadius: 12 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{u.full_name}</span>
-                  <button onClick={() => unblock(u.blocked_id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--focus-outer)', fontSize: 11, fontWeight: 700 }}>BỎ CHẶN</button>
+                  <button onClick={() => unblock(u.blocked_id || u.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--focus-outer)', fontSize: 11, fontWeight: 700 }}>BỎ CHẶN</button>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ ...c, gridColumn: 'span 2' }}>
+          <h3 style={t}><Check size={18} color="var(--focus-outer)" /> Lịch sử thanh toán</h3>
+          {orders.length === 0 ? <p style={{ fontSize: 13, color: 'var(--ash)', textAlign: 'center', padding: 20 }}>Chưa có giao dịch nào</p> : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--hairline)' }}>
+                    <th style={{ padding: 12, textAlign: 'left', color: 'var(--ash)' }}>Sản phẩm</th>
+                    <th style={{ padding: 12, textAlign: 'left', color: 'var(--ash)' }}>Số tiền</th>
+                    <th style={{ padding: 12, textAlign: 'left', color: 'var(--ash)' }}>Trạng thái</th>
+                    <th style={{ padding: 12, textAlign: 'left', color: 'var(--ash)' }}>Ngày</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(o => (
+                    <tr key={o.id} style={{ borderBottom: '1px solid var(--surface-card)' }}>
+                      <td style={{ padding: 12, fontWeight: 600 }}>{o.item_title}</td>
+                      <td style={{ padding: 12 }}>{o.amount.toLocaleString('vi-VN')} đ</td>
+                      <td style={{ padding: 12 }}>
+                        <span style={{ 
+                          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                          background: o.status === 'paid' ? '#f0fdf4' : '#fef2f2',
+                          color: o.status === 'paid' ? '#16a34a' : 'var(--primary)'
+                        }}>
+                          {o.status === 'paid' ? 'Đã thanh toán' : o.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: 12, color: 'var(--ash)' }}>{new Date(o.created_at).toLocaleDateString('vi-VN')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

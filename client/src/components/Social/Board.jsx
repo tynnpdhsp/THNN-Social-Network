@@ -14,6 +14,7 @@ const Board = () => {
   const [uploadedImages, setUploadedImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const [selectedVisibility, setSelectedVisibility] = useState('public');
 
   // Comment modal
   const [commentPostId, setCommentPostId] = useState(null);
@@ -74,7 +75,7 @@ const Board = () => {
         method: 'POST',
         body: JSON.stringify({
           content: newContent,
-          visibility: 'public',
+          visibility: selectedVisibility,
           board_tag_id: selectedTagId,
           images: uploadedImages.map((u, i) => ({ image_url: u, display_order: i })),
         }),
@@ -170,10 +171,25 @@ const Board = () => {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--mute)', fontSize: 13, fontWeight: 600 }}>
-            <Image size={16} /> Thêm ảnh
-            <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
-          </label>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--mute)', fontSize: 13, fontWeight: 600 }}>
+              <Image size={16} /> Thêm ảnh
+              <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
+            </label>
+            <select 
+              value={selectedVisibility} 
+              onChange={(e) => setSelectedVisibility(e.target.value)}
+              style={{ 
+                border: 'none', background: 'var(--surface-soft)', borderRadius: 8, 
+                padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--mute)',
+                outline: 'none', cursor: 'pointer'
+              }}
+            >
+              <option value="public">🌍 Công khai</option>
+              <option value="friends">👥 Bạn bè</option>
+              <option value="private">🔒 Riêng tư</option>
+            </select>
+          </div>
           <button className="btn-primary" style={{ padding: '10px 28px', fontSize: 14 }} onClick={handleCreatePost} disabled={posting}>
             {posting ? 'Đang đăng...' : 'Đăng tin ngay'}
           </button>

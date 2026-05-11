@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Send, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Search, Send, ArrowLeft, MessageSquare, Image, Users } from 'lucide-react';
 import { apiFetch, WS_BASE, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
-const Messaging = () => {
+const Messaging = ({ onViewProfile, preselectedUser }) => {
   const { user, token } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
@@ -12,14 +12,27 @@ const Messaging = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [friends, setFriends] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [attachments, setAttachments] = useState([]);
   const msgEndRef = useRef(null);
   const wsRef = useRef(null);
+  const activeConvRef = useRef(null);
+  const processedPreselect = useRef(false);
+
+  useEffect(() => {
+    activeConvRef.current = activeConv;
+  }, [activeConv]);
 
   const loadConversations = useCallback(async () => {
     try {
-      const res = await apiFetch('/messaging/conversations');
-      const data = await res.json();
-      setConversations(data.conversations || []);
+      const [cRes, fRes] = await Promise.all([
+        apiFetch('/messaging/conversations'),
+        apiFetch('/social/friends')
+      ]);
+      const cData = await cRes.json();
+      setConversations(cData.conversations || []);
+      setFriends(await fRes.json());
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
@@ -40,15 +53,18 @@ const Messaging = () => {
         const convId = msg.conversation_id || msg.conversationId;
 
         // If we're viewing this conversation and msg is from someone else, add it
-        if (senderId !== user?.id) {
-          setMessages(prev => {
-            if (prev.length > 0 && prev[0]._convId === convId) {
+        setMessages(prev => {
+          // If message belongs to active conversation
+          if (activeConvRef.current?.id === convId) {
+            // Check if message already exists (to avoid duplicates from REST response)
+            if (!prev.some(m => m.id === msg.id)) {
               return [...prev, { ...msg, _convId: convId }];
             }
-            return prev;
-          });
-        }
+          }
+          return prev;
+        });
         loadConversations();
+        window.dispatchEvent(new Event('refreshMsgs'));
       }
     };
 
@@ -59,7 +75,7 @@ const Messaging = () => {
     msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const openChat = async (conv) => {
+  const openChat = useCallback(async (conv) => {
     setActiveConv(conv);
     try {
       // Mark as read
@@ -68,17 +84,20 @@ const Messaging = () => {
       const data = await res.json();
       setMessages((data.messages || []).reverse().map(m => ({ ...m, _convId: conv.id })));
       loadConversations();
+      window.dispatchEvent(new Event('refreshMsgs'));
     } catch { setMessages([]); }
-  };
+  }, [loadConversations]);
 
   const sendMessage = async () => {
-    if (!msgInput.trim() || !activeConv) return;
+    if ((!msgInput.trim() && attachments.length === 0) || !activeConv) return;
     const content = msgInput;
+    const currentAttachments = attachments;
     setMsgInput('');
+    setAttachments([]);
     try {
       const res = await apiFetch(`/messaging/conversations/${activeConv.id}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, attachments: currentAttachments }),
       });
       if (res.ok) {
         const msg = await res.json();
@@ -88,6 +107,55 @@ const Messaging = () => {
     } catch { /* ignore */ }
   };
 
+  const startChat = useCallback(async (targetUser) => {
+    if (!targetUser) return;
+    // Find existing direct chat
+    let conv = conversations.find(c => 
+      c.type === 'direct' && 
+      (c.other_member?.id === targetUser.id || c.other_member?.userId === targetUser.id)
+    );
+
+    if (!conv) {
+      try {
+        const res = await apiFetch('/messaging/conversations', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'direct', participant_ids: [targetUser.id] }),
+        });
+        if (res.ok) {
+          conv = await res.json();
+          setConversations(prev => [conv, ...prev]);
+        }
+      } catch {}
+    }
+
+    if (conv) openChat(conv);
+  }, [conversations, openChat]);
+
+  useEffect(() => {
+    if (preselectedUser && conversations.length > 0 && !processedPreselect.current) {
+      processedPreselect.current = true;
+      startChat(preselectedUser);
+    }
+  }, [preselectedUser, conversations.length, startChat]);
+
+  const handleUpload = async (e) => {
+    const files = e.target.files;
+    setUploading(true);
+    for (let f of files) {
+      const fd = new FormData();
+      fd.append('file', f);
+      try {
+        const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
+        if (res.ok) {
+          const data = await res.json();
+          setAttachments(prev => [...prev, data.image_url]);
+        }
+      } catch {}
+    }
+    setUploading(false);
+    e.target.value = '';
+  };
+
   const searchUsers = async () => {
     if (!searchQuery.trim()) return;
     const res = await apiFetch(`/account/search?query=${encodeURIComponent(searchQuery)}`);
@@ -95,19 +163,6 @@ const Messaging = () => {
     setSearchResults(data.filter(u => u.id !== user?.id));
   };
 
-  const startNewChat = async (userId, name) => {
-    const res = await apiFetch('/messaging/conversations', {
-      method: 'POST',
-      body: JSON.stringify({ type: 'direct', participant_ids: [userId] }),
-    });
-    if (res.ok) {
-      const conv = await res.json();
-      setSearchResults([]);
-      setSearchQuery('');
-      loadConversations();
-      openChat({ ...conv, chatName: name });
-    }
-  };
 
   const getChatName = (conv) => {
     if (conv.chatName) return conv.chatName;
@@ -124,31 +179,37 @@ const Messaging = () => {
         <div style={{ padding: 20 }}>
           <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>Tin nhắn</h2>
 
-          {/* Search */}
+          {/* Search New / Filter Existing */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <input
-              type="text"
-              placeholder="Tìm người để trò chuyện..."
-              className="input-field"
-              style={{ flex: 1, height: 40, fontSize: 13 }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
-            />
+            <div style={{ flex: 1, position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="Tìm người hoặc nhóm..."
+                className="input-field"
+                style={{ width: '100%', height: 40, fontSize: 13, paddingRight: 40 }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
+              />
+              <Search size={16} style={{ position: 'absolute', right: 12, top: 12, color: 'var(--ash)' }} />
+            </div>
             <button className="btn-primary" style={{ padding: '0 16px', fontSize: 12 }} onClick={searchUsers}>Tìm</button>
           </div>
 
-          {/* Search Results */}
+          {/* Search Results / New Chat */}
           {searchResults.length > 0 && (
-            <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ marginBottom: 16, background: 'var(--surface-soft)', borderRadius: 16, padding: 8, animation: 'fadeInDown 0.3s ease' }}>
+              <p style={{ fontSize: 11, fontWeight: 800, color: 'var(--ash)', padding: '4px 12px', textTransform: 'uppercase' }}>Kết quả tìm kiếm</p>
               {searchResults.map(u => (
-                <div
-                  key={u.id}
-                  onClick={() => startNewChat(u.id, u.full_name)}
-                  style={s.searchItem}
-                >
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{u.full_name}</span>
-                  <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>NHẮN TIN</span>
+                <div key={u.id} style={s.searchResultItem} onClick={() => { startChat(u); setSearchQuery(''); setSearchResults([]); }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <img src={resolveImageUrl(u.avatar_url) || getDefaultAvatar(u.full_name)} alt="" style={s.searchAvatar} />
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: 13 }}>{u.full_name}</p>
+                      <p style={{ fontSize: 11, color: 'var(--ash)' }}>@{u.username || 'user'}</p>
+                    </div>
+                  </div>
+                  <MessageSquare size={14} color="var(--primary)" />
                 </div>
               ))}
             </div>
@@ -157,14 +218,26 @@ const Messaging = () => {
 
         {/* Conversations */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {conversations.length === 0 ? (
+          {conversations
+            .filter(c => {
+              if (!searchQuery.trim()) return true;
+              const name = getChatName(c).toLowerCase();
+              return name.includes(searchQuery.toLowerCase());
+            })
+            .length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--ash)' }}>
               <MessageSquare size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-              <p style={{ fontSize: 13 }}>Chưa có cuộc hội thoại</p>
+              <p style={{ fontSize: 13 }}>Không tìm thấy cuộc trò chuyện</p>
             </div>
           ) : (
-            conversations.map(c => {
-              const name = getChatName(c);
+            conversations
+              .filter(c => {
+                if (!searchQuery.trim()) return true;
+                const name = getChatName(c).toLowerCase();
+                return name.includes(searchQuery.toLowerCase());
+              })
+              .map(c => {
+                const name = getChatName(c);
               const lastMsg = c.last_message || c.lastMessage;
               const member = c.members?.find(m => (m.user_id || m.userId) === user?.id);
               const lastRead = member ? (member.last_read_at || member.lastReadAt) : null;
@@ -204,15 +277,23 @@ const Messaging = () => {
           <>
             {/* Chat Header */}
             <div style={s.chatHeader}>
-              <button onClick={() => setActiveConv(null)} style={s.backBtn}>
-                <ArrowLeft size={20} />
-              </button>
-              <div style={{ ...s.convAvatar, width: 40, height: 40, fontSize: 16 }}>
-                {getChatName(activeConv)?.[0]?.toUpperCase() || '?'}
-              </div>
-              <div>
-                <p style={{ fontWeight: 700, fontSize: 15 }}>{getChatName(activeConv)}</p>
-                <p style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>● Đang hoạt động</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button onClick={() => setActiveConv(null)} style={s.backBtn}>
+                  <ArrowLeft size={20} />
+                </button>
+                <img 
+                  src={activeConv.type === 'direct' ? (resolveImageUrl(activeConv.other_member?.avatar_url) || getDefaultAvatar(activeConv.other_member?.full_name)) : getDefaultAvatar(activeConv.name)} 
+                  alt="" 
+                  style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', cursor: activeConv.type === 'direct' ? 'pointer' : 'default' }} 
+                  onClick={() => activeConv.type === 'direct' && onViewProfile?.(activeConv.other_member?.id || activeConv.other_member?.userId)}
+                />
+                <div>
+                  <h3 
+                    style={{ fontWeight: 700, fontSize: 16, cursor: activeConv.type === 'direct' ? 'pointer' : 'default' }}
+                    onClick={() => activeConv.type === 'direct' && onViewProfile?.(activeConv.other_member?.id || activeConv.other_member?.userId)}
+                  >{getChatName(activeConv)}</h3>
+                  <p style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>{activeConv.type === 'direct' ? 'Đang hoạt động' : `${activeConv.members?.length || 0} thành viên`}</p>
+                </div>
               </div>
             </div>
 
@@ -237,9 +318,26 @@ const Messaging = () => {
                       boxShadow: isMe ? '0 2px 12px rgba(230,0,35,0.15)' : '0 1px 4px rgba(0,0,0,0.06)',
                     }}>
                       <p style={{ fontSize: 14, lineHeight: 1.5 }}>{m.content}</p>
-                      <p style={{ fontSize: 10, opacity: 0.6, textAlign: 'right', marginTop: 4, fontWeight: 600 }}>
-                        {createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </p>
+                      {m.attachments?.length > 0 && (
+                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {m.attachments.map((at, ati) => (
+                            <img key={ati} src={resolveImageUrl(at)} alt="" style={{ maxWidth: '100%', borderRadius: 8, maxHeight: 200 }} />
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 }}>
+                        <p style={{ fontSize: 10, opacity: 0.6, fontWeight: 600 }}>
+                          {createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </p>
+                        {isMe && activeConv.type === 'direct' && (() => {
+                          const other = activeConv.members?.find(mem => (mem.user_id || mem.userId) !== user.id);
+                          const lastRead = other?.last_read_at || other?.lastReadAt;
+                          if (lastRead && new Date(lastRead) >= new Date(createdAt)) {
+                            return <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.8 }}>● Đã xem</span>;
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 );
@@ -248,24 +346,42 @@ const Messaging = () => {
             </div>
 
             {/* Input */}
+            <div style={{ padding: '0 16px' }}>
+              {attachments.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, padding: '8px 0' }}>
+                  {attachments.map((at, ati) => (
+                    <div key={ati} style={{ position: 'relative' }}>
+                      <img src={resolveImageUrl(at)} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
+                      <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== ati))} style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: 'var(--primary)', color: 'white', border: 'none', fontSize: 10 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div style={s.chatInputRow}>
+              <label style={{ cursor: 'pointer', color: 'var(--ash)', padding: 8 }}>
+                <Image size={20} />
+                <input type="file" multiple accept="image/*" hidden onChange={handleUpload} disabled={uploading} />
+              </label>
               <input
                 id="chat-input"
                 type="text"
-                placeholder="Viết tin nhắn..."
+                placeholder={uploading ? "Đang tải ảnh..." : "Viết tin nhắn..."}
                 className="input-field"
                 style={{ flex: 1, height: 44, borderRadius: 'var(--rounded-full)' }}
                 value={msgInput}
                 onChange={(e) => setMsgInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                disabled={uploading}
               />
-              <button className="btn-primary" style={{ width: 44, height: 44, padding: 0, borderRadius: '50%' }} onClick={sendMessage}>
+              <button className="btn-primary" style={{ width: 44, height: 44, padding: 0, borderRadius: '50%' }} onClick={sendMessage} disabled={uploading}>
                 <Send size={18} />
               </button>
             </div>
           </>
         )}
       </div>
+
     </div>
   );
 };
@@ -315,6 +431,22 @@ const s = {
     fontSize: 18,
     color: 'var(--mute)',
     flexShrink: 0,
+  },
+  searchResultItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 12px',
+    borderRadius: 10,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  searchAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '2px solid white',
   },
   searchItem: {
     display: 'flex',

@@ -3,7 +3,7 @@ import { Search, UserPlus, UserCheck, UserX, Flag, Ban } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 
-const Friends = () => {
+const Friends = ({ onViewProfile }) => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -92,15 +92,36 @@ const Friends = () => {
               return (
                 <div key={u.id} style={s.userCard}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <img src={av} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                    <img 
+                      src={av} 
+                      alt="" 
+                      style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }}
+                      onClick={() => onViewProfile?.(u.id)}
+                    />
                     <div>
-                      <p style={{ fontWeight: 700, fontSize: 14 }}>{u.full_name}</p>
+                      <p 
+                        style={{ fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                        onClick={() => onViewProfile?.(u.id)}
+                      >{u.full_name}</p>
                       <p style={{ fontSize: 11, color: 'var(--ash)' }}>#{u.id?.substring(0, 6)}</p>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
-                    <button onClick={() => sendRequest(u.id)} style={s.actionBtn}><UserPlus size={14} /> Kết bạn</button>
-                    <button onClick={() => blockUser(u.id)} style={{ ...s.actionBtn, color: 'var(--primary)', background: '#fef2f2' }}><Ban size={14} /></button>
+                    {u.friend_status === 'none' && (
+                      <button onClick={() => sendRequest(u.id)} style={s.actionBtn}><UserPlus size={14} /> Kết bạn</button>
+                    )}
+                    {u.friend_status === 'pending' && (
+                      <button style={{ ...s.actionBtn, opacity: 0.7 }} disabled>Đã gửi yêu cầu</button>
+                    )}
+                    {u.friend_status === 'pending_received' && (
+                      <button onClick={() => acceptRequest(u.id)} style={{ ...s.actionBtn, background: 'var(--primary)', color: 'white' }}><UserCheck size={14} /> Chấp nhận</button>
+                    )}
+                    {u.friend_status === 'accepted' && (
+                      <button style={{ ...s.actionBtn, color: '#16a34a' }} disabled><UserCheck size={14} /> Bạn bè</button>
+                    )}
+                    {u.friend_status !== 'me' && (
+                      <button onClick={() => blockUser(u.id)} style={{ ...s.actionBtn, color: 'var(--primary)', background: '#fef2f2' }}><Ban size={14} /></button>
+                    )}
                   </div>
                 </div>
               );
@@ -120,7 +141,10 @@ const Friends = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {requests.map(r => (
                 <div key={r.from_id} style={s.requestCard}>
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>{r.full_name}</span>
+                  <span 
+                    style={{ fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                    onClick={() => onViewProfile?.(r.from_id)}
+                  >{r.full_name}</span>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => acceptRequest(r.from_id)} style={{ ...s.smallBtn, background: 'var(--primary)', color: 'white' }}>
                       <UserCheck size={14} /> Nhận
@@ -145,8 +169,16 @@ const Friends = () => {
               {friends.map(f => (
                 <div key={f.id} style={s.requestCard}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <img src={resolveImageUrl(f.avatar_url) || getDefaultAvatar(f.full_name)} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{f.full_name}</span>
+                    <img 
+                      src={resolveImageUrl(f.avatar_url) || getDefaultAvatar(f.full_name)} 
+                      alt="" 
+                      style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', cursor: 'pointer' }} 
+                      onClick={() => onViewProfile?.(f.id)}
+                    />
+                    <span 
+                      style={{ fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                      onClick={() => onViewProfile?.(f.id)}
+                    >{f.full_name}</span>
                   </div>
                   <button onClick={() => unfriend(f.id)} style={{ ...s.smallBtn, color: 'var(--primary)' }}>Hủy bạn</button>
                 </div>
