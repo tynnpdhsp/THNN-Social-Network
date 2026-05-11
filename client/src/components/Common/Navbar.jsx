@@ -13,7 +13,7 @@ const Navbar = () => {
     <nav className="navbar">
       <Link to="/" style={{ textDecoration: 'none' }}>
         <div className="logo">
-          <div style={{ background: 'var(--primary)', color: 'white', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>P</div>
+          <img src="/logo.png" alt="Logo" style={{ width: 36, height: 36, objectFit: 'contain' }} />
         </div>
       </Link>
       

@@ -1,26 +1,61 @@
 import React, { useState, useRef } from 'react';
-import { Camera, MapPin, X } from 'lucide-react';
+import { Camera, MapPin, X, ChevronDown } from 'lucide-react';
 import Modal from '../Common/Modal';
 
-const AddLocationModal = ({ isOpen, onClose, onAdd, categories }) => {
+const AddLocationModal = ({ isOpen, onClose, onAdd, categories, initialCoords }) => {
   const [newLoc, setNewLoc] = useState({ 
     name: '', 
     category_id: '', 
     description: '', 
     address: '',
-    latitude: 21.0285, // Default to Hanoi to match seed
-    longitude: 105.8542
+    latitude: 10.762622, // Default to Saigon
+    longitude: 106.660172
   });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Update coords if initialCoords are provided (e.g. from map click)
+  React.useEffect(() => {
+    if (initialCoords) {
+      setNewLoc(prev => ({ ...prev, latitude: initialCoords.lat, longitude: initialCoords.lng, address: 'Đang tải địa chỉ chi tiết...' }));
+      
+      // Auto-fill address using Photon (Komoot) for street-level OpenStreetMap data without strict CORS
+      fetch(`https://photon.komoot.io/reverse?lon=${initialCoords.lng}&lat=${initialCoords.lat}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.features && data.features.length > 0) {
+            const props = data.features[0].properties;
+            const addressParts = [
+              props.name,
+              props.housenumber ? props.housenumber + (props.street ? ' ' + props.street : '') : props.street,
+              props.district,
+              props.city || props.county,
+              props.state,
+              props.country
+            ].filter(Boolean);
+            
+            // Remove duplicates (e.g. city and state might be the same)
+            const uniqueParts = [...new Set(addressParts)];
+            setNewLoc(prev => ({ ...prev, address: uniqueParts.join(', ') }));
+          } else {
+            setNewLoc(prev => ({ ...prev, address: '' }));
+          }
+        })
+        .catch(err => {
+          console.error('Geocoding error:', err);
+          setNewLoc(prev => ({ ...prev, address: '' }));
+        });
+    }
+  }, [initialCoords]);
 
   // Set default category when categories are loaded
   React.useEffect(() => {
     if (categories && categories.length > 0 && !newLoc.category_id) {
       setNewLoc(prev => ({ ...prev, category_id: categories[0].id }));
     }
-  }, [categories]);
+  }, [categories, newLoc.category_id]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -37,13 +72,9 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories }) => {
 
   const handleSubmit = () => {
     if (newLoc.name && newLoc.category_id) {
-      // For now, we randomize coordinates slightly if they are at default
-      // In a real app, this would come from a map picker
       const submission = {
         ...newLoc,
-        latitude: newLoc.latitude + (Math.random() - 0.5) * 0.002,
-        longitude: newLoc.longitude + (Math.random() - 0.5) * 0.002,
-        files: selectedFiles // Pass files along
+        files: selectedFiles
       };
       onAdd(submission);
       onClose();
@@ -54,40 +85,106 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories }) => {
   const resetForm = () => {
     setNewLoc({ 
       name: '', 
-      category_id: categories[0]?.id || '', 
+      category_id: categories?.[0]?.id || '', 
       description: '', 
       address: '',
-      latitude: 21.0285,
-      longitude: 105.8542
+      latitude: 10.762622,
+      longitude: 106.660172
     });
     setSelectedFiles([]);
     setPreviews([]);
+    setIsCategoryOpen(false);
   };
+
+  const selectedCategory = categories?.find(c => c.id === newLoc.category_id);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Thêm địa điểm mới" width={450}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
           <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Tên địa điểm</label>
-          <input type="text" className="input-field" placeholder="Ví dụ: Thư viện B..." value={newLoc.name} onChange={e => setNewLoc({...newLoc, name: e.target.value})} />
+          <input 
+            type="text" 
+            className="input-field" 
+            placeholder="Ví dụ: Thư viện B..." 
+            value={newLoc.name} 
+            onChange={e => setNewLoc({...newLoc, name: e.target.value})} 
+            style={{ background: 'white', border: '1px solid var(--hairline)' }}
+          />
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
+          <div style={{ position: 'relative' }}>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Loại địa điểm</label>
-            <select className="input-field" value={newLoc.category_id} onChange={e => setNewLoc({...newLoc, category_id: e.target.value})}>
-              {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-            </select>
+            <button 
+              type="button"
+              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+              className="btn-secondary" 
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: 8, 
+                background: 'white', width: '100%', 
+                justifyContent: 'space-between', padding: '11px 16px',
+                border: '1px solid var(--hairline)',
+                height: 48,
+                color: newLoc.category_id ? 'var(--body)' : 'var(--mute)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {selectedCategory?.name || 'Chọn danh mục'}
+              </div>
+              <ChevronDown size={18} style={{ transform: isCategoryOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }} />
+            </button>
+
+            {isCategoryOpen && (
+              <div style={{ 
+                position: 'absolute', top: '105%', left: 0, width: '100%', 
+                background: 'white', borderRadius: 'var(--rounded-md)', 
+                boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
+                maxHeight: 240, overflowY: 'auto'
+              }}>
+                {categories?.map(cat => (
+                  <div 
+                    key={cat.id}
+                    onClick={() => { setNewLoc({...newLoc, category_id: cat.id}); setIsCategoryOpen(false); }}
+                    style={{ 
+                      padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                      cursor: 'pointer', fontSize: 14, fontWeight: newLoc.category_id === cat.id ? 700 : 500,
+                      background: newLoc.category_id === cat.id ? 'var(--surface-soft)' : 'transparent',
+                      color: newLoc.category_id === cat.id ? 'var(--primary)' : 'var(--body)',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = newLoc.category_id === cat.id ? 'var(--surface-soft)' : 'transparent'}
+                  >
+                    {cat.name}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <div>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Địa chỉ</label>
-            <input type="text" className="input-field" placeholder="Số nhà, tên đường..." value={newLoc.address} onChange={e => setNewLoc({...newLoc, address: e.target.value})} />
+            <input 
+              type="text" 
+              className="input-field" 
+              placeholder="Số nhà, tên đường..." 
+              value={newLoc.address} 
+              onChange={e => setNewLoc({...newLoc, address: e.target.value})} 
+              style={{ background: 'white', border: '1px solid var(--hairline)' }}
+            />
           </div>
         </div>
 
         <div>
           <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Mô tả</label>
-          <textarea className="input-field" placeholder="Chia sẻ cảm nhận về địa điểm này..." style={{ height: 80, resize: 'none', padding: '12px 20px' }} value={newLoc.description} onChange={e => setNewLoc({...newLoc, description: e.target.value})} />
+          <textarea 
+            className="input-field" 
+            placeholder="Chia sẻ cảm nhận về địa điểm này..." 
+            style={{ height: 80, resize: 'none', padding: '12px 20px', background: 'white', border: '1px solid var(--hairline)' }} 
+            value={newLoc.description} 
+            onChange={e => setNewLoc({...newLoc, description: e.target.value})} 
+          />
         </div>
 
         <div style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--surface-soft)', borderRadius: 'var(--rounded-md)', alignItems: 'center' }}>
@@ -141,3 +238,4 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories }) => {
 };
 
 export default AddLocationModal;
+

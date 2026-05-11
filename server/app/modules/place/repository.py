@@ -60,14 +60,18 @@ class PlaceRepository:
         )
     
     async def delete_place(self, place_id: str) -> PlaceResponse:
-        return await self.db.place.delete(
-            where={"id": place_id},
-            include={
-                "category": True,
-                "user": True,
-                "placeImages": True
-            }
-        )
+        async with self.db.tx() as tx:
+            await tx.placebookmark.delete_many(where={"placeId": place_id})
+            await tx.placeimage.delete_many(where={"placeId": place_id})
+            await tx.review.delete_many(where={"targetId": place_id, "targetType": "place"})
+            return await tx.place.delete(
+                where={"id": place_id},
+                include={
+                    "category": True,
+                    "user": True,
+                    "placeImages": True
+                }
+            )
     
     async def filter_places(self, filters: dict) -> list[PlaceResponse]:
         # TODO: Implement place filtering logic
@@ -392,11 +396,25 @@ class PlaceRepository:
         if hasattr(place, "category") and place.category:
             category = PlaceCategoryResponse(id=place.category.id, name=place.category.name, icon=place.category.icon)
 
-        images = None
+        images = []
         if hasattr(place, "placeImages") and place.placeImages:
-            images = [PlaceImageResponse.model_validate(img) for img in place.placeImages]
-        elif hasattr(place, "images") and place.images: # Fallback just in case
-             images = [PlaceImageResponse.model_validate(img) for img in place.images]
+            for img in place.placeImages:
+                images.append(PlaceImageResponse(
+                    id=img.id,
+                    place_id=img.placeId,
+                    image_url=img.imageUrl,
+                    display_order=img.displayOrder,
+                    created_at=img.createdAt
+                ))
+        elif hasattr(place, "images") and place.images: # Fallback
+            for img in place.images:
+                images.append(PlaceImageResponse(
+                    id=img.id,
+                    place_id=img.placeId,
+                    image_url=img.imageUrl,
+                    display_order=img.displayOrder,
+                    created_at=img.createdAt
+                ))
 
         return NearbyPlaceResponse(
             id=place.id,

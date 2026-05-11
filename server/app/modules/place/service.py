@@ -1,10 +1,9 @@
 from typing import Optional
 
 from app.core.exceptions import ConflictException, ForbiddenException, NotFoundException
-from app.modules.documents.schema import ReviewCreate, ReviewResponse
 from app.modules.place.schema import (
     PlaceCategoryRequest, PlaceCategoryResponse, PlaceRequest, 
-    PlaceUpdateRequest, PlaceResponse, PlaceImageResponse, ReviewListResponse,
+    PlaceUpdateRequest, PlaceResponse, PlaceImageResponse, ReviewListResponse, ReviewRequest, ReviewResponse,
     UserInfoEmbed, BookmarkResponse, BookmarkPlaceResponse, BookmarkListResponse, BookmarkCheckResponse, NearbyPlacesListResponse)
 from app.modules.place.repository import PlaceRepository
 from app.utils.storage import upload_files, delete_file
@@ -181,7 +180,7 @@ class PlaceService:
     # endregion
 
     # region ---- reviews -----
-    async def create_place_review(self, place_id: str, user_id: str, data: ReviewCreate) -> ReviewResponse:
+    async def create_place_review(self, place_id: str, user_id: str, data: ReviewRequest) -> ReviewResponse:
         """Create or update review for place with transaction"""
         place = await self.repo.get_place_by_id(place_id)
         if not place:
@@ -250,10 +249,20 @@ class PlaceService:
         
         if existing_bookmark:
             deleted_bookmark = await self.repo.delete_bookmark(user_id, place_id)
-            return BookmarkResponse.model_validate(deleted_bookmark)
+            return BookmarkResponse(
+                id=deleted_bookmark.id,
+                user_id=deleted_bookmark.userId,
+                place_id=deleted_bookmark.placeId,
+                created_at=deleted_bookmark.createdAt
+            )
         else:
             created_bookmark = await self.repo.create_bookmark(user_id, place_id)
-            return BookmarkResponse.model_validate(created_bookmark)
+            return BookmarkResponse(
+                id=created_bookmark.id,
+                user_id=created_bookmark.userId,
+                place_id=created_bookmark.placeId,
+                created_at=created_bookmark.createdAt
+            )
     
     async def get_user_bookmarks(self, user_id: str, skip: int = 0, limit: int = 20) -> BookmarkListResponse:
         """Get user's bookmarked places with pagination"""
@@ -301,19 +310,23 @@ class PlaceService:
         if radius <= 0:
             raise ValueError("Radius must be greater than 0")
         
-        # Validate category if provided
-        if category_id:
+        # Validate category if provided (and not empty)
+        if category_id and category_id.strip():
             category = await self.repo.get_category_by_id(category_id)
             if not category:
                 raise NotFoundException("Category not found", "CATEGORY_NOT_FOUND")
+        else:
+            category_id = None
         
         # Get nearby places from repository
-        nearby_places = await self.repo.get_nearby_places(lat, lng, radius, category_id)
-        
-        # Map to response format
-        # items = [self._map_nearby_place_to_response(place) for place in nearby_places]
-        
-        return NearbyPlacesListResponse(data=nearby_places)
+        try:
+            nearby_places = await self.repo.get_nearby_places(lat, lng, radius, category_id)
+            return NearbyPlacesListResponse(data=nearby_places)
+        except Exception as e:
+            print(f"Error in get_nearby_places: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise e
     
     # endregion
     
@@ -366,7 +379,7 @@ class PlaceService:
             id=review.id,
             target_id=review.targetId,
             target_type=review.targetType,
-            user_info=user_info.model_dump(),
+            user_info=user_info,
             rating=review.rating,
             comment=review.comment,
             created_at=review.createdAt

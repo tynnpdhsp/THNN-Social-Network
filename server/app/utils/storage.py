@@ -62,7 +62,8 @@ async def upload_file(content: bytes, filename: str, prefix: str) -> str:
         content_type=_guess_content_type(ext),
     )
 
-    return f"/{settings.MINIO_BUCKET}/{object_name}"
+    protocol = "https" if settings.MINIO_SECURE else "http"
+    return f"{protocol}://{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET}/{object_name}"
 
 
 async def upload_files(files: list[tuple[bytes, str]], prefix: str) -> list[str]:
@@ -105,7 +106,8 @@ async def upload_files(files: list[tuple[bytes, str]], prefix: str) -> list[str]
                 length=len(content),
                 content_type=_guess_content_type(ext),
             )
-            urls.append(f"/{settings.MINIO_BUCKET}/{object_name}")
+            protocol = "https" if settings.MINIO_SECURE else "http"
+            urls.append(f"{protocol}://{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET}/{object_name}")
         
         return urls
 
@@ -127,8 +129,9 @@ async def delete_file(file_url: str) -> bool:
     def _sync_delete():
         try:
             # Extract object name from URL
-            if file_url.startswith(f"/{settings.MINIO_BUCKET}/"):
-                object_name = file_url[len(f"/{settings.MINIO_BUCKET}/"):]
+            bucket_prefix = f"/{settings.MINIO_BUCKET}/"
+            if bucket_prefix in file_url:
+                object_name = file_url.split(bucket_prefix, 1)[1]
             else:
                 object_name = file_url
             

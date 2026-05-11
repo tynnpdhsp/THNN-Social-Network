@@ -343,18 +343,10 @@ const Timetable = () => {
   return (
     <div className="container" style={{ paddingTop: 24, display: 'flex', gap: 32 }}>
       <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-          <div>
-            <h1 className="heading-xl">Quản lý Thời khóa biểu</h1>
-            <button 
-              className="btn-secondary" 
-              style={{ padding: '4px 12px', fontSize: 12, height: 'auto', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}
-              onClick={() => setShowImportModal(true)}
-            >
-              <Upload size={14} /> Nhập dữ liệu học phần
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+          <h1 className="heading-xl">Quản lý Thời khóa biểu</h1>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-card)', borderRadius: 'var(--rounded-full)', padding: 4, gap: 4 }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {schedules.map((schedule) => (
@@ -390,23 +382,17 @@ const Timetable = () => {
                 <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--mute)' }}>Chưa có lịch nào</div>
               )}
             </div>
+            
             {activeScheduleId && (
-              <div style={{ display: 'flex', gap: 8, width: '100%', flexWrap: 'nowrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   className="btn-secondary"
-                  style={{ borderRadius: 'var(--rounded-full)', fontSize: 13, padding: '0 20px', height: 44, fontWeight: 700 }}
+                  style={{ borderRadius: 'var(--rounded-full)', fontSize: 13, padding: '0 20px', height: 40, fontWeight: 700 }}
                   onClick={() => setShowEntryModal(true)}
                 >
                   <Plus size={18} /> Tiết học
                 </button>
-                <button
-                  className="btn-primary"
-                  style={{ gap: 8, flex: 1, height: 40, background: isSaved ? '#103c25' : 'var(--primary)', borderRadius: 'var(--rounded-full)', fontSize: 13 }}
-                  onClick={handleSetActive}
-                >
-                  {isSaved ? <Check size={18} /> : <Save size={18} />}
-                  {isSaved ? 'Đã lưu' : 'Lưu phương án'}
-                </button>
+
                 <button
                   className="btn-secondary"
                   style={{ width: 40, height: 40, padding: 0, borderRadius: 'var(--rounded-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', border: '1px solid #fee2e2' }}

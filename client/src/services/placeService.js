@@ -1,4 +1,17 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+export const getCurrentUser = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    return { id: 'dummy-dev-user', role: 'admin' }; // Allow admin rights in dev dummy mode even without token
+  }
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return { id: payload.sub || payload.id, role: payload.role || 'user' };
+  } catch (e) {
+    return { id: 'dummy-dev-user', role: 'admin' }; // Allow admin rights in dev dummy mode for invalid token
+  }
+};
 
 // Lấy danh sách danh mục địa điểm
 export const getPlaceCategories = async () => {
@@ -20,7 +33,6 @@ export const getNearbyPlaces = async (params = { lat: 10.762622, lng: 106.660172
     if (!response.ok) throw new Error('Failed to fetch places');
     return await response.json();
   } catch (error) {
-    lội4
     console.error('Error fetching places:', error);
     throw error;
   }
@@ -51,7 +63,7 @@ export const createPlace = async (data) => {
     });
     if (!response.ok) {
       const errData = await response.json();
-      throw new Error(errData.detail?.message || 'Failed to create place');
+      throw new Error(errData.detail || 'Failed to create place');
     }
     return await response.json();
   } catch (error) {
@@ -103,7 +115,7 @@ export const createPlaceReview = async (placeId, data) => {
     });
     if (!response.ok) {
       const errData = await response.json();
-      throw new Error(errData.detail?.message || 'Failed to create review');
+      throw new Error(errData.detail || 'Failed to create review');
     }
     return await response.json();
   } catch (error) {
@@ -156,10 +168,13 @@ export const uploadPlaceImages = async (placeId, files) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        // Do not set Content-Type, let browser set it with boundary for FormData
       },
       body: formData,
     });
-    if (!response.ok) throw new Error('Failed to upload images');
+    if (!response.ok) {
+      throw new Error('Failed to upload images');
+    }
     return await response.json();
   } catch (error) {
     console.error('Error uploading images:', error);
