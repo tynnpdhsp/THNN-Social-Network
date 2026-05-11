@@ -156,12 +156,6 @@ class VNPayPaymentResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class VNPayCallbackRequest(BaseModel):
-    vnp_TxnRef: str
-    vnp_ResponseCode: str
-    vnp_TransactionStatus: str
-
-    model_config = ConfigDict(from_attributes=True)
 
 class VNPayCallbackResponse(BaseModel):
     success: bool

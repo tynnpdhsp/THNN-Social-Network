@@ -8,7 +8,7 @@ from app.modules.shop.schemas import (
     ItemCreate, ItemUpdate, ItemResponse, ItemListResponse, ItemListQuery, ItemPaginationRequest,
     ImageResponse,
     OrderCreate, OrderResponse, OrderListResponse,
-    VNPayCreatePaymentRequest, VNPayPaymentResponse, VNPayCallbackRequest,
+    VNPayCreatePaymentRequest, VNPayPaymentResponse,
     ReviewCreate, ReviewResponse, ReviewListResponse,
     CartItemCreate, CartItemResponse, CartResponse,
     MessageResponse, PaginatedParams,
@@ -342,57 +342,89 @@ class ShopService:
             "vnp_Locale": "vn",
             "vnp_OrderInfo": f"Thanh toan don hang {order.id}",
             "vnp_OrderType": data.order_type,
-            "vnp_ReturnUrl": settings.VNPAY_RETURN_URL, # callback url public domain
+            "vnp_ReturnUrl": settings.VNPAY_RETURN_URL, # callback url public domain cho frontend
             "vnp_ExpireDate": expire_date,
             "vnp_TxnRef": order.vnpayTxnRef,
         }
         sorted_params = sorted(vnp_params.items())
         hash_data = urllib.parse.urlencode(sorted_params)
+
         secure_hash = hmac.new(
             settings.VNPAY_HASH_SECRET.encode("utf-8"),
             hash_data.encode("utf-8"),
             hashlib.sha512
         ).hexdigest()
-        payment_url = (
-            f"{settings.VNPAY_URL}?"
-            f"{hash_data}"
-            f"&vnp_SecureHash={secure_hash}"
-        )
+        
+        payment_url = f"{settings.VNPAY_URL}?{hash_data}&vnp_SecureHash={secure_hash}"
+
         return VNPayPaymentResponse(
             payment_url=payment_url,
             txn_ref=order.vnpayTxnRef
         )
 
-    async def handle_vnpay_callback(self, data: VNPayCallbackRequest) -> dict:
-        """Handle VNPay payment callback"""
-        order = await self.repo.get_order_by_vnpay_ref(data.vnp_TxnRef)
+    async def handle_vnpay_callback(self, params: dict) -> dict:
+        """Handle VNPay payment callback with signature verification"""
+        
+        # 1. Verify signature
+        vnp_secure_hash = params.get("vnp_SecureHash")
+        if not vnp_secure_hash:
+            raise BadRequestException("Missing VNPay signature", "VNPAY_MISSING_SIGNATURE")
+        
+        # Remove hash params from data to verify
+        hash_data = {k: v for k, v in params.items() if k.startswith("vnp_") and k not in ["vnp_SecureHash", "vnp_SecureHashType"]}
+        
+        if not self._verify_vnpay_signature(hash_data, vnp_secure_hash):
+            raise BadRequestException("Invalid VNPay signature", "VNPAY_INVALID_SIGNATURE")
+
+        # 2. Extract data
+        vnp_txn_ref = params.get("vnp_TxnRef")
+        vnp_response_code = params.get("vnp_ResponseCode")
+        vnp_transaction_status = params.get("vnp_TransactionStatus")
+        
+        order = await self.repo.get_order_by_vnpay_ref(vnp_txn_ref)
         if not order:
             raise NotFoundException("Order not found", "ORDER_NOT_FOUND")
         
-        # Check if payment is successful
-        if data.vnp_ResponseCode == "00" and data.vnp_TransactionStatus == "00":
+        # 3. Check if payment is successful
+        if vnp_response_code == "00" and vnp_transaction_status == "00":
             # Payment successful - update order status
             update_data = {
                 "status": "paid",
-                "vnpayResponseCode": data.vnp_ResponseCode,
+                "vnpayResponseCode": vnp_response_code,
                 "paidAt": datetime.now()
             }
         else:
             # Payment failed - update order status
             update_data = {
                 "status": "failed",
-                "vnpayResponseCode": data.vnp_ResponseCode
+                "vnpayResponseCode": vnp_response_code
             }
         
         # Update order with payment result
         updated_order = await self.repo.update_order(order.id, update_data)
         
-        return {
-            "success": data.vnp_ResponseCode == "00" and data.vnp_TransactionStatus == "00",
+        result = {
+            "success": vnp_response_code == "00" and vnp_transaction_status == "00",
             "order_id": updated_order.id,
             "status": updated_order.status,
-            "response_code": data.vnp_ResponseCode
+            "response_code": vnp_response_code
         }
+        
+        return result
+
+    def _verify_vnpay_signature(self, params: dict, secure_hash: str) -> bool:
+        """Verify VNPay HMAC-SHA512 signature"""
+        sorted_params = sorted(params.items())
+        hash_data = urllib.parse.urlencode(sorted_params, quote_via=urllib.parse.quote)
+        
+        calculated_hash = hmac.new(
+            settings.VNPAY_HASH_SECRET.encode("utf-8"),
+            hash_data.encode("utf-8"),
+            hashlib.sha512
+        ).hexdigest()
+        
+        return calculated_hash.lower() == secure_hash.lower()
+
     # endregion
 
 # region ---- Helper ----

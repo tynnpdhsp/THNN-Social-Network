@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File, Body # type: ignore
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Body, Request # type: ignore
 
 from app.core.config import get_settings
 from app.core.dependencies import get_shop_service, require_active_user, require_admin
@@ -10,7 +10,7 @@ from app.modules.shop.schemas import (
     CategoryCreate, CategoryResponse, CategoryUpdate,
     ItemCreate, ItemUpdate, ItemResponse, ItemListResponse, ItemListQuery, ItemPaginationRequest,
     OrderCreate, OrderResponse, OrderListResponse,
-    VNPayCreatePaymentRequest, VNPayPaymentResponse, VNPayCallbackRequest,
+    VNPayCreatePaymentRequest, VNPayPaymentResponse,
     ReviewCreate, ReviewResponse, ReviewListResponse,
     MessageResponse, PaginatedParams, VNPayCallbackResponse
 )
@@ -253,18 +253,14 @@ async def create_vnpay_payment(
 
 @router.get("/vnpay/callback", response_model=VNPayCallbackResponse)
 async def vnpay_callback(
-    vnp_TxnRef: str = Query(..., description="VNPay Transaction Reference"),
-    vnp_ResponseCode: str = Query(..., description="VNPay Response Code"),
-    vnp_TransactionStatus: str = Query(..., description="VNPay Transaction Status"),
+    request: Request,
     svc: ShopService = Depends(get_shop_service),
 ):
     """Handle VNPay payment callback"""
-    data = VNPayCallbackRequest(
-        vnp_TxnRef=vnp_TxnRef,
-        vnp_ResponseCode=vnp_ResponseCode,
-        vnp_TransactionStatus=vnp_TransactionStatus
-    )
-    result = await svc.handle_vnpay_callback(data)
+    print("=== VNPay IPN Callback endpoint accessed ===")
+    params = dict(request.query_params)
+    print(f"Query parameters received: {params}")
+    result = await svc.handle_vnpay_callback(params)
     return VNPayCallbackResponse(**result)
 #endregion
 

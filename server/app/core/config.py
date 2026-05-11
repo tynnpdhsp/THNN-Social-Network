@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     VNPAY_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
     VNPAY_TMN_CODE: str = ""
     VNPAY_RETURN_URL: str = "" # url của fe - vnpay redirect sau khi thanh toán xong (đã thanh toán, hủy thanh toán)
-    VNPAY_HASH_SECRET: str = ""
+    VNPAY_HASH_SECRET: str = "HI71QO6IGT5JGCZAKX8I1XXWOQVXQVTW"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
