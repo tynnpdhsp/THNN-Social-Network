@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.core.exceptions import ConflictException, ForbiddenException, NotFoundException
+from app.core.exceptions import ConflictException, ForbiddenException, NotFoundException, BadRequestException
 from app.modules.place.schema import (
     PlaceCategoryRequest, PlaceCategoryResponse, PlaceRequest, 
     PlaceUpdateRequest, PlaceResponse, PlaceImageResponse, ReviewListResponse, ReviewRequest, ReviewResponse,
@@ -192,6 +192,10 @@ class PlaceService:
         user = await self.repo.db.user.find_unique(where={"id": user_id})
         if not user:
             raise NotFoundException("User not found", "USER_NOT_FOUND")
+        
+        rated = await self.repo.get_user_review(place_id, user_id)
+        if rated:
+            raise BadRequestException("User đã review", "USER_RATED")
         
         user_info = {
             "id": user.id,
