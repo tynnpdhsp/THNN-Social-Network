@@ -134,7 +134,7 @@ const Board = () => {
       <div style={{ ...s.createCard, animation: 'fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
         <div style={s.createHeader}>
           <Tag size={20} color="var(--primary)" />
-          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Đăng tin rao vặt</h3>
+          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Đăng tin chung</h3>
         </div>
 
         {/* Tag Selector */}
@@ -263,7 +263,7 @@ const Board = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {posts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 64, color: 'var(--mute)', background: 'var(--surface-soft)', borderRadius: 'var(--rounded-lg)', border: '1px dashed var(--hairline)' }}>
-            <p style={{ fontWeight: 700 }}>Chưa có tin rao vặt</p>
+            <p style={{ fontWeight: 700 }}>Chưa có tin đăng nào</p>
           </div>
         ) : (
           posts.map((p, idx) => {
