@@ -20,6 +20,7 @@ export const getNearbyPlaces = async (params = { lat: 10.762622, lng: 106.660172
     if (!response.ok) throw new Error('Failed to fetch places');
     return await response.json();
   } catch (error) {
+    lội4
     console.error('Error fetching places:', error);
     throw error;
   }

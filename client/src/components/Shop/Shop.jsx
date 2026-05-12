@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import ProductDetailModal from './ProductDetailModal';
 import AddProductModal from './AddProductModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
+import CartDrawer from './CartDrawer';
 import * as shopService from '../../services/shopService';
 
 // Mảng các category icon có thể bỏ nếu ta dùng trực tiếp từ backend
@@ -31,10 +32,14 @@ const Shop = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartItems, setCartItems] = useState([]);
+  const [isCartLoading, setIsCartLoading] = useState(false);
 
   useEffect(() => {
     fetchCategories();
     fetchProducts();
+    fetchCart();
   }, []);
 
   const fetchCategories = async () => {
@@ -56,6 +61,62 @@ const Shop = () => {
       console.error('Lỗi khi tải sản phẩm:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCart = async () => {
+    try {
+      setIsCartLoading(true);
+      const data = await shopService.getCart();
+      setCartItems(data.items || []);
+    } catch (error) {
+      console.error('Lỗi khi tải giỏ hàng:', error);
+    } finally {
+      setIsCartLoading(false);
+    }
+  };
+
+  const handleAddToCart = async (product, quantity = 1) => {
+    try {
+      await shopService.addToCart(product.id, quantity);
+      toast.success(`Đã thêm ${product.title} vào giỏ hàng`);
+      fetchCart();
+    } catch (error) {
+      toast.error("Lỗi khi thêm vào giỏ hàng: " + error.message);
+    }
+  };
+
+  const handleUpdateCartQuantity = async (itemId, quantity) => {
+    try {
+      await shopService.updateCartItem(itemId, quantity);
+      fetchCart();
+    } catch (error) {
+      toast.error("Lỗi khi cập nhật số lượng");
+    }
+  };
+
+  const handleRemoveFromCart = async (itemId) => {
+    try {
+      await shopService.removeFromCart(itemId);
+      toast.success("Đã xóa khỏi giỏ hàng");
+      fetchCart();
+    } catch (error) {
+      toast.error("Lỗi khi xóa sản phẩm");
+    }
+  };
+
+  const handleCartCheckout = async () => {
+    if (cartItems.length === 0) return;
+    
+    // For now, checkout the first item as the backend Order model 
+    // only supports one item at a time.
+    // In a real app, we'd create a multi-item order.
+    try {
+      const firstItem = cartItems[0];
+      await buyNow(firstItem.item);
+      setIsCartOpen(false);
+    } catch (error) {
+      toast.error("Lỗi khi thanh toán");
     }
   };
 
@@ -264,6 +325,7 @@ const Shop = () => {
             <span>10.000.000đ</span>
           </div>
         </div>
+
       </div>
 
       {/* Main Content */}
@@ -311,9 +373,6 @@ const Shop = () => {
                 </div>
               )}
             </div>
-            <div className="search-container" style={{ display: 'none' }}>
-              <ShoppingBag size={20} color="var(--primary)" />
-            </div>
           </div>
         </div>
 
@@ -347,7 +406,14 @@ const Shop = () => {
                       <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white' }} onClick={(e) => { e.stopPropagation(); handleEditClick(product); }}><Edit2 size={16} /></button>
                       <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white', color: 'var(--primary)' }} onClick={(e) => { e.stopPropagation(); handleDeleteClick(product); }}><Trash2 size={16} /></button>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                       <button 
+                         className="btn-secondary" 
+                         style={{ width: 40, height: 40, padding: 0, borderRadius: '50%', background: 'white' }}
+                         onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
+                       >
+                         <ShoppingBag size={18} color="var(--primary)" />
+                       </button>
                        <button 
                         className="btn-primary" 
                         style={{ padding: '8px 16px', fontSize: 14 }}
@@ -380,6 +446,7 @@ const Shop = () => {
         onClose={() => setSelectedProduct(null)} 
         product={selectedProduct || {}} 
         onBuyNow={buyNow}
+        onAddToCart={handleAddToCart}
       />
 
       <AddProductModal 
@@ -396,6 +463,125 @@ const Shop = () => {
         onConfirm={confirmDelete}
         itemName={productToDelete?.title || ""}
       />
+
+      <CartDrawer 
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        onRemoveItem={handleRemoveFromCart}
+        onCheckout={handleCartCheckout}
+        isLoading={isCartLoading}
+      />
+
+      {/* Floating Cart Button */}
+      <div className="cart-icon-floating" onClick={() => setIsCartOpen(true)}>
+        <ShoppingBag size={24} color="white" />
+        {cartItems.length > 0 && <span className="cart-badge-floating">{cartItems.length}</span>}
+      </div>
+
+      <style jsx>{`
+        .cart-icon-container {
+          position: relative;
+          width: 48px;
+          height: 48px;
+          background: white;
+          border: 1px solid var(--hairline);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .cart-icon-container:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .cart-badge {
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          background: var(--primary);
+          color: white;
+          font-size: 10px;
+          font-weight: 700;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+        }
+
+        .cart-badge-inline {
+          background: var(--primary);
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 12px;
+        }
+
+        .sidebar-cart-list::-webkit-scrollbar {
+          width: 4px;
+        }
+        .sidebar-cart-list::-webkit-scrollbar-track {
+          background: var(--surface-soft);
+        }
+        .sidebar-cart-list::-webkit-scrollbar-thumb {
+          background: var(--ash);
+          border-radius: 2px;
+        }
+
+        .cart-icon-floating {
+          position: fixed;
+          bottom: 32px;
+          right: 32px;
+          width: 64px;
+          height: 64px;
+          background: var(--primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 12px 32px rgba(230, 0, 35, 0.4);
+          z-index: 900;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .cart-icon-floating:hover {
+          transform: scale(1.1) translateY(-4px);
+          box-shadow: 0 16px 40px rgba(230, 0, 35, 0.5);
+        }
+
+        .cart-badge-floating {
+          position: absolute;
+          top: 0;
+          right: 0;
+          background: #ff4757;
+          color: white;
+          font-size: 12px;
+          font-weight: 800;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 3px solid white;
+          animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+          0% { transform: scale(0); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };

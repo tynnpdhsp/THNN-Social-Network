@@ -36,7 +36,7 @@ export const uploadItemImages = async (files) => {
     const response = await fetch(`${API_URL}/shop/items/upload-images`, {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer dummy-token' // Mock token cho backend
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
       },
       body: formData,
     });
@@ -59,7 +59,7 @@ export const createItem = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer dummy-token' // Mock token cho backend
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
       },
       body: JSON.stringify(data),
     });
@@ -81,7 +81,7 @@ export const createOrder = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer dummy-token'
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
       },
       body: JSON.stringify(data),
     });
@@ -103,7 +103,7 @@ export const createVNPayUrl = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer dummy-token'
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
       },
       body: JSON.stringify(data),
     });
@@ -127,7 +127,7 @@ export const updateItem = async (itemId, data) => {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer dummy-token'
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
       },
       body: JSON.stringify(data),
     });
@@ -148,7 +148,7 @@ export const deleteItem = async (itemId) => {
     const response = await fetch(`${API_URL}/shop/items/${itemId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': 'Bearer dummy-token'
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
       }
     });
     if (!response.ok) {
@@ -182,7 +182,7 @@ export const createReview = async (itemId, data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer dummy-token'
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
       },
       body: JSON.stringify(data),
     });
@@ -197,4 +197,86 @@ export const createReview = async (itemId, data) => {
   }
 };
 
+// Cart API functions
+export const getCart = async () => {
+  try {
+    const response = await fetch(`${API_URL}/shop/cart`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+      }
+    });
+    if (!response.ok) throw new Error('Failed to fetch cart');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching cart:', error);
+    throw error;
+  }
+};
 
+export const addToCart = async (itemId, quantity = 1) => {
+  try {
+    const response = await fetch(`${API_URL}/shop/cart`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+      },
+      body: JSON.stringify({ item_id: itemId, quantity }),
+    });
+    if (!response.ok) throw new Error('Failed to add to cart');
+    return await response.json();
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    throw error;
+  }
+};
+
+export const updateCartItem = async (itemId, quantity) => {
+  try {
+    const response = await fetch(`${API_URL}/shop/cart/${itemId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+      },
+      body: JSON.stringify({ quantity }),
+    });
+    if (!response.ok) throw new Error('Failed to update cart item');
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating cart item:', error);
+    throw error;
+  }
+};
+
+export const removeFromCart = async (itemId) => {
+  try {
+    const response = await fetch(`${API_URL}/shop/cart/${itemId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+      }
+    });
+    if (!response.ok) throw new Error('Failed to remove from cart');
+    return await response.json();
+  } catch (error) {
+    console.error('Error removing from cart:', error);
+    throw error;
+  }
+};
+
+export const clearCart = async () => {
+  try {
+    const response = await fetch(`${API_URL}/shop/cart`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+      }
+    });
+    if (!response.ok) throw new Error('Failed to clear cart');
+    return await response.json();
+  } catch (error) {
+    console.error('Error clearing cart:', error);
+    throw error;
+  }
+};
