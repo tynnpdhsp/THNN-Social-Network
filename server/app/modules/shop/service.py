@@ -23,7 +23,7 @@ from app.core.exceptions import (
     NotFoundException,
 )
 from app.modules.shop.repository import ShopRepository
-from prisma.models import ShopItem, User, CartItem # type: ignore
+from prisma.models import ShopItem, User # type: ignore
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -206,11 +206,6 @@ class ShopService:
         item = await self.repo.get_item_by_id(item_id)
         if not item:
             raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
-        
-        # Check if user purchased the item (Bypassed for dev)
-        # has_purchased = await self.repo.check_user_purchased_item(user_id, item_id)
-        # if not has_purchased:
-        #     raise ForbiddenException("You must purchase this item before reviewing", "MUST_PURCHASE_FIRST")
 
         
         user = await self.repo.db.user.find_unique(where={"id": user_id})
@@ -501,9 +496,10 @@ class ShopService:
         if hasattr(item, "category") and item.category:
             category = CategoryResponse(id=item.category.id, name=item.category.name)
 
+        domain = f"http://{settings.MINIO_ENDPOINT}"
         images = []
         if hasattr(item, "itemImages") and item.itemImages:
-            images = [ImageResponse(image_url=img.imageUrl, display_order=img.displayOrder) for img in item.itemImages]
+            images = [ImageResponse(image_url=f"{domain}{img.imageUrl}", display_order=img.displayOrder) for img in item.itemImages]
 
         return ItemResponse(
             id=item.id,

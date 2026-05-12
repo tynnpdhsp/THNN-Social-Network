@@ -1,6 +1,7 @@
 import json
 from typing import Optional, List, Dict, Any
 from app.core.redis import get_redis
+from app.modules.shop.schemas import PurchaseRedis
 
 # --- Account Cache ---
 

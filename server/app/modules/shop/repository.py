@@ -1,6 +1,6 @@
 from typing import Optional
 from prisma import Prisma
-from prisma.models import ItemCategory, ShopItem, ItemImage, Order, Review, User, CartItem
+from prisma.models import ItemCategory, ShopItem, ItemImage, Order, Review, User
 from prisma import Json
 from datetime import datetime
 
