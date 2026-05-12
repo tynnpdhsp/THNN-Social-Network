@@ -146,7 +146,7 @@ class AccountRepository:
     async def get_user_orders(self, user_id: str, skip: int = 0, limit: int = 20) -> list[Order]:
         return await self.db.order.find_many(
             where={"buyerId": user_id},
-            include={"item": {"select": {"title": True}}},
+            include={"item": True},
             order={"createdAt": "desc"},
             skip=skip,
             take=limit,

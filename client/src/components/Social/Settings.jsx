@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, Bell, Lock, Save, Check, X } from 'lucide-react';
+import { Shield, Bell, Lock, Save, Check, X, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
 const Settings = () => {
   const [privacy, setPrivacy] = useState({ whoCanSeePosts: 'everyone', whoCanMessage: 'everyone', whoCanFriendReq: 'everyone' });
+  const [openDropdown, setOpenDropdown] = useState(null);
   const [notifSettings, setNotifSettings] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -64,12 +65,57 @@ const Settings = () => {
               { key: 'whoCanSeePosts', label: 'Ai xem bài viết?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
               { key: 'whoCanMessage', label: 'Ai nhắn tin?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
               { key: 'whoCanFriendReq', label: 'Ai kết bạn?', opts: [['everyone','Mọi người'],['friends_of_friends','Bạn của bạn bè'],['no_one','Không ai']] },
-            ].map(f => (
-              <div key={f.key}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mute)', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>{f.label}</label>
-                <select className="input-field" style={{ height: 44 }} value={privacy[f.key]} onChange={e => setPrivacy(p => ({ ...p, [f.key]: e.target.value }))}>{f.opts.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select>
-              </div>
-            ))}
+            ].map(f => {
+              const selectedLabel = f.opts.find(o => o[0] === privacy[f.key])?.[1] || '';
+              const isOpen = openDropdown === f.key;
+              return (
+                <div key={f.key} style={{ position: 'relative' }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--mute)', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>{f.label}</label>
+                  <button 
+                    type="button"
+                    onClick={() => setOpenDropdown(isOpen ? null : f.key)}
+                    className="input-field"
+                    style={{ 
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: '#ffffff', border: '1px solid var(--hairline)',
+                      padding: '0 16px', height: 44, width: '100%', textAlign: 'left',
+                      cursor: 'pointer', borderRadius: '16px'
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 600, color: 'var(--body)' }}>{selectedLabel}</span>
+                    <ChevronDown size={18} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0, color: 'var(--mute)' }} />
+                  </button>
+                  
+                  {isOpen && (
+                    <div style={{ 
+                      position: 'absolute', top: '100%', left: 0, width: '100%', 
+                      background: '#ffffff', borderRadius: '16px', 
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                      overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
+                      marginTop: 4
+                    }}>
+                      {f.opts.map(([v, l]) => (
+                        <div 
+                          key={v}
+                          onClick={() => { setPrivacy(p => ({ ...p, [f.key]: v })); setOpenDropdown(null); }}
+                          style={{ 
+                            padding: '10px 12px', borderRadius: '12px',
+                            cursor: 'pointer', fontSize: 14, fontWeight: privacy[f.key] === v ? 700 : 500,
+                            background: privacy[f.key] === v ? 'var(--surface-soft)' : 'transparent',
+                            color: privacy[f.key] === v ? 'var(--primary)' : 'var(--body)',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = privacy[f.key] === v ? 'var(--surface-soft)' : 'transparent'}
+                        >
+                          {l}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={savePrivacy}>{saved ? <><Check size={16}/> Đã lưu</> : <><Save size={16}/> Lưu</>}</button>
           </div>
         </div>
@@ -92,8 +138,8 @@ const Settings = () => {
         <div style={c}>
           <h3 style={t}><Lock size={18} color="var(--mute)" /> Đổi mật khẩu</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input type="password" className="input-field" placeholder="Mật khẩu hiện tại" value={oldPw} onChange={e => setOldPw(e.target.value)} style={{ height: 44 }} />
-            <input type="password" className="input-field" placeholder="Mật khẩu mới" value={newPw} onChange={e => setNewPw(e.target.value)} style={{ height: 44 }} />
+            <input type="password" className="input-field" placeholder="Mật khẩu hiện tại" value={oldPw} onChange={e => setOldPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
+            <input type="password" className="input-field" placeholder="Mật khẩu mới" value={newPw} onChange={e => setNewPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
             {pwMsg && <p style={{ fontSize: 13, fontWeight: 600, color: pwMsg === 'Thành công!' ? '#16a34a' : 'var(--primary)' }}>{pwMsg}</p>}
             <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={changePw}>Đổi mật khẩu</button>
           </div>

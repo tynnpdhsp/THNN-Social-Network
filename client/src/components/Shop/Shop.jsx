@@ -309,7 +309,7 @@ const Shop = () => {
         </div>
 
         <div>
-          <h3 className="heading-md" style={{ marginBottom: 16 }}>Khoảng giá (Dưới {priceRange.toLocaleString()}đ)</h3>
+          <h3 className="heading-md" style={{ marginBottom: 16 }}>Khoảng giá (Dưới {priceRange.toLocaleString('vi-VN')}đ)</h3>
           <input 
             type="range" 
             min="0" 
@@ -433,7 +433,9 @@ const Shop = () => {
                     <span style={{ fontSize: 12, fontWeight: 700 }}>{product.avg_rating || 0}</span>
                     <span style={{ fontSize: 12, color: 'var(--mute)' }}>({product.rating_count || 0})</span>
                   </div>
-                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>{(product.price || 0).toLocaleString()}đ</p>
+                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>
+                    {product.price === 0 ? 'Miễn phí' : `${(product.price || 0).toLocaleString('vi-VN')}đ`}
+                  </p>
                 </div>
               </div>
             ))}

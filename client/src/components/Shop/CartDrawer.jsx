@@ -56,7 +56,7 @@ const CartDrawer = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem
                       </button>
                     </div>
                     <p className="body-sm text-primary" style={{ fontWeight: 700, margin: '4px 0' }}>
-                      {(item.item?.price || 0).toLocaleString()}đ
+                      {item.item?.price === 0 ? 'Miễn phí' : `${(item.item?.price || 0).toLocaleString('vi-VN')}đ`}
                     </p>
                     <div className="quantity-controls">
                       <button 
@@ -85,11 +85,11 @@ const CartDrawer = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem
             <div className="cart-summary">
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span className="text-mute">Tạm tính:</span>
-                <span className="body-strong">{subtotal.toLocaleString()}đ</span>
+                <span className="body-strong">{subtotal === 0 ? '0đ' : `${subtotal.toLocaleString('vi-VN')}đ`}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
                 <span className="body-lg" style={{ fontWeight: 800 }}>Tổng cộng:</span>
-                <span className="body-lg text-primary" style={{ fontWeight: 900 }}>{subtotal.toLocaleString()}đ</span>
+                <span className="body-lg text-primary" style={{ fontWeight: 900 }}>{subtotal === 0 ? '0đ' : `${subtotal.toLocaleString('vi-VN')}đ`}</span>
               </div>
             </div>
             <button className="btn-primary checkout-btn" onClick={onCheckout}>

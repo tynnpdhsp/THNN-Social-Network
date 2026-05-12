@@ -84,7 +84,7 @@ const Timetable = () => {
         scheduleService.getSchedules(),
         scheduleService.getStudyNotes()
       ]);
-      
+
       setSchedules(schedulesData.items);
       setDeadlines(notesData.items);
 
@@ -147,7 +147,7 @@ const Timetable = () => {
     const period = parseInt(timeLabel.replace('Tiết ', ''));
     const startTime = `${(period + 6).toString().padStart(2, '0')}:00`;
     const endTime = `${(period + 7).toString().padStart(2, '0')}:00`;
-    
+
     setEditingEntry(null);
     setNewEntry({
       title: '',
@@ -175,7 +175,7 @@ const Timetable = () => {
 
   const handleAddEntry = async () => {
     if (!activeScheduleId || !newEntry.title) return;
-    
+
     // Validate time format and logical order
     const [startH, startM] = newEntry.start_time.split(':').map(Number);
     const [endH, endM] = newEntry.end_time.split(':').map(Number);
@@ -230,7 +230,7 @@ const Timetable = () => {
 
   const handleDeleteEntry = () => {
     if (!editingEntry) return;
-    
+
     setConfirmModal({
       isOpen: true,
       title: 'Xác nhận xóa tiết học',
@@ -332,7 +332,7 @@ const Timetable = () => {
         if (!importFile) throw new Error('Vui lòng chọn file Excel');
         await scheduleService.importCourseSectionsExcel(importFile);
       }
-      
+
       toast.success('Nhập dữ liệu thành công!');
       setShowImportModal(false);
       setImportJson('');
@@ -364,7 +364,7 @@ const Timetable = () => {
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
           <h1 className="heading-xl">Quản lý Thời khóa biểu</h1>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-card)', borderRadius: 'var(--rounded-full)', padding: 4, gap: 4 }}>
               <div style={{ display: 'flex', gap: 4 }}>
@@ -386,11 +386,11 @@ const Timetable = () => {
                   </div>
                 ))}
               </div>
-              <button 
+              <button
                 onClick={() => setShowScheduleModal(true)}
-                style={{ 
-                  width: 32, height: 32, borderRadius: '50%', border: 'none', 
-                  background: 'white', display: 'flex', alignItems: 'center', 
+                style={{
+                  width: 32, height: 32, borderRadius: '50%', border: 'none',
+                  background: 'white', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', cursor: 'pointer', color: 'var(--primary)',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}
@@ -401,7 +401,7 @@ const Timetable = () => {
                 <div style={{ padding: '8px 16px', fontSize: 13, color: 'var(--mute)' }}>Chưa có lịch nào</div>
               )}
             </div>
-            
+
             {activeScheduleId && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
@@ -430,9 +430,9 @@ const Timetable = () => {
           <div ref={gridScrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', position: 'relative', minHeight: 16 * 80 }}>
               {/* Sticky Headers */}
-              <div style={{ 
-                position: 'sticky', top: 0, left: 0, zIndex: 50, background: 'var(--surface-soft)', 
-                borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)', 
+              <div style={{
+                position: 'sticky', top: 0, left: 0, zIndex: 50, background: 'var(--surface-soft)',
+                borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)',
                 height: 48
               }}>
                 <span style={{ position: 'absolute', top: 4, right: 8, fontSize: 12, fontWeight: 700, color: 'var(--mute)' }}>Thứ</span>
@@ -442,9 +442,9 @@ const Timetable = () => {
                 </svg>
               </div>
               {days.map(day => (
-                <div key={day} style={{ 
-                  position: 'sticky', top: 0, zIndex: 40, background: 'var(--surface-soft)', 
-                  borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)', 
+                <div key={day} style={{
+                  position: 'sticky', top: 0, zIndex: 40, background: 'var(--surface-soft)',
+                  borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)',
                   padding: '12px 8px', textAlign: 'center', fontWeight: 700, fontSize: 13, height: 48,
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>{day}</div>
@@ -453,8 +453,8 @@ const Timetable = () => {
               {/* Time Column */}
               <div style={{ display: 'flex', flexDirection: 'column', gridRow: '2 / span 16' }}>
                 {timeSlots.map(time => (
-                  <div key={time} style={{ 
-                    height: 80, padding: 8, borderBottom: '1px solid var(--hairline)', 
+                  <div key={time} style={{
+                    height: 80, padding: 8, borderBottom: '1px solid var(--hairline)',
                     borderRight: '1px solid var(--hairline)', fontSize: 13, color: 'var(--mute)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600,
                     background: 'var(--surface-soft)'
@@ -462,88 +462,88 @@ const Timetable = () => {
                 ))}
               </div>
 
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} style={{ position: 'relative', borderRight: '1px solid var(--hairline)', gridRow: '2 / span 16', gridColumn: i + 2 }}>
-                {timeSlots.map(time => (
-                  <div 
-                    key={time} 
-                    onClick={() => handleGridClick(i, time)}
-                    style={{ 
-                      height: 80, borderBottom: '1px dotted var(--hairline)',
-                      cursor: 'pointer', transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  ></div>
-                ))}
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} style={{ position: 'relative', borderRight: '1px solid var(--hairline)', gridRow: '2 / span 16', gridColumn: i + 2 }}>
+                  {timeSlots.map(time => (
+                    <div
+                      key={time}
+                      onClick={() => handleGridClick(i, time)}
+                      style={{
+                        height: 80, borderBottom: '1px dotted var(--hairline)',
+                        cursor: 'pointer', transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    ></div>
+                  ))}
 
-                {(() => {
-                  const now = currentTime;
-                  const currentHour = now.getHours();
-                  const currentMin = now.getMinutes();
-                  if (currentHour >= 7 && currentHour < 23) {
-                    const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
-                    const top = getTimeOffset(timeStr);
-                    return (
-                      <div style={{
-                        position: 'absolute', top, left: 0, right: 0,
-                        height: 2, background: 'var(--primary)', zIndex: 20,
-                        pointerEvents: 'none', display: 'flex', alignItems: 'center'
-                      }}>
+                  {(() => {
+                    const now = currentTime;
+                    const currentHour = now.getHours();
+                    const currentMin = now.getMinutes();
+                    if (currentHour >= 7 && currentHour < 23) {
+                      const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+                      const top = getTimeOffset(timeStr);
+                      return (
                         <div style={{
-                          position: 'absolute', left: -4, top: -4,
-                          width: 10, height: 10, borderRadius: '50%',
-                          background: 'var(--primary)', border: '2px solid white'
-                        }} />
-                        <span style={{ 
-                          position: 'absolute', right: 4, top: -14, 
-                          fontSize: 10, fontWeight: 700, color: 'var(--primary)',
-                          background: 'white', padding: '0 4px', borderRadius: 4
-                        }}>Hiện tại</span>
+                          position: 'absolute', top, left: 0, right: 0,
+                          height: 2, background: 'var(--primary)', zIndex: 20,
+                          pointerEvents: 'none', display: 'flex', alignItems: 'center'
+                        }}>
+                          <div style={{
+                            position: 'absolute', left: -4, top: -4,
+                            width: 10, height: 10, borderRadius: '50%',
+                            background: 'var(--primary)', border: '2px solid white'
+                          }} />
+                          <span style={{
+                            position: 'absolute', right: 4, top: -14,
+                            fontSize: 10, fontWeight: 700, color: 'var(--primary)',
+                            background: 'white', padding: '0 4px', borderRadius: 4
+                          }}>Hiện tại</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {currentEntries.filter(e => e.day_of_week === i + 1).map(event => {
+                    const startTime = event.start_time?.substring(0, 5) || '07:00';
+                    const endTime = event.end_time?.substring(0, 5) || '08:00';
+                    const top = getTimeOffset(startTime);
+                    const bottom = getTimeOffset(endTime);
+                    const height = bottom - top;
+
+                    return (
+                      <div
+                        key={event.id}
+                        onClick={(e) => { e.stopPropagation(); handleEditEntry(event); }}
+                        style={{
+                          position: 'absolute', top: top + 4, left: 4, right: 4, height: height - 8,
+                          background: event.entry_type === 'ai' ? 'linear-gradient(135deg, #fef9c3 0%, #fde68a 100%)' : '#e0f2fe',
+                          borderRadius: 8, padding: '8px 12px', fontSize: 12, border: '1px solid rgba(0,0,0,0.05)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 10, cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', justifyContent: 'center'
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{event.title}</div>
+                        <div style={{ opacity: 0.7 }}>{event.room || 'N/A'} {event.section?.instructor ? `• ${event.section.instructor}` : ''}</div>
                       </div>
                     );
-                  }
-                  return null;
-                })()}
-
-                {currentEntries.filter(e => e.day_of_week === i + 1).map(event => {
-                  const startTime = event.start_time?.substring(0, 5) || '07:00';
-                  const endTime = event.end_time?.substring(0, 5) || '08:00';
-                  const top = getTimeOffset(startTime);
-                  const bottom = getTimeOffset(endTime);
-                  const height = bottom - top;
-
-                  return (
-                    <div 
-                      key={event.id} 
-                      onClick={(e) => { e.stopPropagation(); handleEditEntry(event); }}
-                      style={{
-                        position: 'absolute', top: top + 4, left: 4, right: 4, height: height - 8,
-                        background: event.entry_type === 'ai' ? 'linear-gradient(135deg, #fef9c3 0%, #fde68a 100%)' : '#e0f2fe',
-                        borderRadius: 8, padding: '8px 12px', fontSize: 12, border: '1px solid rgba(0,0,0,0.05)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 10, cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column', justifyContent: 'center'
-                      }}
-                    >
-                      <div style={{ fontWeight: 700, marginBottom: 4 }}>{event.title}</div>
-                      <div style={{ opacity: 0.7 }}>{event.room || 'N/A'} {event.section?.instructor ? `• ${event.section.instructor}` : ''}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
       <div style={{ width: 320 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 className="heading-md" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertCircle size={20} color="var(--primary)" /> Hạn nộp & Lịch thi
           </h2>
-          <button 
-            className="btn-primary" 
+          <button
+            className="btn-primary"
             style={{ width: 36, height: 36, padding: 0, borderRadius: '50%' }}
             onClick={() => setShowDeadlineModal(true)}
           >
@@ -564,8 +564,8 @@ const Timetable = () => {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span className="caption-sm" style={{ fontWeight: 700, color: 'var(--primary)' }}>{d.subject || 'Ghi chú'}</span>
-                <button 
-                  onClick={() => handleDeleteDeadline(d.id)} 
+                <button
+                  onClick={() => handleDeleteDeadline(d.id)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', transition: 'color 0.2s' }}
                   onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
                   onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ash)'}
@@ -588,13 +588,13 @@ const Timetable = () => {
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tiêu đề sự kiện</label>
             <div className="search-container">
               <Plus size={18} />
-              <input 
-                type="text" 
-                className="input-field search-bar" 
-                placeholder="Ví dụ: Kiểm tra Giải tích, Nộp bài tập..." 
+              <input
+                type="text"
+                className="input-field search-bar"
+                placeholder="Ví dụ: Kiểm tra Giải tích, Nộp bài tập..."
                 style={{ background: 'white', border: '1px solid var(--hairline)' }}
-                value={newDeadline.title} 
-                onChange={e => setNewDeadline({...newDeadline, title: e.target.value})} 
+                value={newDeadline.title}
+                onChange={e => setNewDeadline({ ...newDeadline, title: e.target.value })}
               />
             </div>
           </div>
@@ -603,13 +603,13 @@ const Timetable = () => {
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Môn học liên quan</label>
             <div className="search-container">
               <AlertCircle size={18} />
-              <input 
-                type="text" 
-                className="input-field search-bar" 
-                placeholder="Môn học (không bắt buộc)..." 
+              <input
+                type="text"
+                className="input-field search-bar"
+                placeholder="Môn học (không bắt buộc)..."
                 style={{ background: 'white', border: '1px solid var(--hairline)' }}
-                value={newDeadline.subject} 
-                onChange={e => setNewDeadline({...newDeadline, subject: e.target.value})} 
+                value={newDeadline.subject}
+                onChange={e => setNewDeadline({ ...newDeadline, subject: e.target.value })}
               />
             </div>
           </div>
@@ -619,21 +619,21 @@ const Timetable = () => {
               <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Ngày đến hạn</label>
               <div className="search-container" style={{ position: 'relative' }}>
                 <Calendar size={18} style={{ zIndex: 1 }} />
-                <input 
+                <input
                   ref={dateInputRef}
-                  type="date" 
-                  style={{ 
-                    position: 'absolute', top: 0, left: 0, opacity: 0, 
+                  type="date"
+                  style={{
+                    position: 'absolute', top: 0, left: 0, opacity: 0,
                     width: '100%', height: '100%', zIndex: 2,
-                    pointerEvents: 'none' 
+                    pointerEvents: 'none'
                   }}
-                  value={newDeadline.date} 
+                  value={newDeadline.date}
                   min={new Date().toISOString().split('T')[0]}
-                  onChange={e => setNewDeadline({...newDeadline, date: e.target.value})} 
+                  onChange={e => setNewDeadline({ ...newDeadline, date: e.target.value })}
                 />
-                <button 
+                <button
                   type="button"
-                  className="input-field search-bar" 
+                  className="input-field search-bar"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsDeadlineTimeOpen(false);
@@ -644,8 +644,8 @@ const Timetable = () => {
                       dateInputRef.current?.click();
                     }
                   }}
-                  style={{ 
-                    background: 'white', border: '1px solid var(--hairline)', 
+                  style={{
+                    background: 'white', border: '1px solid var(--hairline)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     paddingRight: 20, cursor: 'pointer', textAlign: 'left'
                   }}
@@ -659,18 +659,18 @@ const Timetable = () => {
               <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Giờ</label>
               <div className="search-container" style={{ position: 'relative' }}>
                 <Clock size={18} style={{ zIndex: 1 }} />
-                <input 
+                <input
                   ref={deadlineTimeInputRef}
-                  type="time" 
-                  style={{ 
-                    position: 'absolute', top: 0, left: 0, opacity: 0, 
+                  type="time"
+                  style={{
+                    position: 'absolute', top: 0, left: 0, opacity: 0,
                     width: '100%', height: '100%', zIndex: 2,
-                    pointerEvents: 'none' 
+                    pointerEvents: 'none'
                   }}
-                  value={newDeadline.time} 
-                  onChange={e => setNewDeadline({...newDeadline, time: e.target.value})} 
+                  value={newDeadline.time}
+                  onChange={e => setNewDeadline({ ...newDeadline, time: e.target.value })}
                 />
-                <button 
+                <button
                   type="button"
                   onClick={() => {
                     if (deadlineTimeInputRef.current?.showPicker) {
@@ -679,9 +679,9 @@ const Timetable = () => {
                       deadlineTimeInputRef.current?.click();
                     }
                   }}
-                  className="input-field search-bar" 
-                  style={{ 
-                    background: 'white', border: '1px solid var(--hairline)', 
+                  className="input-field search-bar"
+                  style={{
+                    background: 'white', border: '1px solid var(--hairline)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     paddingRight: 20, cursor: 'pointer', textAlign: 'left'
                   }}
@@ -696,15 +696,15 @@ const Timetable = () => {
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Nhắc trước</label>
             <div className="search-container" style={{ position: 'relative' }}>
               <Clock size={18} style={{ zIndex: 1 }} />
-              <button 
+              <button
                 type="button"
                 onClick={() => {
                   setIsReminderOpen(!isReminderOpen);
                   setIsDeadlineTimeOpen(false);
                 }}
-                className="input-field search-bar" 
-                style={{ 
-                  background: 'white', border: '1px solid var(--hairline)', 
+                className="input-field search-bar"
+                style={{
+                  background: 'white', border: '1px solid var(--hairline)',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   paddingRight: 20, cursor: 'pointer', textAlign: 'left'
                 }}
@@ -713,20 +713,20 @@ const Timetable = () => {
               </button>
 
               {isReminderOpen && (
-                <div style={{ 
-                  position: 'absolute', top: '105%', left: 0, width: '100%', 
-                  background: 'white', borderRadius: 'var(--rounded-md)', 
+                <div style={{
+                  position: 'absolute', top: '105%', left: 0, width: '100%',
+                  background: 'white', borderRadius: 'var(--rounded-md)',
                   boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
                   overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
                 }}>
                   {reminderOptions.map(opt => (
-                    <div 
+                    <div
                       key={opt.value}
-                      onClick={() => { 
-                        setNewDeadline({...newDeadline, remind_before_minutes: opt.value}); 
-                        setIsReminderOpen(false); 
+                      onClick={() => {
+                        setNewDeadline({ ...newDeadline, remind_before_minutes: opt.value });
+                        setIsReminderOpen(false);
                       }}
-                      style={{ 
+                      style={{
                         padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                         cursor: 'pointer', fontSize: 14, fontWeight: newDeadline.remind_before_minutes === opt.value ? 700 : 500,
                         background: newDeadline.remind_before_minutes === opt.value ? 'var(--surface-soft)' : 'transparent',
@@ -747,12 +747,12 @@ const Timetable = () => {
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Ghi chú thêm</label>
             <div className="search-container">
               <Info size={18} style={{ top: 16 }} />
-              <textarea 
-                className="input-field search-bar" 
-                placeholder="Mô tả chi tiết, địa điểm..." 
-                style={{ height: 100, resize: 'none', padding: '12px 20px 12px 44px', background: 'white', border: '1px solid var(--hairline)' }} 
-                value={newDeadline.description} 
-                onChange={e => setNewDeadline({...newDeadline, description: e.target.value})} 
+              <textarea
+                className="input-field search-bar"
+                placeholder="Mô tả chi tiết, địa điểm..."
+                style={{ height: 100, resize: 'none', padding: '12px 20px 12px 44px', background: 'white', border: '1px solid var(--hairline)' }}
+                value={newDeadline.description}
+                onChange={e => setNewDeadline({ ...newDeadline, description: e.target.value })}
               />
             </div>
           </div>
@@ -770,13 +770,13 @@ const Timetable = () => {
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tên phương án</label>
             <div className="search-container">
               <Plus size={18} />
-              <input 
-                type="text" 
-                className="input-field search-bar" 
-                placeholder="Ví dụ: Phương án học kỳ 2..." 
+              <input
+                type="text"
+                className="input-field search-bar"
+                placeholder="Ví dụ: Phương án học kỳ 2..."
                 style={{ background: 'white', border: '1px solid var(--hairline)' }}
-                value={newScheduleName} 
-                onChange={e => setNewScheduleName(e.target.value)} 
+                value={newScheduleName}
+                onChange={e => setNewScheduleName(e.target.value)}
               />
             </div>
           </div>
@@ -791,168 +791,210 @@ const Timetable = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tên môn học/Tiết học</label>
-            <div className="search-container">
-              <Plus size={18} />
-              <input 
-                type="text" 
-                className="input-field search-bar" 
-                placeholder="Ví dụ: Giải tích 1, Triết học..." 
-                style={{ background: 'white', border: '1px solid var(--hairline)' }}
-                value={newEntry.title} 
-                onChange={e => setNewEntry({...newEntry, title: e.target.value})} 
-              />
-            </div>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Ví dụ: Giải tích 1, Triết học..."
+              style={{ background: 'white', border: '1px solid var(--hairline)', padding: '0 16px', height: 44, width: '100%' }}
+              value={newEntry.title}
+              onChange={e => setNewEntry({ ...newEntry, title: e.target.value })}
+            />
           </div>
 
           <div>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Phòng học</label>
-            <div className="search-container">
-              <AlertCircle size={18} />
-              <input 
-                type="text" 
-                className="input-field search-bar" 
-                placeholder="Ví dụ: A1-102, Zoom..." 
-                style={{ background: 'white', border: '1px solid var(--hairline)' }}
-                value={newEntry.room} 
-                onChange={e => setNewEntry({...newEntry, room: e.target.value})} 
-              />
-            </div>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Ví dụ: A1-102, Zoom..."
+              style={{ background: 'white', border: '1px solid var(--hairline)', padding: '0 16px', height: 44, width: '100%' }}
+              value={newEntry.room}
+              onChange={e => setNewEntry({ ...newEntry, room: e.target.value })}
+            />
           </div>
 
           <div style={{ position: 'relative' }}>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Ngày trong tuần</label>
-            <div className="search-container" style={{ position: 'relative' }}>
-              <Calendar size={18} style={{ zIndex: 1 }} />
-              <button 
+            <div style={{ position: 'relative' }}>
+              <button
                 type="button"
                 onClick={() => {
                   setIsDayOpen(!isDayOpen);
                   setIsStartTimeOpen(false);
                   setIsEndTimeOpen(false);
                 }}
-                className="input-field search-bar" 
-                style={{ 
-                  background: 'white', border: '1px solid var(--hairline)', 
+                className="input-field"
+                style={{
+                  background: 'white', border: '1px solid var(--hairline)',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  paddingRight: 20, cursor: 'pointer', textAlign: 'left'
+                  padding: '0 16px', height: 44, width: '100%', cursor: 'pointer', textAlign: 'left'
                 }}
               >
-                {days[newEntry.day_of_week - 1]}
+                <span>{days[newEntry.day_of_week - 1]}</span>
+                <ChevronDown size={18} style={{ transform: isDayOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0, color: 'var(--ash)' }} />
               </button>
 
               {isDayOpen && (
-                <div style={{ 
-                  position: 'absolute', top: '105%', left: 0, width: '100%', 
-                  background: 'white', borderRadius: 'var(--rounded-md)', 
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
-                  overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
-                }}>
-                  {days.map((day, idx) => (
-                    <div 
-                      key={day}
-                      onClick={() => { 
-                        setNewEntry({...newEntry, day_of_week: idx + 1}); 
-                        setIsDayOpen(false); 
-                      }}
-                      style={{ 
-                        padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                        cursor: 'pointer', fontSize: 14, fontWeight: newEntry.day_of_week === idx + 1 ? 700 : 500,
-                        background: newEntry.day_of_week === idx + 1 ? 'var(--surface-soft)' : 'transparent',
-                        color: newEntry.day_of_week === idx + 1 ? 'var(--primary)' : 'var(--body)',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = newEntry.day_of_week === idx + 1 ? 'var(--surface-soft)' : 'transparent'}
-                    >
-                      {day}
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsDayOpen(false)} />
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, width: '100%', maxHeight: 160, overflowY: 'auto',
+                    background: 'white', borderRadius: 'var(--rounded-md)',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                    padding: '8px', border: '1px solid var(--hairline)',
+                    marginTop: 4, animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {days.map((day, idx) => (
+                      <div
+                        key={day}
+                        onClick={() => {
+                          setNewEntry({ ...newEntry, day_of_week: idx + 1 });
+                          setIsDayOpen(false);
+                        }}
+                        style={{
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 14, fontWeight: newEntry.day_of_week === idx + 1 ? 700 : 500,
+                          background: newEntry.day_of_week === idx + 1 ? 'var(--surface-soft)' : 'transparent',
+                          color: newEntry.day_of_week === idx + 1 ? 'var(--primary)' : 'var(--body)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = newEntry.day_of_week === idx + 1 ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div style={{ position: 'relative' }}>
+            <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tiết bắt đầu</label>
-              <div className="search-container" style={{ position: 'relative' }}>
-                <Clock size={18} style={{ zIndex: 1 }} />
-                <button 
+              <div style={{ position: 'relative' }}>
+                <button
                   type="button"
-                  onClick={() => setIsStartTimeOpen(!isStartTimeOpen)}
-                  className="input-field search-bar" 
-                  style={{ 
-                    background: 'white', border: '1px solid var(--hairline)', 
+                  onClick={() => {
+                    setIsStartTimeOpen(!isStartTimeOpen);
+                    setIsDayOpen(false);
+                    setIsEndTimeOpen(false);
+                  }}
+                  className="input-field"
+                  style={{
+                    background: 'white', border: '1px solid var(--hairline)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    paddingRight: 20, cursor: 'pointer', textAlign: 'left'
+                    padding: '0 16px', height: 44, width: '100%', cursor: 'pointer', textAlign: 'left'
                   }}
                 >
-                  {`Tiết ${parseInt(newEntry.start_time.split(':')[0]) - 6}`}
-                  <ChevronDown size={16} />
+                  <span>{`Tiết ${parseInt(newEntry.start_time.split(':')[0]) - 6}`}</span>
+                  <ChevronDown size={18} style={{ transform: isStartTimeOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0, color: 'var(--ash)' }} />
                 </button>
                 {isStartTimeOpen && (
-                  <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 200, overflowY: 'auto', zIndex: 100, background: 'white', border: '1px solid var(--hairline)', borderRadius: 'var(--rounded-md)', marginTop: 4, boxShadow: 'var(--shadow-lg)' }}>
-                    {Array.from({ length: 16 }).map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="dropdown-item" 
-                        onClick={() => {
-                          const h = i + 7;
-                          const startTime = `${h.toString().padStart(2, '0')}:00`;
-                          const [currH] = newEntry.end_time.split(':').map(Number);
-                          let endTime = newEntry.end_time;
-                          if (currH <= h) {
-                            endTime = `${(h + 1).toString().padStart(2, '0')}:00`;
-                          }
-                          setNewEntry({ ...newEntry, start_time: startTime, end_time: endTime });
-                          setIsStartTimeOpen(false);
-                        }}
-                        style={{ padding: '10px 16px', cursor: 'pointer' }}
-                      >
-                        Tiết {i + 1}
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsStartTimeOpen(false)} />
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, width: '100%', maxHeight: 160, overflowY: 'auto',
+                      background: 'white', border: '1px solid var(--hairline)', borderRadius: 'var(--rounded-md)',
+                      marginTop: 4, padding: '4px 0', boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                      animation: 'scaleIn 0.15s ease'
+                    }}>
+                      {Array.from({ length: 16 }).map((_, i) => {
+                        const periodNum = i + 1;
+                        const isSelected = parseInt(newEntry.start_time.split(':')[0]) - 6 === periodNum;
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => {
+                              const h = i + 7;
+                              const startTime = `${h.toString().padStart(2, '0')}:00`;
+                              const [currEndH] = newEntry.end_time.split(':').map(Number);
+                              let endTime = newEntry.end_time;
+                              if (currEndH <= h) {
+                                endTime = `${(h + 1).toString().padStart(2, '0')}:00`;
+                              }
+                              setNewEntry({ ...newEntry, start_time: startTime, end_time: endTime });
+                              setIsStartTimeOpen(false);
+                            }}
+                            style={{
+                              padding: '10px 16px', margin: '2px 4px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer',
+                              fontSize: 14, fontWeight: isSelected ? 700 : 500,
+                              background: isSelected ? 'var(--surface-soft)' : 'transparent',
+                              color: isSelected ? 'var(--primary)' : 'var(--body)',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'var(--surface-soft)' : 'transparent'}
+                          >
+                            Tiết {periodNum}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
-            <div style={{ position: 'relative' }}>
+
+            <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tiết kết thúc</label>
-              <div className="search-container" style={{ position: 'relative' }}>
-                <Clock size={18} style={{ zIndex: 1 }} />
-                <button 
+              <div style={{ position: 'relative' }}>
+                <button
                   type="button"
-                  onClick={() => setIsEndTimeOpen(!isEndTimeOpen)}
-                  className="input-field search-bar" 
-                  style={{ 
-                    background: 'white', border: '1px solid var(--hairline)', 
+                  onClick={() => {
+                    setIsEndTimeOpen(!isEndTimeOpen);
+                    setIsDayOpen(false);
+                    setIsStartTimeOpen(false);
+                  }}
+                  className="input-field"
+                  style={{
+                    background: 'white', border: '1px solid var(--hairline)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    paddingRight: 20, cursor: 'pointer', textAlign: 'left'
+                    padding: '0 16px', height: 44, width: '100%', cursor: 'pointer', textAlign: 'left'
                   }}
                 >
-                  {`Tiết ${parseInt(newEntry.end_time.split(':')[0]) - 6}`}
-                  <ChevronDown size={16} />
+                  <span>{`Tiết ${parseInt(newEntry.end_time.split(':')[0]) - 7}`}</span>
+                  <ChevronDown size={18} style={{ transform: isEndTimeOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0, color: 'var(--ash)' }} />
                 </button>
                 {isEndTimeOpen && (
-                  <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 200, overflowY: 'auto', zIndex: 100, background: 'white', border: '1px solid var(--hairline)', borderRadius: 'var(--rounded-md)', marginTop: 4, boxShadow: 'var(--shadow-lg)' }}>
-                    {Array.from({ length: 16 }).map((_, i) => {
-                      const h = i + 7;
-                      const startH = parseInt(newEntry.start_time.split(':')[0]);
-                      if (h < startH) return null;
-                      return (
-                        <div 
-                          key={i} 
-                          className="dropdown-item" 
-                          onClick={() => {
-                            setNewEntry({ ...newEntry, end_time: `${h.toString().padStart(2, '0')}:00` });
-                            setIsEndTimeOpen(false);
-                          }}
-                          style={{ padding: '10px 16px', cursor: 'pointer' }}
-                        >
-                          Tiết {i + 1}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsEndTimeOpen(false)} />
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, width: '100%', maxHeight: 160, overflowY: 'auto',
+                      background: 'white', border: '1px solid var(--hairline)', borderRadius: 'var(--rounded-md)',
+                      marginTop: 4, padding: '4px 0', boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                      animation: 'scaleIn 0.15s ease'
+                    }}>
+                      {Array.from({ length: 16 }).map((_, i) => {
+                        const endPeriod = i + 1;
+                        const startPeriod = parseInt(newEntry.start_time.split(':')[0]) - 6;
+                        if (endPeriod < startPeriod) return null;
+                        const endH = i + 8;
+                        const isSelected = parseInt(newEntry.end_time.split(':')[0]) - 7 === endPeriod;
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => {
+                              setNewEntry({ ...newEntry, end_time: `${endH.toString().padStart(2, '0')}:00` });
+                              setIsEndTimeOpen(false);
+                            }}
+                            style={{
+                              padding: '10px 16px', margin: '2px 4px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer',
+                              fontSize: 14, fontWeight: isSelected ? 700 : 500,
+                              background: isSelected ? 'var(--surface-soft)' : 'transparent',
+                              color: isSelected ? 'var(--primary)' : 'var(--body)',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'var(--surface-soft)' : 'transparent'}
+                          >
+                            Tiết {endPeriod}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -960,9 +1002,9 @@ const Timetable = () => {
 
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
             {editingEntry && (
-              <button 
-                className="btn-secondary" 
-                style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48, borderColor: '#fee2e2', color: '#ef4444', transition: 'all 0.2s' }} 
+              <button
+                className="btn-secondary"
+                style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48, borderColor: '#fee2e2', color: '#ef4444', transition: 'all 0.2s' }}
                 onClick={handleDeleteEntry}
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = 'white'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ef4444'; }}
@@ -980,13 +1022,13 @@ const Timetable = () => {
       <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="Nhập dữ liệu thời khóa biểu" width={600}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ display: 'flex', gap: 12, background: 'var(--surface-soft)', padding: 4, borderRadius: 'var(--rounded-full)' }}>
-            <button 
+            <button
               onClick={() => setImportType('excel')}
               style={{ flex: 1, padding: '8px', border: 'none', background: importType === 'excel' ? 'white' : 'transparent', borderRadius: 'var(--rounded-full)', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: importType === 'excel' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
             >
               Nhập từ Excel
             </button>
-            <button 
+            <button
               onClick={() => setImportType('json')}
               style={{ flex: 1, padding: '8px', border: 'none', background: importType === 'json' ? 'white' : 'transparent', borderRadius: 'var(--rounded-full)', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: importType === 'json' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
             >
@@ -1001,27 +1043,27 @@ const Timetable = () => {
                 <Upload size={32} style={{ color: 'var(--primary)', marginBottom: 12 }} />
                 <p style={{ fontSize: 14, color: 'var(--body)', marginBottom: 4 }}>{importFile ? importFile.name : 'Nhấn để chọn hoặc kéo thả file vào đây'}</p>
                 <p style={{ fontSize: 12, color: 'var(--mute)' }}>Hỗ trợ các cột: Mã môn, Tên môn, Thứ, Bắt đầu, Kết thúc, Phòng</p>
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   accept=".xlsx, .xls"
                   onChange={(e) => setImportFile(e.target.files[0])}
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} 
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                 />
               </div>
             </div>
           ) : (
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Dán mã JSON học phần vào đây</label>
-              <textarea 
-                className="input-field" 
-                placeholder='[{"course_code": "IT101", "course_name": "Lập trình C", "day_of_week": 2, "start_time": "07:00", "end_time": "09:00", "room": "A1-101"}]' 
-                style={{ height: 250, resize: 'none', padding: 16, fontFamily: 'monospace', fontSize: 13, background: 'var(--surface-soft)', border: '1px solid var(--hairline)', borderRadius: 12 }} 
-                value={importJson} 
-                onChange={e => setImportJson(e.target.value)} 
+              <textarea
+                className="input-field"
+                placeholder='[{"course_code": "IT101", "course_name": "Lập trình C", "day_of_week": 2, "start_time": "07:00", "end_time": "09:00", "room": "A1-101"}]'
+                style={{ height: 250, resize: 'none', padding: 16, fontFamily: 'monospace', fontSize: 13, background: 'var(--surface-soft)', border: '1px solid var(--hairline)', borderRadius: 12 }}
+                value={importJson}
+                onChange={e => setImportJson(e.target.value)}
               />
             </div>
           )}
-          
+
           <div style={{ display: 'flex', gap: 12 }}>
             <button className="btn-secondary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={() => setShowImportModal(false)}>Hủy</button>
             <button className="btn-primary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={handleImportData}>Bắt đầu nhập</button>
@@ -1029,13 +1071,13 @@ const Timetable = () => {
         </div>
       </Modal>
 
-      <Modal 
-        isOpen={confirmModal.isOpen} 
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
+      <Modal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         width={400}
       >
         <div style={{ textAlign: 'center' }}>
-          <div style={{ 
+          <div style={{
             width: 80, height: 80, borderRadius: '50%', background: '#fff1f0',
             display: 'flex', justifyContent: 'center', alignItems: 'center',
             margin: '0 auto 24px', color: '#ff4d4f',
@@ -1050,16 +1092,16 @@ const Timetable = () => {
           </p>
 
           <div style={{ display: 'flex', gap: 12 }}>
-            <button 
-              className="btn-secondary" 
-              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, fontWeight: 700 }} 
+            <button
+              className="btn-secondary"
+              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, fontWeight: 700 }}
               onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
             >
               Hủy
             </button>
-            <button 
-              className="btn-primary" 
-              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, background: '#ff4d4f', borderColor: '#ff4d4f', fontWeight: 700 }} 
+            <button
+              className="btn-primary"
+              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, background: '#ff4d4f', borderColor: '#ff4d4f', fontWeight: 700 }}
               onClick={() => {
                 confirmModal.onConfirm();
                 setConfirmModal({ ...confirmModal, isOpen: false });

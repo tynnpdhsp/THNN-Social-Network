@@ -1,6 +1,16 @@
 import { apiFetch, API_BASE } from '../config/api';
 const API_URL = API_BASE;
 
+const getErrMsg = (errData, fallback) => {
+  if (!errData) return fallback;
+  if (typeof errData.detail === 'string') return errData.detail;
+  if (errData.detail?.message) return errData.detail.message;
+  if (Array.isArray(errData.detail) && errData.detail.length > 0) {
+    return errData.detail[0].msg || fallback;
+  }
+  return fallback;
+};
+
 // Lấy danh sách sản phẩm
 export const getItems = async (params = {}) => {
   try {
@@ -44,7 +54,7 @@ export const uploadItemImages = async (files) => {
 
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to upload images');
+        throw new Error(getErrMsg(errData, 'Failed to upload images'));
     }
     return await response.json();
   } catch (error) {
@@ -66,7 +76,7 @@ export const createItem = async (data) => {
     });
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to create item');
+        throw new Error(getErrMsg(errData, 'Failed to create item'));
     }
     return await response.json();
   } catch (error) {
@@ -134,7 +144,7 @@ export const updateItem = async (itemId, data) => {
     });
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to update item');
+        throw new Error(getErrMsg(errData, 'Failed to update item'));
     }
     return await response.json();
   } catch (error) {
@@ -154,7 +164,7 @@ export const deleteItem = async (itemId) => {
     });
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to delete item');
+        throw new Error(getErrMsg(errData, 'Failed to delete item'));
     }
     return await response.json();
   } catch (error) {

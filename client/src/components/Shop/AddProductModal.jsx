@@ -25,7 +25,7 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
           category: productToEdit.category_id || '',
           description: productToEdit.description,
         });
-        setDisplayPrice(productToEdit.price?.toLocaleString() || '');
+        setDisplayPrice(productToEdit.price ? String(productToEdit.price).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
       } else {
         setFormData({
           title: '',
@@ -40,10 +40,10 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
   }, [isOpen, productToEdit, categories]);
 
   const handlePriceChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, '');
+    const rawValue = e.target.value.replace(/[\.,]/g, '');
     if (!isNaN(rawValue) || rawValue === '') {
       setFormData({ ...formData, price: rawValue });
-      setDisplayPrice(rawValue ? Number(rawValue).toLocaleString() : '');
+      setDisplayPrice(rawValue ? rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
     }
   };
 
@@ -74,7 +74,7 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
   const selectedCategoryLabel = categories.find(c => c.id === formData.category)?.name || 'Chọn danh mục...';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={productToEdit ? "Cập nhật vật phẩm" : "Đăng bán vật phẩm mới"} width={500}>
+    <Modal isOpen={isOpen} onClose={onClose} title={productToEdit ? "Cập nhật vật phẩm" : "Đăng bán vật phẩm mới"} width={500} overflow="auto">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {!productToEdit && (
           <>
@@ -92,7 +92,7 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
               ref={fileInputRef} 
               style={{ display: 'none' }} 
               multiple 
-              accept="image/png, image/jpeg" 
+              accept="image/*" 
               onChange={handleImageChange} 
             />
           </>
@@ -147,30 +147,35 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
               </button>
               
               {isCategoryOpen && (
-                <div style={{ 
-                  position: 'absolute', top: '100%', left: 0, width: '100%', 
-                  background: 'white', borderRadius: 'var(--rounded-md)', 
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
-                  overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
-                  marginTop: 4
-                }}>
-                  {categories.map(cat => (
-                    <div 
-                      key={cat.id}
-                      onClick={() => { setFormData({...formData, category: cat.id}); setIsCategoryOpen(false); }}
-                      style={{ 
-                        padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                        cursor: 'pointer', fontSize: 14, fontWeight: formData.category === cat.id ? 700 : 500,
-                        background: formData.category === cat.id ? 'var(--surface-soft)' : 'transparent',
-                        color: formData.category === cat.id ? 'var(--primary)' : 'var(--body)',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = formData.category === cat.id ? 'var(--surface-soft)' : 'transparent'}
-                    >
-                      {cat.name}
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsCategoryOpen(false)} />
+                  <div style={{ 
+                    position: 'absolute', top: '100%', left: 0, width: '100%', 
+                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                    overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
+                    marginTop: 4,
+                    animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {categories.map(cat => (
+                      <div 
+                        key={cat.id}
+                        onClick={() => { setFormData({...formData, category: cat.id}); setIsCategoryOpen(false); }}
+                        style={{ 
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 14, fontWeight: formData.category === cat.id ? 700 : 500,
+                          background: formData.category === cat.id ? 'var(--surface-soft)' : 'transparent',
+                          color: formData.category === cat.id ? 'var(--primary)' : 'var(--body)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = formData.category === cat.id ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {cat.name}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>

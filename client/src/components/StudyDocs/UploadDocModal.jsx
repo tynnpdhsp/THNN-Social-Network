@@ -133,48 +133,51 @@ const UploadDocModal = ({ isOpen, onClose, onUploadSuccess, categories }) => {
             <button 
               type="button"
               onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="btn-secondary" 
+              className="input-field" 
               style={{ 
-                display: 'flex', alignItems: 'center', gap: 8, 
-                background: 'white', width: '100%', 
-                justifyContent: 'space-between', padding: '11px 16px',
-                border: '1px solid var(--hairline)',
-                height: 48,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'white', border: '1px solid var(--hairline)',
+                padding: '0 16px', height: 44, width: '100%', cursor: 'pointer',
                 color: formData.category_id ? 'var(--body)' : 'var(--mute)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <Tag size={18} color="var(--mute)" />
-                {selectedCategory?.name || 'Chọn danh mục'}
+                <span>{selectedCategory?.name || 'Chọn danh mục'}</span>
               </div>
               <ChevronDown size={18} style={{ transform: isCategoryOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }} />
             </button>
 
             {isCategoryOpen && (
-              <div style={{ 
-                position: 'absolute', top: '105%', left: 0, width: '100%', 
-                background: 'white', borderRadius: 'var(--rounded-md)', 
-                boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
-                overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
-                maxHeight: 240, overflowY: 'auto'
-              }}>
-                {categories?.map(cat => (
-                  <div 
-                    key={cat.id}
-                    onClick={() => { setFormData({...formData, category_id: cat.id}); setIsCategoryOpen(false); }}
-                    style={{ 
-                      padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                      cursor: 'pointer', fontSize: 14, fontWeight: formData.category_id === cat.id ? 700 : 500,
-                      background: formData.category_id === cat.id ? 'var(--surface-soft)' : 'transparent',
-                      color: formData.category_id === cat.id ? 'var(--primary)' : 'var(--body)',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = formData.category_id === cat.id ? 'var(--surface-soft)' : 'transparent'}
-                  >
-                    {cat.name}
-                  </div>
-                ))}
-              </div>
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsCategoryOpen(false)} />
+                <div style={{ 
+                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%', 
+                  background: 'white', borderRadius: 'var(--rounded-md)', 
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                  overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
+                  maxHeight: 240, overflowY: 'auto',
+                  animation: 'scaleIn 0.15s ease'
+                }}>
+                  {categories?.map(cat => (
+                    <div 
+                      key={cat.id}
+                      onClick={() => { setFormData({...formData, category_id: cat.id}); setIsCategoryOpen(false); }}
+                      style={{ 
+                        padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                        cursor: 'pointer', fontSize: 14, fontWeight: formData.category_id === cat.id ? 700 : 500,
+                        background: formData.category_id === cat.id ? 'var(--surface-soft)' : 'transparent',
+                        color: formData.category_id === cat.id ? 'var(--primary)' : 'var(--body)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = formData.category_id === cat.id ? 'var(--surface-soft)' : 'transparent'}
+                    >
+                      {cat.name}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>

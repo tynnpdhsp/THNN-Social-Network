@@ -499,7 +499,11 @@ class ShopService:
         domain = f"http://{settings.MINIO_ENDPOINT}"
         images = []
         if hasattr(item, "itemImages") and item.itemImages:
-            images = [ImageResponse(image_url=f"{domain}{img.imageUrl}", display_order=img.displayOrder) for img in item.itemImages]
+            for img in item.itemImages:
+                url = img.imageUrl
+                if not url.startswith("http://") and not url.startswith("https://"):
+                    url = f"{domain}{url}"
+                images.append(ImageResponse(image_url=url, display_order=img.displayOrder))
 
         return ItemResponse(
             id=item.id,

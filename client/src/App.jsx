@@ -18,10 +18,36 @@ import Map from './components/Map/Map';
 
 function App() {
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('feed');
+  const [activeTab, setActiveTab] = React.useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    const validTabs = ['feed', 'board', 'profile', 'friends', 'messaging', 'notifications', 'settings', 'admin', 'shop', 'docs', 'timetable', 'map'];
+    return validTabs.includes(hash) ? hash : 'feed';
+  });
   const [viewingUserId, setViewingUserId] = useState(null);
   const [chatTarget, setChatTarget] = useState(null);
   const [focusPostId, setFocusPostId] = useState(null);
+
+  const updateUrlHash = (tab) => {
+    if (tab === 'feed') {
+      window.history.pushState('', document.title, window.location.pathname + window.location.search);
+    } else {
+      window.location.hash = tab;
+    }
+  };
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      const validTabs = ['feed', 'board', 'profile', 'friends', 'messaging', 'notifications', 'settings', 'admin', 'shop', 'docs', 'timetable', 'map'];
+      if (hash === '' || hash === 'feed') {
+        setActiveTab('feed');
+      } else if (validTabs.includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Loading state
   if (loading) {
@@ -54,16 +80,19 @@ function App() {
     if (tab !== 'messaging') setChatTarget(null);
     if (tab !== 'feed') setFocusPostId(null);
     setActiveTab(tab);
+    updateUrlHash(tab);
   };
 
   const onViewProfile = (userId) => {
     setViewingUserId(userId);
     setActiveTab('profile');
+    updateUrlHash('profile');
   };
 
   const onStartChat = (targetUser) => {
     setChatTarget(targetUser);
     setActiveTab('messaging');
+    updateUrlHash('messaging');
   };
 
   const renderContent = () => {
@@ -73,7 +102,7 @@ function App() {
       case 'profile': return <Profile targetUserId={viewingUserId} onStartChat={onStartChat} />;
       case 'friends': return <Friends onViewProfile={onViewProfile} />;
       case 'messaging': return <Messaging onViewProfile={onViewProfile} preselectedUser={chatTarget} />;
-      case 'notifications': return <Notifications onViewProfile={onViewProfile} onNavigate={(tab, ctx) => { if (ctx?.scrollToPost) setFocusPostId(ctx.scrollToPost); setActiveTab(tab); }} />;
+      case 'notifications': return <Notifications onViewProfile={onViewProfile} onNavigate={(tab, ctx) => { if (ctx?.scrollToPost) setFocusPostId(ctx.scrollToPost); handleSetTab(tab); }} />;
       case 'settings': return <Settings />;
       case 'admin': return <AdminPanel onViewProfile={onViewProfile} />;
       case 'shop': return <Shop />;

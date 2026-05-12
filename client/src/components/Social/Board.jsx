@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tag, Send, Heart, MessageCircle, Image, MoreHorizontal, Flag, X } from 'lucide-react';
+import { Tag, Send, Heart, MessageCircle, Image, MoreHorizontal, Flag, X, ChevronDown } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
+
+const visOptions = [
+  { value: 'public', label: 'Công khai' },
+  { value: 'friends', label: 'Bạn bè' },
+  { value: 'private', label: 'Riêng tư' },
+];
 
 const Board = () => {
   const { user } = useAuth();
@@ -15,6 +21,7 @@ const Board = () => {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [selectedVisibility, setSelectedVisibility] = useState('public');
+  const [isVisOpen, setIsVisOpen] = useState(false);
 
   // Comment modal
   const [commentPostId, setCommentPostId] = useState(null);
@@ -154,7 +161,7 @@ const Board = () => {
           id="board-post-input"
           placeholder="Bạn muốn bán hoặc tìm gì?"
           className="input-field"
-          style={{ height: 80, resize: 'none', padding: '12px 20px', marginBottom: 12, width: '100%', borderRadius: 16 }}
+          style={{ height: 80, resize: 'none', padding: '12px 20px', marginBottom: 12, width: '100%', borderRadius: 16, background: 'white', border: '1px solid var(--hairline)' }}
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
         />
@@ -176,19 +183,53 @@ const Board = () => {
               <Image size={16} /> Thêm ảnh
               <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
             </label>
-            <select 
-              value={selectedVisibility} 
-              onChange={(e) => setSelectedVisibility(e.target.value)}
-              style={{ 
-                border: 'none', background: 'var(--surface-soft)', borderRadius: 8, 
-                padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--mute)',
-                outline: 'none', cursor: 'pointer'
-              }}
-            >
-              <option value="public">Công khai</option>
-              <option value="friends">Bạn bè</option>
-              <option value="private">Riêng tư</option>
-            </select>
+            <div style={{ position: 'relative' }}>
+              <button 
+                type="button"
+                onClick={() => setIsVisOpen(!isVisOpen)}
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: 8, 
+                  background: 'white', border: '1px solid var(--hairline)', 
+                  borderRadius: 'var(--rounded-full)', padding: '8px 14px', 
+                  fontSize: 13, fontWeight: 700, color: 'var(--ink)',
+                  cursor: 'pointer', height: 40
+                }}
+              >
+                <span>{visOptions.find(o => o.value === selectedVisibility)?.label || 'Công khai'}</span>
+                <ChevronDown size={16} style={{ transform: isVisOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+              </button>
+              
+              {isVisOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsVisOpen(false)} />
+                  <div style={{ 
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 140, 
+                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
+                    overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
+                    animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {visOptions.map(option => (
+                      <div 
+                        key={option.value}
+                        onClick={() => { setSelectedVisibility(option.value); setIsVisOpen(false); }}
+                        style={{ 
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 13, fontWeight: selectedVisibility === option.value ? 700 : 500,
+                          background: selectedVisibility === option.value ? 'var(--surface-soft)' : 'transparent',
+                          color: selectedVisibility === option.value ? 'var(--primary)' : 'var(--body)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = selectedVisibility === option.value ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {option.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           <button className="btn-primary" style={{ padding: '10px 28px', fontSize: 14 }} onClick={handleCreatePost} disabled={posting}>
             {posting ? 'Đang đăng...' : 'Đăng tin ngay'}

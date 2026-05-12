@@ -219,7 +219,7 @@ const Map = () => {
               type="text"
               placeholder="Tìm địa điểm..."
               className="input-field search-bar"
-              style={{ height: 38, fontSize: 14, paddingLeft: 40 }}
+              style={{ height: 38, fontSize: 14 }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

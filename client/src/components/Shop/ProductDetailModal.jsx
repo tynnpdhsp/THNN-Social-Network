@@ -9,6 +9,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
   const [reviews, setReviews] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const overlayRef = useRef(null);
+  const isBackdropMouseDown = useRef(false);
 
   useEffect(() => {
     if (isOpen && product?.id) {
@@ -50,11 +51,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
 
   if (!isOpen) return null;
 
-  const handleOverlayClick = (e) => {
-    if (e.target === overlayRef.current) {
-      onClose();
-    }
-  };
+
 
   return (
     <div 
@@ -68,7 +65,19 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
         overflowY: 'auto',
         padding: '40px 20px'
       }} 
-      onMouseDown={handleOverlayClick}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          isBackdropMouseDown.current = true;
+        } else {
+          isBackdropMouseDown.current = false;
+        }
+      }}
+      onClick={(e) => {
+        if (isBackdropMouseDown.current && e.target === e.currentTarget) {
+          onClose();
+        }
+        isBackdropMouseDown.current = false;
+      }}
     >
       <div style={{
         background: 'white',
@@ -125,7 +134,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
             </div>
 
             <p className="heading-xl" style={{ color: 'var(--primary)', marginBottom: 24 }}>
-              {product.price?.toLocaleString()}đ
+              {product.price === 0 ? 'Miễn phí' : `${product.price?.toLocaleString('vi-VN')}đ`}
             </p>
 
             <div style={{ marginBottom: 32 }}>
