@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tag, Send, Heart, MessageCircle, Image, MoreHorizontal, Flag, X, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
@@ -61,13 +62,13 @@ const Board = () => {
         const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          alert(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
+          toast.error(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
           continue;
         }
         const data = await res.json();
         if (data.image_url) setUploadedImages(prev => [...prev, data.image_url]);
       } catch (err) {
-        alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+        toast.error('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
         console.error('Upload error:', err);
       }
     }

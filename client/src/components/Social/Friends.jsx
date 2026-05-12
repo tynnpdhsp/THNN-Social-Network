@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, UserPlus, UserCheck, UserX, Flag, Ban } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../Common/ConfirmDialog';
 
 const Friends = ({ onViewProfile }) => {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -50,14 +53,32 @@ const Friends = ({ onViewProfile }) => {
   };
 
   const unfriend = async (id) => {
-    if (!confirm('Hủy kết bạn?')) return;
+    const ok = await confirm({
+      title: 'Hủy kết bạn',
+      message: 'Bạn có chắc chắn muốn hủy kết bạn với người này?',
+      confirmText: 'Hủy kết bạn',
+      cancelText: 'Giữ lại',
+      variant: 'danger',
+      icon: 'unfriend',
+    });
+    if (!ok) return;
     await apiFetch(`/social/friends/${id}`, { method: 'DELETE' });
+    toast.success('Đã hủy kết bạn');
     loadData();
   };
 
   const blockUser = async (id) => {
-    if (!confirm('Chặn người dùng này?')) return;
+    const ok = await confirm({
+      title: 'Chặn người dùng',
+      message: 'Người dùng này sẽ không thể xem bài viết hay liên hệ với bạn. Bạn có chắc chắn?',
+      confirmText: 'Chặn',
+      cancelText: 'Hủy',
+      variant: 'danger',
+      icon: 'block',
+    });
+    if (!ok) return;
     await apiFetch(`/social/blocks/${id}`, { method: 'POST' });
+    toast.success('Đã chặn người dùng');
     loadData();
   };
 
