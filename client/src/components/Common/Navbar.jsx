@@ -44,7 +44,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
 
   const mainTabs = [
     { id: 'feed', label: 'Bảng tin', icon: <Home size={20} /> },
-    { id: 'board', label: 'Rao vặt', icon: <Megaphone size={20} /> },
+    { id: 'board', label: 'Bảng tin chung', icon: <Megaphone size={20} /> },
     { id: 'shop', label: 'Cửa hàng', icon: <ShoppingCart size={20} /> },
     { id: 'docs', label: 'Tài liệu', icon: <BookOpen size={20} /> },
     { id: 'timetable', label: 'TKB', icon: <Calendar size={20} /> },

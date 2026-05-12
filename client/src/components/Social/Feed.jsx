@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Heart, MessageCircle, Send, Image, MoreHorizontal, Flag, Ban, UserPlus, Trash2, Edit3, X, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../Common/ConfirmDialog';
 import Modal from '../Common/Modal';
 
 const visOptions = [
@@ -20,6 +22,7 @@ const reportOptions = [
 
 const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const [posts, setPosts] = useState([]);
   const [newContent, setNewContent] = useState('');
   const [uploadedImages, setUploadedImages] = useState([]);
@@ -87,13 +90,13 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
         const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          alert(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
+          toast.error(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
           continue;
         }
         const data = await res.json();
         if (data.image_url) setUploadedImages(prev => [...prev, data.image_url]);
       } catch (err) {
-        alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+        toast.error('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
         console.error('Upload error:', err);
       }
     }
@@ -128,8 +131,17 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
   };
 
   const handleDeletePost = async (postId) => {
-    if (!confirm('Xóa bài viết này?')) return;
+    const ok = await confirm({
+      title: 'Xóa bài viết',
+      message: 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.',
+      confirmText: 'Xóa bài viết',
+      cancelText: 'Giữ lại',
+      variant: 'danger',
+      icon: 'delete',
+    });
+    if (!ok) return;
     await apiFetch(`/social/posts/${postId}`, { method: 'DELETE' });
+    toast.success('Đã xóa bài viết');
     loadFeed();
   };
 
@@ -189,8 +201,17 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
 
   // Block
   const handleBlock = async (userId) => {
-    if (!confirm('Chặn người dùng này?')) return;
+    const ok = await confirm({
+      title: 'Chặn người dùng',
+      message: 'Người dùng này sẽ không thể xem bài viết hay liên hệ với bạn. Bạn có chắc chắn?',
+      confirmText: 'Chặn',
+      cancelText: 'Hủy',
+      variant: 'danger',
+      icon: 'block',
+    });
+    if (!ok) return;
     await apiFetch(`/social/blocks/${userId}`, { method: 'POST' });
+    toast.success('Đã chặn người dùng');
     loadFeed();
   };
 

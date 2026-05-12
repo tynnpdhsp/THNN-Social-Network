@@ -1,4 +1,5 @@
 import { Toaster } from 'react-hot-toast';
+import { ConfirmProvider } from './components/Common/ConfirmDialog';
 import React, { useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import AuthPage from './components/Auth/AuthPage';
@@ -114,8 +115,38 @@ function App() {
   };
 
   return (
+    <ConfirmProvider>
     <div className="App">
-      <Toaster position="top-right" reverseOrder={false} />
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 3500,
+          style: {
+            background: 'white',
+            color: 'var(--ink)',
+            fontWeight: 600,
+            fontSize: 14,
+            borderRadius: 14,
+            padding: '14px 20px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)',
+            fontFamily: 'var(--font-family)',
+            maxWidth: 420,
+          },
+          success: {
+            iconTheme: { primary: '#16a34a', secondary: '#f0fdf4' },
+            style: { borderLeft: '4px solid #16a34a' },
+          },
+          error: {
+            iconTheme: { primary: '#dc2626', secondary: '#fef2f2' },
+            style: { borderLeft: '4px solid #dc2626' },
+          },
+          loading: {
+            iconTheme: { primary: 'var(--primary)', secondary: '#fef2f2' },
+            style: { borderLeft: '4px solid var(--primary)' },
+          },
+        }}
+      />
       <Navbar activeTab={activeTab} setActiveTab={handleSetTab} />
       <main style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--canvas)' }}>
         {/* Page transition: key change triggers re-mount → CSS animation fires */}
@@ -129,6 +160,7 @@ function App() {
         </div>
       </main>
     </div>
+    </ConfirmProvider>
   );
 }
 

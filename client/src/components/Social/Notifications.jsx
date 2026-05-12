@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, Check, CheckCheck, Trash2, UserCheck, UserX, Heart, MessageCircle, UserPlus, Calendar, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch } from '../../config/api';
+import { useConfirm } from '../Common/ConfirmDialog';
 
 const Notifications = ({ onViewProfile, onNavigate }) => {
+  const confirm = useConfirm();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -40,8 +43,17 @@ const Notifications = ({ onViewProfile, onNavigate }) => {
   };
 
   const deleteAll = async () => {
-    if (!confirm('Xóa tất cả thông báo?')) return;
+    const ok = await confirm({
+      title: 'Xóa tất cả thông báo',
+      message: 'Tất cả thông báo sẽ bị xóa vĩnh viễn. Bạn có chắc chắn?',
+      confirmText: 'Xóa tất cả',
+      cancelText: 'Hủy',
+      variant: 'danger',
+      icon: 'delete',
+    });
+    if (!ok) return;
     await apiFetch('/notifications', { method: 'DELETE' });
+    toast.success('Đã xóa tất cả thông báo');
     loadNotifs();
   };
 

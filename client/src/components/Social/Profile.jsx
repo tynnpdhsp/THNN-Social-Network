@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Camera, Edit3, Heart, MessageCircle, Image as ImageIcon, Globe, Users, Lock, Check } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../Common/ConfirmDialog';
 
 const Profile = ({ targetUserId, onStartChat }) => {
   const { user: currentUser, refreshProfile } = useAuth();
+  const confirm = useConfirm();
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(!!targetUserId);
   const [editing, setEditing] = useState(false);
@@ -93,12 +96,13 @@ const Profile = ({ targetUserId, onStartChat }) => {
       const res = await apiFetch('/account/me/avatar', { method: 'PUT', body: fd });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(`Cập nhật ảnh đại diện thất bại: ${err.detail || res.statusText}`);
+        toast.error(`Cập nhật ảnh đại diện thất bại: ${err.detail || res.statusText}`);
         return;
       }
+      toast.success('Đã cập nhật ảnh đại diện');
       refreshProfile();
     } catch (err) {
-      alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+      toast.error('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
       console.error('Avatar upload error:', err);
     }
   };
@@ -112,12 +116,13 @@ const Profile = ({ targetUserId, onStartChat }) => {
       const res = await apiFetch('/account/me/cover', { method: 'PUT', body: fd });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(`Cập nhật ảnh bìa thất bại: ${err.detail || res.statusText}`);
+        toast.error(`Cập nhật ảnh bìa thất bại: ${err.detail || res.statusText}`);
         return;
       }
+      toast.success('Đã cập nhật ảnh bìa');
       refreshProfile();
     } catch (err) {
-      alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+      toast.error('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
       console.error('Cover upload error:', err);
     }
   };
@@ -249,7 +254,17 @@ const Profile = ({ targetUserId, onStartChat }) => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-soft)', padding: '8px 20px', borderRadius: 'var(--rounded-full)', color: '#16a34a', fontWeight: 700, fontSize: 14 }}>
                         <Check size={14} /> Bạn bè
                       </div>
-                      <button className="btn-secondary" style={{ padding: '8px 20px', color: 'var(--primary)' }} onClick={() => confirm('Hủy kết bạn?') && handleFriendAction('unfriend')}>Hủy kết bạn</button>
+                      <button className="btn-secondary" style={{ padding: '8px 20px', color: 'var(--primary)' }} onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Hủy kết bạn',
+                          message: 'Bạn có chắc chắn muốn hủy kết bạn với người này?',
+                          confirmText: 'Hủy kết bạn',
+                          cancelText: 'Giữ lại',
+                          variant: 'danger',
+                          icon: 'unfriend',
+                        });
+                        if (ok) handleFriendAction('unfriend');
+                      }}>Hủy kết bạn</button>
                     </>
                   )}
                   <button 

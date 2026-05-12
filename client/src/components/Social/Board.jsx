@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tag, Send, Heart, MessageCircle, Image, MoreHorizontal, Flag, X, ChevronDown } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
@@ -61,13 +62,13 @@ const Board = () => {
         const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          alert(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
+          toast.error(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
           continue;
         }
         const data = await res.json();
         if (data.image_url) setUploadedImages(prev => [...prev, data.image_url]);
       } catch (err) {
-        alert('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+        toast.error('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
         console.error('Upload error:', err);
       }
     }
@@ -133,7 +134,7 @@ const Board = () => {
       <div style={{ ...s.createCard, animation: 'fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
         <div style={s.createHeader}>
           <Tag size={20} color="var(--primary)" />
-          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Đăng tin rao vặt</h3>
+          <h3 style={{ fontWeight: 700, fontSize: 16 }}>Đăng tin chung</h3>
         </div>
 
         {/* Tag Selector */}
@@ -262,7 +263,7 @@ const Board = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {posts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 64, color: 'var(--mute)', background: 'var(--surface-soft)', borderRadius: 'var(--rounded-lg)', border: '1px dashed var(--hairline)' }}>
-            <p style={{ fontWeight: 700 }}>Chưa có tin rao vặt</p>
+            <p style={{ fontWeight: 700 }}>Chưa có tin đăng nào</p>
           </div>
         ) : (
           posts.map((p, idx) => {
