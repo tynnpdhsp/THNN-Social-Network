@@ -89,6 +89,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
         maxHeight: 'none',
         borderRadius: 'var(--rounded-lg)',
         display: 'flex',
+        flexWrap: 'wrap',
         overflow: 'hidden',
         position: 'relative',
         boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
@@ -106,7 +107,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
         </button>
 
         {/* Left: Image Area */}
-        <div style={{ flex: 1, background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <div style={{ flex: '1 1 350px', minHeight: 350, background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <img 
             src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} 
             alt={product.title} 
@@ -115,7 +116,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
         </div>
 
         {/* Right: Info Area */}
-        <div style={{ width: '450px', display: 'flex', flexDirection: 'column', height: '100%', borderLeft: '1px solid var(--hairline)' }}>
+        <div style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--hairline)' }}>
           <div style={{ padding: '32px', overflowY: 'auto', flex: 1, scrollbarWidth: 'thin' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                <div>

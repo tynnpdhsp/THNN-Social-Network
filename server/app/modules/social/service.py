@@ -37,7 +37,7 @@ class SocialService:
         await push_to_newsfeed(user_id, post.id, timestamp)
         await set_post_counters(post.id, 0, 0)
 
-        return await self._map_post_to_response(post)
+        return await self._map_post_to_response(post, user_id)
 
     async def get_posts_feed(self, user_id: str | None, skip: int = 0, limit: int = 20) -> PaginatedFeedResponse:
         friend_ids = None
@@ -84,7 +84,7 @@ class SocialService:
             friend_ids=friend_ids, viewer_id=user_id,
             blocked_ids=blocked_ids
         )
-        items = [await self._map_post_to_response(p) for p in posts]
+        items = [await self._map_post_to_response(p, user_id) for p in posts]
         return PaginatedFeedResponse(posts=items, total=total, skip=skip, limit=limit)
 
     async def get_user_posts(self, target_user_id: str, viewer_id: str | None, skip: int = 0, limit: int = 20) -> PaginatedFeedResponse:
@@ -115,14 +115,14 @@ class SocialService:
             take=limit,
         )
         total = await self.repo.db.post.count(where=where)
-        items = [await self._map_post_to_response(p) for p in posts]
+        items = [await self._map_post_to_response(p, viewer_id) for p in posts]
         return PaginatedFeedResponse(posts=items, total=total, skip=skip, limit=limit)
 
-    async def get_post_details(self, post_id: str) -> PostResponse:
+    async def get_post_details(self, post_id: str, viewer_id: str | None = None) -> PostResponse:
         post = await self.repo.get_post_by_id(post_id)
         if not post or post.deletedAt:
             raise NotFoundException("Không tìm thấy bài viết", "POST_NOT_FOUND")
-        return await self._map_post_to_response(post)
+        return await self._map_post_to_response(post, viewer_id)
 
     async def update_post(self, user_id: str, post_id: str, body: PostUpdateRequest) -> PostResponse:
         post = await self.repo.get_post_by_id(post_id, include_images=False)
@@ -139,7 +139,7 @@ class SocialService:
         prisma_data = {field_map.get(k, k): v for k, v in data.items()}
         
         updated_post = await self.repo.update_post(post_id, prisma_data)
-        return await self._map_post_to_response(updated_post)
+        return await self._map_post_to_response(updated_post, user_id)
 
     async def delete_post(self, user_id: str, post_id: str):
         post = await self.repo.get_post_by_id(post_id, include_images=False)
@@ -393,10 +393,11 @@ class SocialService:
 
     async def get_board_posts(
         self, skip: int = 0, limit: int = 20, tag_id: str | None = None,
+        viewer_id: str | None = None,
     ) -> PaginatedBoardResponse:
         posts = await self.repo.get_board_posts(skip, limit, tag_id)
         total = await self.repo.count_board_posts(tag_id)
-        items = [await self._map_post_to_response(p) for p in posts]
+        items = [await self._map_post_to_response(p, viewer_id) for p in posts]
         return PaginatedBoardResponse(posts=items, total=total, skip=skip, limit=limit)
 
     async def create_board_post(self, user_id: str, body: BoardPostCreateRequest) -> PostResponse:
@@ -411,10 +412,10 @@ class SocialService:
         if body.images:
             await self.repo.create_post_images(post.id, [img.model_dump() for img in body.images])
             post = await self.repo.get_post_by_id(post.id)
-        return await self._map_post_to_response(post)
+        return await self._map_post_to_response(post, user_id)
 
     # --- Mapping Helpers ---
-    async def _map_post_to_response(self, post) -> PostResponse:
+    async def _map_post_to_response(self, post, viewer_id: str | None = None) -> PostResponse:
         images = []
         if hasattr(post, "postImages") and post.postImages:
             images = [PostImageResponse(id=img.id, image_url=img.imageUrl, display_order=img.displayOrder) for img in post.postImages]
@@ -438,6 +439,12 @@ class SocialService:
         else:
             await set_post_counters(post.id, like_count, comment_count)
 
+        is_liked = False
+        if viewer_id:
+            existing_like = await self.repo.get_like(post.id, "post", viewer_id)
+            if existing_like:
+                is_liked = True
+
         return PostResponse(
             id=post.id,
             user_id=post.userId,
@@ -452,7 +459,8 @@ class SocialService:
             is_hidden=post.isHidden,
             created_at=post.createdAt,
             updated_at=post.updatedAt,
-            images=images
+            images=images,
+            is_liked=is_liked
         )
 
     def _map_comment_to_response(self, comment) -> CommentResponse:

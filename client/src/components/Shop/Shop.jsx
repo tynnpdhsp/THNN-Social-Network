@@ -23,7 +23,8 @@ const Shop = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [priceRange, setPriceRange] = useState(10000000); // Max slider value = no filter
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState('popular');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -121,6 +122,20 @@ const Shop = () => {
 
 
 
+  const handleMinPriceChange = (e) => {
+    const rawValue = e.target.value.replace(/[\.,]/g, '');
+    if (!isNaN(rawValue) || rawValue === '') {
+      setMinPrice(rawValue ? rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
+    }
+  };
+
+  const handleMaxPriceChange = (e) => {
+    const rawValue = e.target.value.replace(/[\.,]/g, '');
+    if (!isNaN(rawValue) || rawValue === '') {
+      setMaxPrice(rawValue ? rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
+    }
+  };
+
   const sortOptions = [
     { value: 'popular', label: 'Mới nhất' },
     { value: 'rating', label: 'Đánh giá cao' },
@@ -135,7 +150,12 @@ const Shop = () => {
       const price = p.price || 0;
       const matchesCategory = activeCategory === 'all' || p.category_id === activeCategory;
       const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPrice = priceRange >= 10000000 || price <= priceRange;
+      const minStr = typeof minPrice === 'string' ? minPrice.replace(/[\.,]/g, '') : '';
+      const maxStr = typeof maxPrice === 'string' ? maxPrice.replace(/[\.,]/g, '') : '';
+      const min = minStr !== '' ? parseInt(minStr) : 0;
+      const rawMax = maxStr !== '' ? parseInt(maxStr) : Infinity;
+      const max = !isNaN(rawMax) && rawMax > 2000000 ? 2000000 : rawMax;
+      const matchesPrice = price >= (isNaN(min) ? 0 : min) && price <= (isNaN(max) ? Infinity : max);
       return matchesCategory && matchesSearch && matchesPrice;
     })
     .sort((a, b) => {
@@ -247,9 +267,9 @@ const Shop = () => {
   };
 
   return (
-    <div className="container" style={{ paddingTop: 24, display: 'flex', gap: 32 }}>
+    <div className="container" style={{ paddingTop: 24, display: 'flex', flexWrap: 'wrap', gap: 32 }}>
       {/* Filter Sidebar */}
-      <div style={{ width: 280, flexShrink: 0 }}>
+      <div style={{ width: '100%', maxWidth: 280, flexShrink: 0 }}>
         <button 
           className="btn-primary" 
           style={{ width: '100%', marginBottom: 32, height: 48 }}
@@ -309,27 +329,67 @@ const Shop = () => {
         </div>
 
         <div>
-          <h3 className="heading-md" style={{ marginBottom: 16 }}>Khoảng giá (Dưới {priceRange.toLocaleString('vi-VN')}đ)</h3>
-          <input 
-            type="range" 
-            min="0" 
-            max="10000000" 
-            step="50000"
-            value={priceRange}
-            onChange={(e) => setPriceRange(parseInt(e.target.value))}
-            style={{ width: '100%', accentColor: 'var(--primary)' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--mute)' }}>
-            <span>0đ</span>
-            <span>10.000.000đ</span>
+          <h3 className="heading-md" style={{ marginBottom: 16 }}>Khoảng giá</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input 
+              type="text" 
+              placeholder="Từ (đ)" 
+              className="input-field" 
+              style={{ height: 40, background: 'white', border: '1px solid var(--hairline)', padding: '0 12px', fontSize: 14, width: '100%' }}
+              value={minPrice}
+              onChange={handleMinPriceChange}
+            />
+            <span style={{ color: 'var(--mute)' }}>-</span>
+            <input 
+              type="text" 
+              placeholder="Đến (đ)" 
+              className="input-field" 
+              style={{ height: 40, background: 'white', border: '1px solid var(--hairline)', padding: '0 12px', fontSize: 14, width: '100%' }}
+              value={maxPrice}
+              onChange={handleMaxPriceChange}
+              onBlur={(e) => {
+                const rawValue = e.target.value.replace(/[\.,]/g, '');
+                if (rawValue !== '' && parseInt(rawValue) > 2000000) {
+                  setMaxPrice('2.000.000');
+                }
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+            <button 
+              onClick={() => { setMinPrice(''); setMaxPrice('500.000'); }}
+              style={{ padding: '4px 8px', fontSize: 11, background: 'var(--surface-soft)', border: 'none', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', color: 'var(--mute)', fontWeight: 600 }}
+            >
+              Dưới 500k
+            </button>
+            <button 
+              onClick={() => { setMinPrice('500.000'); setMaxPrice('1.000.000'); }}
+              style={{ padding: '4px 8px', fontSize: 11, background: 'var(--surface-soft)', border: 'none', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', color: 'var(--mute)', fontWeight: 600 }}
+            >
+              500k - 1tr
+            </button>
+            <button 
+              onClick={() => { setMinPrice('1.000.000'); setMaxPrice('2.000.000'); }}
+              style={{ padding: '4px 8px', fontSize: 11, background: 'var(--surface-soft)', border: 'none', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', color: 'var(--mute)', fontWeight: 600 }}
+            >
+              1tr - 2tr
+            </button>
+            {(minPrice !== '' || maxPrice !== '') && (
+              <button 
+                onClick={() => { setMinPrice(''); setMaxPrice(''); }}
+                style={{ padding: '4px 8px', fontSize: 11, background: 'var(--primary-soft)', border: 'none', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', color: 'var(--primary)', fontWeight: 700 }}
+              >
+                Xóa lọc
+              </button>
+            )}
           </div>
         </div>
 
       </div>
 
       {/* Main Content */}
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ flex: 1, minWidth: 280 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
           <h1 className="heading-xl">Cửa hàng học tập</h1>
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ position: 'relative' }}>
@@ -385,7 +445,7 @@ const Shop = () => {
             <p>Không tìm thấy vật phẩm nào phù hợp.</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 24 }}>
             {filteredProducts.map((product) => (
               <div key={product.id} className="pin-card" 
                 onClick={() => setSelectedProduct(product)}

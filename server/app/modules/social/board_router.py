@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_social_service, get_current_user_id
+from app.core.dependencies import get_social_service, get_current_user_id, get_optional_user_id
 from app.modules.account.schemas import MessageResponse
 from app.modules.social.service import SocialService
 from app.modules.social.schemas import (
@@ -30,10 +30,11 @@ async def get_board_posts(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     tag_id: Optional[str] = Query(None, description="Filter by board tag ID"),
+    user_id: Optional[str] = Depends(get_optional_user_id),
     svc: SocialService = Depends(get_social_service),
 ):
     """Lấy bài viết bảng tin chung, có thể lọc theo tag."""
-    return await svc.get_board_posts(skip, limit, tag_id)
+    return await svc.get_board_posts(skip, limit, tag_id, user_id)
 
 
 @router.post("/posts", response_model=PostResponse)

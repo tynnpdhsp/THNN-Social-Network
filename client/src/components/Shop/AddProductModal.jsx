@@ -112,8 +112,8 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ flex: '1 1 200px' }}>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Giá bán</label>
             <div style={{ position: 'relative' }}>
               <input 
@@ -128,7 +128,7 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
               <span style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--mute)', fontSize: 14, fontWeight: 600 }}>đ</span>
             </div>
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: '1 1 200px' }}>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Danh mục</label>
             <div style={{ position: 'relative' }}>
               <button 

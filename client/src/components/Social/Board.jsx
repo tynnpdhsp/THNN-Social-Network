@@ -185,13 +185,13 @@ const Board = () => {
               <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
             </label>
             <div style={{ position: 'relative' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsVisOpen(!isVisOpen)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', gap: 8, 
-                  background: 'white', border: '1px solid var(--hairline)', 
-                  borderRadius: 'var(--rounded-full)', padding: '8px 14px', 
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'white', border: '1px solid var(--hairline)',
+                  borderRadius: 'var(--rounded-full)', padding: '8px 14px',
                   fontSize: 13, fontWeight: 700, color: 'var(--ink)',
                   cursor: 'pointer', height: 40
                 }}
@@ -199,22 +199,22 @@ const Board = () => {
                 <span>{visOptions.find(o => o.value === selectedVisibility)?.label || 'Công khai'}</span>
                 <ChevronDown size={16} style={{ transform: isVisOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
-              
+
               {isVisOpen && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsVisOpen(false)} />
-                  <div style={{ 
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 140, 
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 140,
+                    background: 'white', borderRadius: 'var(--rounded-md)',
                     boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
                     overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
                     animation: 'scaleIn 0.15s ease'
                   }}>
                     {visOptions.map(option => (
-                      <div 
+                      <div
                         key={option.value}
                         onClick={() => { setSelectedVisibility(option.value); setIsVisOpen(false); }}
-                        style={{ 
+                        style={{
                           padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                           cursor: 'pointer', fontSize: 13, fontWeight: selectedVisibility === option.value ? 700 : 500,
                           background: selectedVisibility === option.value ? 'var(--surface-soft)' : 'transparent',
@@ -303,8 +303,14 @@ const Board = () => {
                 )}
 
                 <div style={{ display: 'flex', gap: 20, paddingTop: 12, borderTop: '1px solid var(--surface-card)' }}>
-                  <button onClick={() => handleLike(p.id)} style={s.actionBtn}>
-                    <Heart size={16} /> {p.like_count}
+                  <button
+                    onClick={() => handleLike(p.id)}
+                    style={{
+                      ...s.actionBtn,
+                      color: p.is_liked ? 'var(--primary)' : 'var(--mute)',
+                    }}
+                  >
+                    <Heart size={16} fill={p.is_liked ? 'var(--primary)' : 'none'} /> {p.like_count}
                   </button>
                   <button onClick={() => openComments(p.id)} style={s.actionBtn}>
                     <MessageCircle size={16} /> {p.comment_count}

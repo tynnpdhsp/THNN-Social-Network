@@ -32,7 +32,7 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
   const [isVisOpen, setIsVisOpen] = useState(false);
   const [isEditVisOpen, setIsEditVisOpen] = useState(false);
   const [isReportReasonOpen, setIsReportReasonOpen] = useState(false);
-  
+
   // Edit post
   const [editPost, setEditPost] = useState(null);
   const [editContent, setEditContent] = useState('');
@@ -263,13 +263,13 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
           </label>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsVisOpen(!isVisOpen)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', gap: 8, 
-                  background: 'white', border: '1px solid var(--hairline)', 
-                  borderRadius: 'var(--rounded-full)', padding: '8px 14px', 
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'white', border: '1px solid var(--hairline)',
+                  borderRadius: 'var(--rounded-full)', padding: '8px 14px',
                   fontSize: 13, fontWeight: 700, color: 'var(--ink)',
                   cursor: 'pointer', height: 40
                 }}
@@ -277,22 +277,22 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
                 <span>{visOptions.find(o => o.value === visibility)?.label || 'Công khai'}</span>
                 <ChevronDown size={16} style={{ transform: isVisOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
-              
+
               {isVisOpen && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsVisOpen(false)} />
-                  <div style={{ 
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, width: 140, 
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, width: 140,
+                    background: 'white', borderRadius: 'var(--rounded-md)',
                     boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
                     overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
                     animation: 'scaleIn 0.15s ease'
                   }}>
                     {visOptions.map(option => (
-                      <div 
+                      <div
                         key={option.value}
                         onClick={() => { setVisibility(option.value); setIsVisOpen(false); }}
-                        style={{ 
+                        style={{
                           padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                           cursor: 'pointer', fontSize: 13, fontWeight: visibility === option.value ? 700 : 500,
                           background: visibility === option.value ? 'var(--surface-soft)' : 'transparent',
@@ -357,13 +357,13 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsEditVisOpen(!isEditVisOpen)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, 
-                  background: 'white', border: '1px solid var(--hairline)', 
-                  borderRadius: 'var(--rounded-md)', padding: '0 16px', 
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  background: 'white', border: '1px solid var(--hairline)',
+                  borderRadius: 'var(--rounded-md)', padding: '0 16px',
                   fontSize: 13, fontWeight: 700, color: 'var(--ink)',
                   cursor: 'pointer', height: 44, width: 140
                 }}
@@ -371,22 +371,22 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
                 <span>{visOptions.find(o => o.value === editVisibility)?.label || 'Công khai'}</span>
                 <ChevronDown size={16} style={{ transform: isEditVisOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
-              
+
               {isEditVisOpen && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsEditVisOpen(false)} />
-                  <div style={{ 
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 140, 
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 140,
+                    background: 'white', borderRadius: 'var(--rounded-md)',
                     boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
                     overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
                     animation: 'scaleIn 0.15s ease'
                   }}>
                     {visOptions.map(option => (
-                      <div 
+                      <div
                         key={option.value}
                         onClick={() => { setEditVisibility(option.value); setIsEditVisOpen(false); }}
-                        style={{ 
+                        style={{
                           padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                           cursor: 'pointer', fontSize: 13, fontWeight: editVisibility === option.value ? 700 : 500,
                           background: editVisibility === option.value ? 'var(--surface-soft)' : 'transparent',
@@ -482,13 +482,13 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
           <div>
             <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>Lý do</label>
             <div style={{ position: 'relative' }}>
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsReportReasonOpen(!isReportReasonOpen)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, 
-                  background: 'white', border: '1px solid var(--hairline)', 
-                  borderRadius: 'var(--rounded-md)', padding: '0 16px', 
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  background: 'white', border: '1px solid var(--hairline)',
+                  borderRadius: 'var(--rounded-md)', padding: '0 16px',
                   fontSize: 14, fontWeight: 600, color: 'var(--ink)',
                   cursor: 'pointer', height: 44, width: '100%'
                 }}
@@ -496,22 +496,22 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
                 <span>{reportOptions.find(o => o.value === reportReason)?.label || 'Spam / Quảng cáo'}</span>
                 <ChevronDown size={16} style={{ transform: isReportReasonOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
-              
+
               {isReportReasonOpen && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsReportReasonOpen(false)} />
-                  <div style={{ 
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: '100%', 
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: '100%',
+                    background: 'white', borderRadius: 'var(--rounded-md)',
                     boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
                     overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
                     animation: 'scaleIn 0.15s ease'
                   }}>
                     {reportOptions.map(option => (
-                      <div 
+                      <div
                         key={option.value}
                         onClick={() => { setReportReason(option.value); setIsReportReasonOpen(false); }}
-                        style={{ 
+                        style={{
                           padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                           cursor: 'pointer', fontSize: 14, fontWeight: reportReason === option.value ? 700 : 500,
                           background: reportReason === option.value ? 'var(--surface-soft)' : 'transparent',
@@ -570,14 +570,14 @@ function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, on
     >
       <div style={s.postHeader}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img 
-            src={avatar} 
-            alt="" 
-            style={{ ...s.postAvatar, cursor: 'pointer' }} 
+          <img
+            src={avatar}
+            alt=""
+            style={{ ...s.postAvatar, cursor: 'pointer' }}
             onClick={() => onViewProfile?.(p.user_id)}
           />
           <div>
-            <p 
+            <p
               style={{ fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
               onClick={() => onViewProfile?.(p.user_id)}
             >{p.user_info?.full_name}</p>
@@ -595,29 +595,29 @@ function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, on
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setShowMenu(false)} />
               <div style={{ ...s.menuDropdown, animation: 'fadeInDown 0.2s cubic-bezier(0.22, 1, 0.36, 1)' }}>
-              {!isOwn && (
-                <>
-                  <button onClick={() => { onReport(p.id, 'post'); setShowMenu(false); }} style={s.menuItem}>
-                    <Flag size={14} /> Báo cáo
-                  </button>
-                  <button onClick={() => { onBlock(p.user_id); setShowMenu(false); }} style={s.menuItem}>
-                    <Ban size={14} /> Chặn
-                  </button>
-                  <button onClick={() => { onAddFriend(p.user_id); setShowMenu(false); }} style={s.menuItem}>
-                    <UserPlus size={14} /> Kết bạn
-                  </button>
-                </>
-              )}
-               {isOwn && (
-                <>
-                  <button onClick={() => { onEdit(p); setShowMenu(false); }} style={s.menuItem}>
-                    <Edit3 size={14} /> Sửa bài
-                  </button>
-                  <button onClick={() => { onDelete(p.id); setShowMenu(false); }} style={{ ...s.menuItem, color: 'var(--primary)' }}>
-                    <Trash2 size={14} /> Xóa bài
-                  </button>
-                </>
-              )}
+                {!isOwn && (
+                  <>
+                    <button onClick={() => { onReport(p.id, 'post'); setShowMenu(false); }} style={s.menuItem}>
+                      <Flag size={14} /> Báo cáo
+                    </button>
+                    <button onClick={() => { onBlock(p.user_id); setShowMenu(false); }} style={s.menuItem}>
+                      <Ban size={14} /> Chặn
+                    </button>
+                    <button onClick={() => { onAddFriend(p.user_id); setShowMenu(false); }} style={s.menuItem}>
+                      <UserPlus size={14} /> Kết bạn
+                    </button>
+                  </>
+                )}
+                {isOwn && (
+                  <>
+                    <button onClick={() => { onEdit(p); setShowMenu(false); }} style={s.menuItem}>
+                      <Edit3 size={14} /> Sửa bài
+                    </button>
+                    <button onClick={() => { onDelete(p.id); setShowMenu(false); }} style={{ ...s.menuItem, color: 'var(--primary)' }}>
+                      <Trash2 size={14} /> Xóa bài
+                    </button>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -646,11 +646,11 @@ function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, on
           onClick={() => handleLikeClick(p.id)}
           style={{
             ...s.actionBtn,
-            color: p.liked_by_me ? 'var(--primary)' : 'var(--mute)',
+            color: p.is_liked ? 'var(--primary)' : 'var(--mute)',
             animation: likeAnim ? 'heartBeat 0.6s ease' : 'none',
           }}
         >
-          <Heart size={18} fill={p.liked_by_me ? 'var(--primary)' : 'none'} /> <span>{p.like_count}</span>
+          <Heart size={18} fill={p.is_liked ? 'var(--primary)' : 'none'} /> <span>{p.like_count}</span>
         </button>
         <button onClick={() => onComment(p.id)} style={s.actionBtn}>
           <MessageCircle size={18} /> <span>{p.comment_count}</span>
