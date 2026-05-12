@@ -14,41 +14,61 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories, initialCoords })
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Update coords if initialCoords are provided (e.g. from map click)
+  // Update coords and reverse geocode when modal opens with coordinates
   React.useEffect(() => {
-    if (initialCoords) {
-      setNewLoc(prev => ({ ...prev, latitude: initialCoords.lat, longitude: initialCoords.lng, address: 'Đang tải địa chỉ chi tiết...' }));
-      
-      // Auto-fill address using Photon (Komoot) for street-level OpenStreetMap data without strict CORS
-      fetch(`https://photon.komoot.io/reverse?lon=${initialCoords.lng}&lat=${initialCoords.lat}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.features && data.features.length > 0) {
-            const props = data.features[0].properties;
-            const addressParts = [
-              props.name,
-              props.housenumber ? props.housenumber + (props.street ? ' ' + props.street : '') : props.street,
-              props.district,
-              props.city || props.county,
-              props.state,
-              props.country
-            ].filter(Boolean);
-            
-            // Remove duplicates (e.g. city and state might be the same)
-            const uniqueParts = [...new Set(addressParts)];
-            setNewLoc(prev => ({ ...prev, address: uniqueParts.join(', ') }));
-          } else {
-            setNewLoc(prev => ({ ...prev, address: '' }));
-          }
-        })
-        .catch(err => {
-          console.error('Geocoding error:', err);
-          setNewLoc(prev => ({ ...prev, address: '' }));
-        });
-    }
-  }, [initialCoords]);
+    if (!isOpen || !initialCoords) return;
+
+    const { lat, lng } = initialCoords;
+    setNewLoc(prev => ({ ...prev, latitude: lat, longitude: lng, address: '' }));
+    setIsLoadingAddress(true);
+
+    // Use Nominatim (OpenStreetMap) for reliable Vietnamese address geocoding
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi&addressdetails=1`, {
+      headers: { 'User-Agent': 'THNN-Social-Network/1.0' }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.display_name) {
+          // Build a clean Vietnamese address from address parts
+          const addr = data.address || {};
+          const parts = [
+            addr.house_number,
+            addr.road,
+            addr.quarter || addr.suburb || addr.neighbourhood,
+            addr.city_district || addr.district,
+            addr.city || addr.town || addr.county,
+          ].filter(Boolean);
+
+          const uniqueParts = [...new Set(parts)];
+          const address = uniqueParts.length > 0 ? uniqueParts.join(', ') : data.display_name;
+          setNewLoc(prev => ({ ...prev, address }));
+        }
+      })
+      .catch(err => {
+        console.error('Geocoding error:', err);
+        // Fallback: try Photon API
+        fetch(`https://photon.komoot.io/reverse?lon=${lng}&lat=${lat}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data?.features?.length > 0) {
+              const props = data.features[0].properties;
+              const parts = [
+                props.housenumber,
+                props.street || props.name,
+                props.district,
+                props.city || props.county,
+              ].filter(Boolean);
+              setNewLoc(prev => ({ ...prev, address: [...new Set(parts)].join(', ') }));
+            }
+          })
+          .catch(() => {});
+      })
+      .finally(() => setIsLoadingAddress(false));
+  }, [isOpen, initialCoords?.lat, initialCoords?.lng]);
+
 
   // Set default category when categories are loaded
   React.useEffect(() => {
@@ -169,10 +189,10 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories, initialCoords })
             <input 
               type="text" 
               className="input-field" 
-              placeholder="Số nhà, tên đường..." 
+              placeholder={isLoadingAddress ? "Đang tải địa chỉ..." : "Số nhà, tên đường..."} 
               value={newLoc.address} 
               onChange={e => setNewLoc({...newLoc, address: e.target.value})} 
-              style={{ background: 'white', border: '1px solid var(--hairline)' }}
+              style={{ background: 'white', border: '1px solid var(--hairline)', opacity: isLoadingAddress ? 0.6 : 1 }}
             />
           </div>
         </div>
