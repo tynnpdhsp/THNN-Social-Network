@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Camera, DollarSign, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Camera, DollarSign, X } from 'lucide-react';
-import { apiFetch, resolveImageUrl } from '../../config/api';
 import Modal from '../Common/Modal';
 
 const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdit = null }) => {
@@ -17,29 +15,6 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
   const [displayPrice, setDisplayPrice] = useState('');
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const fileInputRef = React.useRef(null);
-    image_url: ''
-  });
-  const [uploading, setUploading] = useState(false);
-
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
-      if (res.ok) {
-        const data = await res.json();
-        setFormData(prev => ({ ...prev, image_url: data.image_url }));
-      } else {
-        alert('Tải ảnh thất bại');
-      }
-    } catch (err) {
-      alert('Lỗi kết nối server');
-    }
-    setUploading(false);
-  };
 
   React.useEffect(() => {
     if (isOpen) {
@@ -50,7 +25,7 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
           category: productToEdit.category_id || '',
           description: productToEdit.description,
         });
-        setDisplayPrice(productToEdit.price?.toLocaleString() || '');
+        setDisplayPrice(productToEdit.price ? String(productToEdit.price).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
       } else {
         setFormData({
           title: '',
@@ -65,10 +40,10 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
   }, [isOpen, productToEdit, categories]);
 
   const handlePriceChange = (e) => {
-    const rawValue = e.target.value.replace(/,/g, '');
+    const rawValue = e.target.value.replace(/[\.,]/g, '');
     if (!isNaN(rawValue) || rawValue === '') {
       setFormData({ ...formData, price: rawValue });
-      setDisplayPrice(rawValue ? Number(rawValue).toLocaleString() : '');
+      setDisplayPrice(rawValue ? rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '');
     }
   };
 
@@ -89,19 +64,17 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
     }
   };
 
+
   const handleImageChange = (e) => {
     if (e.target.files) {
       setImages(Array.from(e.target.files));
-      onAdd(formData);
-      setFormData({ title: '', price: '', category: 'supplies', description: '', image_url: '' });
-      onClose();
     }
   };
 
   const selectedCategoryLabel = categories.find(c => c.id === formData.category)?.name || 'Chọn danh mục...';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={productToEdit ? "Cập nhật vật phẩm" : "Đăng bán vật phẩm mới"} width={500}>
+    <Modal isOpen={isOpen} onClose={onClose} title={productToEdit ? "Cập nhật vật phẩm" : "Đăng bán vật phẩm mới"} width={500} overflow="auto">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {!productToEdit && (
           <>
@@ -119,48 +92,12 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
               ref={fileInputRef} 
               style={{ display: 'none' }} 
               multiple 
-              accept="image/png, image/jpeg" 
+              accept="image/*" 
               onChange={handleImageChange} 
             />
           </>
         )}
-        <div 
-          onClick={() => !formData.image_url && document.getElementById('product-image-upload').click()}
-          style={{ 
-            border: '2px dashed var(--hairline)', 
-            padding: formData.image_url ? '10px' : '40px 20px', 
-            borderRadius: 'var(--rounded-md)', 
-            textAlign: 'center', 
-            cursor: formData.image_url ? 'default' : 'pointer', 
-            background: 'var(--surface-soft)',
-            position: 'relative',
-            minHeight: 120,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          {formData.image_url ? (
-            <div style={{ position: 'relative', width: '100%' }}>
-              <img src={resolveImageUrl(formData.image_url)} alt="preview" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8 }} />
-              <button 
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
-                style={{ position: 'absolute', top: 8, right: 8, background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <Camera size={40} color="var(--ash)" style={{ marginBottom: 12 }} />
-              <p className="body-strong" style={{ color: 'var(--mute)' }}>{uploading ? 'Đang tải lên...' : 'Tải lên hình ảnh sản phẩm'}</p>
-              <p className="caption-sm">PNG, JPG tối đa 10MB</p>
-            </>
-          )}
-          <input type="file" id="product-image-upload" hidden accept="image/*" onChange={handleUpload} />
-        </div>
+
 
         <div>
           <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Tên sản phẩm</label>
@@ -210,30 +147,35 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
               </button>
               
               {isCategoryOpen && (
-                <div style={{ 
-                  position: 'absolute', top: '100%', left: 0, width: '100%', 
-                  background: 'white', borderRadius: 'var(--rounded-md)', 
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
-                  overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
-                  marginTop: 4
-                }}>
-                  {categories.map(cat => (
-                    <div 
-                      key={cat.id}
-                      onClick={() => { setFormData({...formData, category: cat.id}); setIsCategoryOpen(false); }}
-                      style={{ 
-                        padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                        cursor: 'pointer', fontSize: 14, fontWeight: formData.category === cat.id ? 700 : 500,
-                        background: formData.category === cat.id ? 'var(--surface-soft)' : 'transparent',
-                        color: formData.category === cat.id ? 'var(--primary)' : 'var(--body)',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = formData.category === cat.id ? 'var(--surface-soft)' : 'transparent'}
-                    >
-                      {cat.name}
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsCategoryOpen(false)} />
+                  <div style={{ 
+                    position: 'absolute', top: '100%', left: 0, width: '100%', 
+                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                    overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)',
+                    marginTop: 4,
+                    animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {categories.map(cat => (
+                      <div 
+                        key={cat.id}
+                        onClick={() => { setFormData({...formData, category: cat.id}); setIsCategoryOpen(false); }}
+                        style={{ 
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 14, fontWeight: formData.category === cat.id ? 700 : 500,
+                          background: formData.category === cat.id ? 'var(--surface-soft)' : 'transparent',
+                          color: formData.category === cat.id ? 'var(--primary)' : 'var(--body)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = formData.category === cat.id ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {cat.name}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>

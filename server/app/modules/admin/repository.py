@@ -2,6 +2,9 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from prisma import Prisma
 from prisma.models import User, Post, Report, AuditLog
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AdminRepository:
     def __init__(self, db: Prisma):
@@ -117,7 +120,7 @@ class AdminRepository:
                 elif r.targetType == "comment":
                     preview = f"Comment ID: {r.targetId}"
                     target_name = "Một bình luận"
-            except:
+            except Exception:
                 pass
 
             results.append({
@@ -184,7 +187,7 @@ class AdminRepository:
                 }
             )
         except Exception as e:
-            print(f"FAILED TO WRITE AUDIT LOG: {e}")
+            logger.error(f"FAILED TO WRITE AUDIT LOG: {e}")
             # Don't crash the whole request just because logging failed
 
     async def get_audit_logs(self, skip: int, limit: int) -> List[AuditLog]:

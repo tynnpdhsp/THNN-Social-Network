@@ -7,6 +7,9 @@ from app.modules.place.schema import (
     UserInfoEmbed, BookmarkResponse, BookmarkPlaceResponse, BookmarkListResponse, BookmarkCheckResponse, NearbyPlacesListResponse)
 from app.modules.place.repository import PlaceRepository
 from app.utils.storage import upload_files, delete_file
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PlaceService:
     def __init__(self, repo: PlaceRepository):
@@ -323,9 +326,7 @@ class PlaceService:
             nearby_places = await self.repo.get_nearby_places(lat, lng, radius, category_id)
             return NearbyPlacesListResponse(data=nearby_places)
         except Exception as e:
-            print(f"Error in get_nearby_places: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error in get_nearby_places: {str(e)}", exc_info=True)
             raise e
     
     # endregion

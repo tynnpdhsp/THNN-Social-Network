@@ -1,4 +1,15 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+import { apiFetch, API_BASE } from '../config/api';
+const API_URL = API_BASE;
+
+const getErrMsg = (errData, fallback) => {
+  if (!errData) return fallback;
+  if (typeof errData.detail === 'string') return errData.detail;
+  if (errData.detail?.message) return errData.detail.message;
+  if (Array.isArray(errData.detail) && errData.detail.length > 0) {
+    return errData.detail[0].msg || fallback;
+  }
+  return fallback;
+};
 
 // Lấy danh sách sản phẩm
 export const getItems = async (params = {}) => {
@@ -36,14 +47,14 @@ export const uploadItemImages = async (files) => {
     const response = await fetch(`${API_URL}/shop/items/upload-images`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: formData,
     });
 
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to upload images');
+        throw new Error(getErrMsg(errData, 'Failed to upload images'));
     }
     return await response.json();
   } catch (error) {
@@ -59,13 +70,13 @@ export const createItem = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to create item');
+        throw new Error(getErrMsg(errData, 'Failed to create item'));
     }
     return await response.json();
   } catch (error) {
@@ -81,7 +92,7 @@ export const createOrder = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify(data),
     });
@@ -103,7 +114,7 @@ export const createVNPayUrl = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify(data),
     });
@@ -127,13 +138,13 @@ export const updateItem = async (itemId, data) => {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to update item');
+        throw new Error(getErrMsg(errData, 'Failed to update item'));
     }
     return await response.json();
   } catch (error) {
@@ -148,12 +159,12 @@ export const deleteItem = async (itemId) => {
     const response = await fetch(`${API_URL}/shop/items/${itemId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail?.message || 'Failed to delete item');
+        throw new Error(getErrMsg(errData, 'Failed to delete item'));
     }
     return await response.json();
   } catch (error) {
@@ -182,7 +193,7 @@ export const createReview = async (itemId, data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify(data),
     });
@@ -202,7 +213,7 @@ export const getCart = async () => {
   try {
     const response = await fetch(`${API_URL}/shop/cart`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     if (!response.ok) throw new Error('Failed to fetch cart');
@@ -219,7 +230,7 @@ export const addToCart = async (itemId, quantity = 1) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({ item_id: itemId, quantity }),
     });
@@ -237,7 +248,7 @@ export const updateCartItem = async (itemId, quantity) => {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({ quantity }),
     });
@@ -254,7 +265,7 @@ export const removeFromCart = async (itemId) => {
     const response = await fetch(`${API_URL}/shop/cart/${itemId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     if (!response.ok) throw new Error('Failed to remove from cart');
@@ -270,7 +281,7 @@ export const clearCart = async () => {
     const response = await fetch(`${API_URL}/shop/cart`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     if (!response.ok) throw new Error('Failed to clear cart');

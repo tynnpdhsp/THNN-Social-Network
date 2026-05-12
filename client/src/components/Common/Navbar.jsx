@@ -1,16 +1,8 @@
-import { NavLink, Link } from 'react-router-dom';
-import { Search, Bell, MessageCircle, ShoppingCart, BookOpen, Calendar, MapPin } from 'lucide-react';
-
-const Navbar = () => {
-  const tabs = [
-    { id: 'shop', label: 'Cửa hàng', icon: <ShoppingCart size={20} />, path: '/shop' },
-    { id: 'docs', label: 'Tài liệu', icon: <BookOpen size={20} />, path: '/docs' },
-    { id: 'timetable', label: 'Thời khóa biểu', icon: <Calendar size={20} />, path: '/timetable' },
-    { id: 'map', label: 'Bản đồ', icon: <MapPin size={20} />, path: '/map' },
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, MessageCircle, User, ShoppingCart, BookOpen, Calendar, MapPin, Home, Megaphone, Users, Settings, Shield, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { resolveImageUrl, getDefaultAvatar, apiFetch } from '../../config/api';
+import logoImg from '../../assets/logo.png';
 
 const Navbar = ({ activeTab, setActiveTab }) => {
   const { user, logout } = useAuth();
@@ -63,35 +55,25 @@ const Navbar = ({ activeTab, setActiveTab }) => {
 
   return (
     <nav className="navbar">
-      <Link to="/" style={{ textDecoration: 'none' }}>
-        <div className="logo">
-          <img src="/logo.png" alt="Logo" style={{ width: 36, height: 36, objectFit: 'contain' }} />
-        </div>
-      </Link>
-      
-      <div style={{ display: 'flex', gap: 8 }}>
-        {tabs.map((tab) => (
-          <NavLink
-            key={tab.id}
-            to={tab.path}
-            style={({ isActive }) => ({
-              backgroundColor: isActive ? 'var(--ink)' : 'transparent',
-              color: isActive ? 'white' : 'var(--ink)',
-              padding: '12px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              textDecoration: 'none',
-              borderRadius: 'var(--rounded-full)',
-              fontWeight: 600,
-              fontSize: 16,
-              transition: 'all 0.2s'
-            })}
-      <div className="logo" onClick={() => setActiveTab('feed')} style={{ cursor: 'pointer' }}>
-        <div style={{ background: 'var(--primary)', color: 'white', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'rotate(15deg) scale(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(0) scale(1)'}
-        >T</div>
+      <div className="logo" onClick={() => activeTab === 'feed' ? window.location.reload() : setActiveTab('feed')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+        <img 
+          src={logoImg} 
+          alt="Logo" 
+          style={{ 
+            height: 42, 
+            width: 'auto', 
+            objectFit: 'contain', 
+            transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease' 
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.06)';
+            e.currentTarget.style.filter = 'drop-shadow(0 4px 12px rgba(230,0,35,0.15))';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.filter = 'none';
+          }}
+        />
       </div>
 
       <div style={{ display: 'flex', gap: 4 }}>
@@ -116,9 +98,10 @@ const Navbar = ({ activeTab, setActiveTab }) => {
           >
             {tab.icon}
             <span>{tab.label}</span>
-          </NavLink>
+          </button>
         ))}
       </div>
+
 
       <div style={{ flex: 1 }} />
 

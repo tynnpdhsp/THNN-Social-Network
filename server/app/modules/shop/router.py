@@ -19,6 +19,9 @@ from app.modules.shop.schemas import (
 router = APIRouter(prefix="/shop", tags=["Shop"])
 settings = get_settings()
 
+import logging
+logger = logging.getLogger(__name__)
+
 # region---- Category ----
 @router.get("/categories", response_model=list[CategoryResponse])
 async def get_all_categories(
@@ -103,13 +106,7 @@ async def upload_item_images(
 ):
     """Upload multiple images for item creation"""
 
-    # Validate all files are images
-    for file in files:
-        if not file.content_type or not file.content_type.startswith("image/"):
-            raise BadRequestException(
-                "Tất cả file phải là hình ảnh",
-                "INVALID_FILE_TYPE"
-            )
+    # Allow all images captured/selected directly from user devices to pass natively
 
     # Check total size + convert to bytes once
     total_size = 0
@@ -123,11 +120,11 @@ async def upload_item_images(
             (content, file.filename)
         )
 
-    max_bytes = settings.MAX_AVATAR_SIZE_MB * 1024 * 1024
+    max_bytes = settings.MAX_COVER_SIZE_MB * 1024 * 1024
 
     if total_size > max_bytes:
         raise BadRequestException(
-            f"Tổng kích thước ảnh phải nhỏ hơn {settings.MAX_AVATAR_SIZE_MB}MB",
+            f"Tổng kích thước ảnh phải nhỏ hơn {settings.MAX_COVER_SIZE_MB}MB",
             "FILE_TOO_LARGE"
         )
 
@@ -304,9 +301,9 @@ async def vnpay_callback(
     svc: ShopService = Depends(get_shop_service),
 ):
     """Handle VNPay payment callback"""
-    print("=== VNPay IPN Callback endpoint accessed ===")
+    logger.info("=== VNPay IPN Callback endpoint accessed ===")
     params = dict(request.query_params)
-    print(f"Query parameters received: {params}")
+    logger.info(f"Query parameters received: {params}")
     result = await svc.handle_vnpay_callback(params)
     return VNPayCallbackResponse(**result)
 #endregion

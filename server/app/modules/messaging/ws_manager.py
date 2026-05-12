@@ -3,6 +3,9 @@ import asyncio
 from typing import Dict, Set
 from fastapi import WebSocket
 from app.core.redis import get_redis
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ConnectionManager:
     def __init__(self):
@@ -56,7 +59,7 @@ class ConnectionManager:
                         for uid in target_user_ids:
                             await self.broadcast_to_user(uid, payload)
             except Exception as e:
-                print(f"DEBUG: Redis Pub/Sub error: {e}. Retrying in 5s...")
+                logger.warning(f"Redis Pub/Sub error: {e}. Retrying in 5s...")
                 await asyncio.sleep(5)
 
 manager = ConnectionManager()

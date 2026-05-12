@@ -1,8 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, MessageCircle, Send, Image, MoreHorizontal, Flag, Ban, UserPlus, Trash2, Edit3, X } from 'lucide-react';
+import { Heart, MessageCircle, Send, Image, MoreHorizontal, Flag, Ban, UserPlus, Trash2, Edit3, X, ChevronDown } from 'lucide-react';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../Common/Modal';
+
+const visOptions = [
+  { value: 'public', label: 'Công khai' },
+  { value: 'friends', label: 'Bạn bè' },
+  { value: 'private', label: 'Riêng tư' },
+];
+
+const reportOptions = [
+  { value: 'spam', label: 'Spam / Quảng cáo' },
+  { value: 'harassment', label: 'Quấy rối / Đe dọa' },
+  { value: 'hate_speech', label: 'Ngôn từ thù ghét' },
+  { value: 'inappropriate', label: 'Nội dung không phù hợp' },
+  { value: 'other', label: 'Lý do khác' },
+];
 
 const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
   const { user } = useAuth();
@@ -12,6 +26,9 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [visibility, setVisibility] = useState('public');
+  const [isVisOpen, setIsVisOpen] = useState(false);
+  const [isEditVisOpen, setIsEditVisOpen] = useState(false);
+  const [isReportReasonOpen, setIsReportReasonOpen] = useState(false);
   
   // Edit post
   const [editPost, setEditPost] = useState(null);
@@ -224,19 +241,53 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
             <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
           </label>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <select 
-              value={visibility} 
-              onChange={(e) => setVisibility(e.target.value)}
-              style={{ 
-                border: 'none', background: 'var(--surface-soft)', borderRadius: 8, 
-                padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--mute)',
-                outline: 'none', cursor: 'pointer'
-              }}
-            >
-              <option value="public">Công khai</option>
-              <option value="friends">Bạn bè</option>
-              <option value="private">Riêng tư</option>
-            </select>
+            <div style={{ position: 'relative' }}>
+              <button 
+                type="button"
+                onClick={() => setIsVisOpen(!isVisOpen)}
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: 8, 
+                  background: 'white', border: '1px solid var(--hairline)', 
+                  borderRadius: 'var(--rounded-full)', padding: '8px 14px', 
+                  fontSize: 13, fontWeight: 700, color: 'var(--ink)',
+                  cursor: 'pointer', height: 40
+                }}
+              >
+                <span>{visOptions.find(o => o.value === visibility)?.label || 'Công khai'}</span>
+                <ChevronDown size={16} style={{ transform: isVisOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+              </button>
+              
+              {isVisOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsVisOpen(false)} />
+                  <div style={{ 
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0, width: 140, 
+                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
+                    overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
+                    animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {visOptions.map(option => (
+                      <div 
+                        key={option.value}
+                        onClick={() => { setVisibility(option.value); setIsVisOpen(false); }}
+                        style={{ 
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 13, fontWeight: visibility === option.value ? 700 : 500,
+                          background: visibility === option.value ? 'var(--surface-soft)' : 'transparent',
+                          color: visibility === option.value ? 'var(--primary)' : 'var(--body)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = visibility === option.value ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {option.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <button
               id="feed-post-submit"
               className="btn-primary"
@@ -284,16 +335,53 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
             onChange={(e) => setEditContent(e.target.value)}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <select 
-              value={editVisibility} 
-              onChange={(e) => setEditVisibility(e.target.value)}
-              className="input-field"
-              style={{ width: 140, height: 40, fontSize: 13 }}
-            >
-              <option value="public">Công khai</option>
-              <option value="friends">Bạn bè</option>
-              <option value="private">Riêng tư</option>
-            </select>
+            <div style={{ position: 'relative' }}>
+              <button 
+                type="button"
+                onClick={() => setIsEditVisOpen(!isEditVisOpen)}
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, 
+                  background: 'white', border: '1px solid var(--hairline)', 
+                  borderRadius: 'var(--rounded-md)', padding: '0 16px', 
+                  fontSize: 13, fontWeight: 700, color: 'var(--ink)',
+                  cursor: 'pointer', height: 44, width: 140
+                }}
+              >
+                <span>{visOptions.find(o => o.value === editVisibility)?.label || 'Công khai'}</span>
+                <ChevronDown size={16} style={{ transform: isEditVisOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+              </button>
+              
+              {isEditVisOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsEditVisOpen(false)} />
+                  <div style={{ 
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 140, 
+                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
+                    overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
+                    animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {visOptions.map(option => (
+                      <div 
+                        key={option.value}
+                        onClick={() => { setEditVisibility(option.value); setIsEditVisOpen(false); }}
+                        style={{ 
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 13, fontWeight: editVisibility === option.value ? 700 : 500,
+                          background: editVisibility === option.value ? 'var(--surface-soft)' : 'transparent',
+                          color: editVisibility === option.value ? 'var(--primary)' : 'var(--body)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = editVisibility === option.value ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {option.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn-secondary" onClick={() => setEditPost(null)}>Hủy</button>
               <button className="btn-primary" onClick={handleUpdatePost} disabled={savingEdit}>
@@ -372,13 +460,53 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>Lý do</label>
-            <select className="input-field" value={reportReason} onChange={(e) => setReportReason(e.target.value)} style={{ height: 44 }}>
-              <option value="spam">Spam / Quảng cáo</option>
-              <option value="harassment">Quấy rối / Đe dọa</option>
-              <option value="hate_speech">Ngôn từ thù ghét</option>
-              <option value="inappropriate">Nội dung không phù hợp</option>
-              <option value="other">Lý do khác</option>
-            </select>
+            <div style={{ position: 'relative' }}>
+              <button 
+                type="button"
+                onClick={() => setIsReportReasonOpen(!isReportReasonOpen)}
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, 
+                  background: 'white', border: '1px solid var(--hairline)', 
+                  borderRadius: 'var(--rounded-md)', padding: '0 16px', 
+                  fontSize: 14, fontWeight: 600, color: 'var(--ink)',
+                  cursor: 'pointer', height: 44, width: '100%'
+                }}
+              >
+                <span>{reportOptions.find(o => o.value === reportReason)?.label || 'Spam / Quảng cáo'}</span>
+                <ChevronDown size={16} style={{ transform: isReportReasonOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+              </button>
+              
+              {isReportReasonOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsReportReasonOpen(false)} />
+                  <div style={{ 
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: '100%', 
+                    background: 'white', borderRadius: 'var(--rounded-md)', 
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
+                    overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)',
+                    animation: 'scaleIn 0.15s ease'
+                  }}>
+                    {reportOptions.map(option => (
+                      <div 
+                        key={option.value}
+                        onClick={() => { setReportReason(option.value); setIsReportReasonOpen(false); }}
+                        style={{ 
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 14, fontWeight: reportReason === option.value ? 700 : 500,
+                          background: reportReason === option.value ? 'var(--surface-soft)' : 'transparent',
+                          color: reportReason === option.value ? 'var(--primary)' : 'var(--body)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = reportReason === option.value ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {option.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>Chi tiết (không bắt buộc)</label>

@@ -3,13 +3,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 export const getCurrentUser = () => {
   const token = localStorage.getItem('token');
   if (!token) {
-    return { id: 'dummy-dev-user', role: 'admin' }; // Allow admin rights in dev dummy mode even without token
+    return null;
   }
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return { id: payload.sub || payload.id, role: payload.role || 'user' };
   } catch (e) {
-    return { id: 'dummy-dev-user', role: 'admin' }; // Allow admin rights in dev dummy mode for invalid token
+    return null;
   }
 };
 
@@ -57,7 +57,7 @@ export const createPlace = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify(data),
     });
@@ -78,7 +78,7 @@ export const deletePlace = async (placeId) => {
     const response = await fetch(`${API_URL}/place/${placeId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     if (!response.ok) throw new Error('Failed to delete place');
@@ -109,7 +109,7 @@ export const createPlaceReview = async (placeId, data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify(data),
     });
@@ -130,7 +130,7 @@ export const togglePlaceBookmark = async (placeId) => {
     const response = await fetch(`${API_URL}/place/${placeId}/bookmark`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     if (!response.ok) throw new Error('Failed to toggle bookmark');
@@ -146,7 +146,7 @@ export const checkPlaceBookmark = async (placeId) => {
   try {
     const response = await fetch(`${API_URL}/place/${placeId}/bookmark`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     });
     if (!response.ok) throw new Error('Failed to check bookmark');
@@ -167,7 +167,7 @@ export const uploadPlaceImages = async (placeId, files) => {
     const response = await fetch(`${API_URL}/place/${placeId}/images`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || 'dummy-token'}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
         // Do not set Content-Type, let browser set it with boundary for FormData
       },
       body: formData,

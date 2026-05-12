@@ -5,6 +5,7 @@ import {
   ArrowRight, BookOpen, ShieldCheck, KeyRound, RotateCcw, ArrowLeft,
   AlertCircle, CheckCircle2,
 } from 'lucide-react';
+import logoImg from '../../assets/logo.png';
 
 // ─── Mode constants ───────────────────────────────────────────────────────────
 const MODE = {
@@ -347,13 +348,36 @@ const AuthPage = () => {
 
         {/* Logo / Header */}
         <div style={styles.logoSection}>
-          <div
-            style={styles.logoIcon}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = 'rotate(-8deg) scale(1.1)')}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = 'rotate(0) scale(1)')}
-          >
-            {header.icon}
-          </div>
+          {mode === MODE.LOGIN || mode === MODE.REGISTER ? (
+            <div style={{ marginBottom: 16 }}>
+              <img 
+                src={logoImg} 
+                alt="Logo" 
+                style={{ 
+                  height: 68, 
+                  width: 'auto', 
+                  objectFit: 'contain', 
+                  transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease' 
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.08)';
+                  e.currentTarget.style.filter = 'drop-shadow(0 8px 24px rgba(230,0,35,0.2))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.filter = 'none';
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              style={styles.logoIcon}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'rotate(-8deg) scale(1.1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'rotate(0) scale(1)')}
+            >
+              {header.icon}
+            </div>
+          )}
           <h1 style={styles.logoText}>{header.title}</h1>
           <p style={styles.logoSub}>{header.sub}</p>
         </div>

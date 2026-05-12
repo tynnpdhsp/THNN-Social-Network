@@ -157,7 +157,7 @@ class ShopService:
         
         # Check ownership (only owner can update)
         if item.sellerId != user_id:
-            raise NotFoundException("Item not found or access denied", "ACCESS_DENIED")
+            raise ForbiddenException("Access denied", "ACCESS_DENIED")
         
         # Prepare update data (only include non-None fields)
         update_data = {}
@@ -189,7 +189,7 @@ class ShopService:
         
         # Check ownership (only owner can delete)
         if item.sellerId != user_id:
-            raise NotFoundException("Item not found or access denied", "ACCESS_DENIED")
+            raise ForbiddenException("Access denied", "ACCESS_DENIED")
         
         try:
             # Delete item from database (soft delete)
@@ -499,7 +499,11 @@ class ShopService:
         domain = f"http://{settings.MINIO_ENDPOINT}"
         images = []
         if hasattr(item, "itemImages") and item.itemImages:
-            images = [ImageResponse(image_url=f"{domain}{img.imageUrl}", display_order=img.displayOrder) for img in item.itemImages]
+            for img in item.itemImages:
+                url = img.imageUrl
+                if not url.startswith("http://") and not url.startswith("https://"):
+                    url = f"{domain}{url}"
+                images.append(ImageResponse(image_url=url, display_order=img.displayOrder))
 
         return ItemResponse(
             id=item.id,

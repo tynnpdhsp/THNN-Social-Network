@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Plus, ShoppingBag, Search, Filter, Star, Edit2, Trash2, Tag, Book, PenTool, ChevronDown, Loader } from 'lucide-react';
-// import Select from 'react-select';
 import toast from 'react-hot-toast';
-import React, { useState } from 'react';
-import { Heart, Plus, ShoppingBag, Search, Filter, Star, Edit2, Trash2, Tag, Book, PenTool, ChevronDown } from 'lucide-react';
-import { resolveImageUrl } from '../../config/api';
 import ProductDetailModal from './ProductDetailModal';
 import AddProductModal from './AddProductModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
@@ -313,7 +309,7 @@ const Shop = () => {
         </div>
 
         <div>
-          <h3 className="heading-md" style={{ marginBottom: 16 }}>Khoảng giá (Dưới {priceRange.toLocaleString()}đ)</h3>
+          <h3 className="heading-md" style={{ marginBottom: 16 }}>Khoảng giá (Dưới {priceRange.toLocaleString('vi-VN')}đ)</h3>
           <input 
             type="range" 
             min="0" 
@@ -397,7 +393,7 @@ const Shop = () => {
               >
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--rounded-md)' }}>
                   <img src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} alt={product.title} style={{ width: '100%', height: 350, objectFit: 'cover' }} />
-                  <img src={resolveImageUrl(product.image_url || product.image)} alt={product.title} style={{ width: '100%', height: product.height, objectFit: 'cover' }} />
+
                   <div className="overlay" style={{ 
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
                     backgroundColor: 'rgba(0,0,0,0.2)', opacity: 0, transition: 'opacity 0.2s',
@@ -437,7 +433,9 @@ const Shop = () => {
                     <span style={{ fontSize: 12, fontWeight: 700 }}>{product.avg_rating || 0}</span>
                     <span style={{ fontSize: 12, color: 'var(--mute)' }}>({product.rating_count || 0})</span>
                   </div>
-                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>{(product.price || 0).toLocaleString()}đ</p>
+                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>
+                    {product.price === 0 ? 'Miễn phí' : `${(product.price || 0).toLocaleString('vi-VN')}đ`}
+                  </p>
                 </div>
               </div>
             ))}

@@ -1,16 +1,10 @@
-import React, { useRef } from 'react';
-import { X } from 'lucide-react';
-
-const Modal = ({ isOpen, onClose, title, children, width = 450 }) => {
-  const overlayRef = useRef(null);
-
-  if (!isOpen) return null;
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, width = 450 }) => {
+const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'visible' }) => {
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
+  const isBackdropMouseDown = React.useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -31,38 +25,7 @@ const Modal = ({ isOpen, onClose, title, children, width = 450 }) => {
 
   if (!isOpen && !closing) return null;
 
-  const handleOverlayClick = (e) => {
-    if (e.target === overlayRef.current) {
-      onClose();
-    }
-  };
-
   return (
-    <div 
-      ref={overlayRef}
-      style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 2000,
-        backdropFilter: 'blur(8px)',
-        overflowY: 'auto',
-        padding: '40px 20px'
-      }} 
-      onMouseDown={handleOverlayClick}
-    >
-      <div style={{
-        background: 'white',
-        width: `${width}px`,
-        maxWidth: '100%',
-        borderRadius: 'var(--rounded-lg)',
-        padding: '32px',
-        position: 'relative',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
-        marginBottom: '40px'
-      }} onClick={e => e.stopPropagation()}>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
     <div
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -73,7 +36,19 @@ const Modal = ({ isOpen, onClose, title, children, width = 450 }) => {
         transition: 'background-color 0.25s ease, backdrop-filter 0.25s ease',
         animation: closing ? 'none' : 'fadeIn 0.2s ease',
       }}
-      onClick={handleClose}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          isBackdropMouseDown.current = true;
+        } else {
+          isBackdropMouseDown.current = false;
+        }
+      }}
+      onClick={(e) => {
+        if (isBackdropMouseDown.current && e.target === e.currentTarget) {
+          handleClose();
+        }
+        isBackdropMouseDown.current = false;
+      }}
     >
       <div
         style={{
@@ -85,7 +60,7 @@ const Modal = ({ isOpen, onClose, title, children, width = 450 }) => {
           padding: '32px',
           position: 'relative',
           boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
-          overflowY: 'auto',
+          overflowY: overflow,
           animation: closing
             ? 'none'
             : 'scaleIn 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
