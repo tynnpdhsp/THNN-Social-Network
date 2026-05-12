@@ -103,22 +103,3 @@ async def get_newsfeed(user_id: str, skip: int = 0, limit: int = 20) -> List[str
         return []
     results = await r.zrevrange(key, skip, skip + limit - 1)
     return results
-
-# ------------ shop purchase -------------
-async def set_item_purchase(user_id: str, item: PurchaseRedis):
-    r = await get_redis()
-    key = f"shop:item_purchases:{user_id}"
-    
-    json_data = json.dumps(item)
-    await r.set(key, json_data, ex= 3600 * 24)
-
-async def get_items_purchase(user_id: str) -> List[PurchaseRedis]:
-    r = await get_redis()
-    key = f"shop:item_purchases:{user_id}"
-
-    data = await r.get(key)
-
-    if not data:
-        return []
-    
-    return json.loads(data)

@@ -23,7 +23,7 @@ from app.core.exceptions import (
     NotFoundException,
 )
 from app.modules.shop.repository import ShopRepository
-from prisma.models import ShopItem, User, CartItem # type: ignore
+from prisma.models import ShopItem, User # type: ignore
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -496,9 +496,10 @@ class ShopService:
         if hasattr(item, "category") and item.category:
             category = CategoryResponse(id=item.category.id, name=item.category.name)
 
+        domain = f"http://{settings.MINIO_ENDPOINT}"
         images = []
         if hasattr(item, "itemImages") and item.itemImages:
-            images = [ImageResponse(image_url=img.imageUrl, display_order=img.displayOrder) for img in item.itemImages]
+            images = [ImageResponse(image_url=f"{domain}{img.imageUrl}", display_order=img.displayOrder) for img in item.itemImages]
 
         return ItemResponse(
             id=item.id,
