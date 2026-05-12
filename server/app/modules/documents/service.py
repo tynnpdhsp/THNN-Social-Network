@@ -5,6 +5,9 @@ from app.modules.documents.schema import (
 from app.core.exceptions import ConflictException, NotFoundException, ForbiddenException
 from prisma.models import Document # type: ignore
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DocumentService:
     def __init__(self, repo: DocumentRepository):
@@ -75,7 +78,7 @@ class DocumentService:
                 try:
                     from app.utils.storage import delete_file
                     await delete_file(file_url)
-                except:
+                except Exception:
                     # Ignore deletion errors during rollback
                     pass
             raise e
@@ -128,7 +131,7 @@ class DocumentService:
         
         # Check ownership (only owner can delete)
         if document.userId != user_id:
-            raise NotFoundException("Document not found or access denied", "ACCESS_DENIED")
+            raise ForbiddenException("Access denied", "ACCESS_DENIED")
         
         try:
             # Delete document from database
@@ -140,7 +143,7 @@ class DocumentService:
                 await delete_file(document.fileUrl)
             except Exception as e:
                 # Log error but don't fail the operation
-                print(f"Failed to delete file {document.fileUrl}: {e}")
+                logger.warning(f"Failed to delete file {document.fileUrl}: {e}")
             
             # Invalidate cache
             # try:
@@ -163,7 +166,7 @@ class DocumentService:
         
         # Check ownership (only owner can update)
         if document.userId != user_id:
-            raise NotFoundException("Document not found or access denied", "ACCESS_DENIED")
+            raise ForbiddenException("Access denied", "ACCESS_DENIED")
         
         # Prepare update data (only include non-None fields)
         update_data = {}

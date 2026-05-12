@@ -19,6 +19,9 @@ from app.modules.shop.schemas import (
 router = APIRouter(prefix="/shop", tags=["Shop"])
 settings = get_settings()
 
+import logging
+logger = logging.getLogger(__name__)
+
 # region---- Category ----
 @router.get("/categories", response_model=list[CategoryResponse])
 async def get_all_categories(
@@ -304,9 +307,9 @@ async def vnpay_callback(
     svc: ShopService = Depends(get_shop_service),
 ):
     """Handle VNPay payment callback"""
-    print("=== VNPay IPN Callback endpoint accessed ===")
+    logger.info("=== VNPay IPN Callback endpoint accessed ===")
     params = dict(request.query_params)
-    print(f"Query parameters received: {params}")
+    logger.info(f"Query parameters received: {params}")
     result = await svc.handle_vnpay_callback(params)
     return VNPayCallbackResponse(**result)
 #endregion

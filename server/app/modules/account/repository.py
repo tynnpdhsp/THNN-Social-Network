@@ -16,7 +16,9 @@ from prisma.types import (
     NotificationSettingCreateInput,
     NotificationSettingUpdateInput,
 )
+import logging
 
+logger = logging.getLogger(__name__)
 
 class AccountRepository:
     def __init__(self, db: Prisma):
@@ -35,7 +37,7 @@ class AccountRepository:
 
     async def search_users(self, query: str, limit: int = 10) -> list[User]:
         clean_query = query.strip()
-        print(f"REPO_DEBUG: Searching for '{clean_query}'")
+        logger.debug(f"REPO_DEBUG: Searching for '{clean_query}'")
 
         # Prisma MongoDB bug: OR + mode:"insensitive" returns 0 results.
         # Workaround: run two separate queries and merge.
@@ -62,7 +64,7 @@ class AccountRepository:
             if len(users) >= limit:
                 break
 
-        print(f"REPO_DEBUG: Found {len(users)} users in DB")
+        logger.debug(f"REPO_DEBUG: Found {len(users)} users in DB")
         return users
 
     async def create_user(self, data: UserCreateInput) -> User:

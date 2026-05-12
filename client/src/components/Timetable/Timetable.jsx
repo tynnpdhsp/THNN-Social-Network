@@ -410,8 +410,8 @@ const Timetable = () => {
                   onClick={() => setShowEntryModal(true)}
                 >
                   <Plus size={18} /> Tiết học
-                  {plan === 'planAI' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Sparkles size={14} color="var(--primary)" /> AI Plan</span> : `Phương án ${i + 1}`}
                 </button>
+
 
                 <button
                   className="btn-secondary"
@@ -433,7 +433,7 @@ const Timetable = () => {
               <div style={{ 
                 position: 'sticky', top: 0, left: 0, zIndex: 50, background: 'var(--surface-soft)', 
                 borderBottom: '1px solid var(--hairline)', borderRight: '1px solid var(--hairline)', 
-                height: 48, position: 'relative'
+                height: 48
               }}>
                 <span style={{ position: 'absolute', top: 4, right: 8, fontSize: 12, fontWeight: 700, color: 'var(--mute)' }}>Thứ</span>
                 <span style={{ position: 'absolute', bottom: 4, left: 8, fontSize: 12, fontWeight: 700, color: 'var(--mute)' }}>Tiết</span>

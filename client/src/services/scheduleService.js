@@ -1,17 +1,10 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-
-const getHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': 'Bearer dummy-token' // Mock token for backend
-});
+import { apiFetch } from '../config/api';
 
 // --- Schedule ---
 export const getSchedules = async (params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_URL}/schedules/${query ? `?${query}` : ''}`, {
-      headers: getHeaders()
-    });
+    const response = await apiFetch(`/schedules/${query ? `?${query}` : ''}`);
     if (!response.ok) throw new Error('Failed to fetch schedules');
     return await response.json();
   } catch (error) {
@@ -22,9 +15,7 @@ export const getSchedules = async (params = {}) => {
 
 export const getScheduleById = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/detail/${id}`, {
-      headers: getHeaders()
-    });
+    const response = await apiFetch(`/schedules/detail/${id}`);
     if (!response.ok) throw new Error('Failed to fetch schedule detail');
     return await response.json();
   } catch (error) {
@@ -35,9 +26,8 @@ export const getScheduleById = async (id) => {
 
 export const createSchedule = async (data) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/`, {
+    const response = await apiFetch('/schedules/', {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to create schedule');
@@ -50,9 +40,8 @@ export const createSchedule = async (data) => {
 
 export const updateSchedule = async (id, data) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/${id}`, {
+    const response = await apiFetch(`/schedules/${id}`, {
       method: 'PUT',
-      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update schedule');
@@ -65,9 +54,8 @@ export const updateSchedule = async (id, data) => {
 
 export const deleteSchedule = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/${id}`, {
+    const response = await apiFetch(`/schedules/${id}`, {
       method: 'DELETE',
-      headers: getHeaders()
     });
     if (!response.ok) throw new Error('Failed to delete schedule');
     return await response.json();
@@ -79,9 +67,8 @@ export const deleteSchedule = async (id) => {
 
 export const setActiveSchedule = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/${id}/set-active`, {
+    const response = await apiFetch(`/schedules/${id}/set-active`, {
       method: 'POST',
-      headers: getHeaders()
     });
     if (!response.ok) throw new Error('Failed to set active schedule');
     return await response.json();
@@ -94,9 +81,7 @@ export const setActiveSchedule = async (id) => {
 // --- Schedule Entry ---
 export const getScheduleEntries = async (scheduleId) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/${scheduleId}/entries`, {
-      headers: getHeaders()
-    });
+    const response = await apiFetch(`/schedules/${scheduleId}/entries`);
     if (!response.ok) throw new Error('Failed to fetch schedule entries');
     return await response.json();
   } catch (error) {
@@ -107,9 +92,8 @@ export const getScheduleEntries = async (scheduleId) => {
 
 export const createScheduleEntry = async (scheduleId, data) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/${scheduleId}/entries`, {
+    const response = await apiFetch(`/schedules/${scheduleId}/entries`, {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to create schedule entry');
@@ -122,9 +106,8 @@ export const createScheduleEntry = async (scheduleId, data) => {
 
 export const updateScheduleEntry = async (entryId, data) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/entries/${entryId}`, {
+    const response = await apiFetch(`/schedules/entries/${entryId}`, {
       method: 'PUT',
-      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to update schedule entry');
@@ -137,9 +120,8 @@ export const updateScheduleEntry = async (entryId, data) => {
 
 export const deleteScheduleEntry = async (entryId) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/entries/${entryId}`, {
+    const response = await apiFetch(`/schedules/entries/${entryId}`, {
       method: 'DELETE',
-      headers: getHeaders()
     });
     if (!response.ok) throw new Error('Failed to delete schedule entry');
     return await response.json();
@@ -153,9 +135,7 @@ export const deleteScheduleEntry = async (entryId) => {
 export const getStudyNotes = async (params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_URL}/schedules/notes/${query ? `?${query}` : ''}`, {
-      headers: getHeaders()
-    });
+    const response = await apiFetch(`/schedules/notes/${query ? `?${query}` : ''}`);
     if (!response.ok) throw new Error('Failed to fetch study notes');
     return await response.json();
   } catch (error) {
@@ -166,9 +146,8 @@ export const getStudyNotes = async (params = {}) => {
 
 export const createStudyNote = async (data) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/notes`, {
+    const response = await apiFetch('/schedules/notes', {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to create study note');
@@ -181,9 +160,8 @@ export const createStudyNote = async (data) => {
 
 export const deleteStudyNote = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/notes/${id}`, {
+    const response = await apiFetch(`/schedules/notes/${id}`, {
       method: 'DELETE',
-      headers: getHeaders()
     });
     if (!response.ok) throw new Error('Failed to delete study note');
     return await response.json();
@@ -195,9 +173,8 @@ export const deleteStudyNote = async (id) => {
 
 export const importCourseSections = async (data) => {
   try {
-    const response = await fetch(`${API_URL}/schedules/course-sections`, {
+    const response = await apiFetch('/schedules/course-sections', {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(data)
     });
     if (!response.ok) throw new Error('Failed to import course sections');
@@ -213,11 +190,8 @@ export const importCourseSectionsExcel = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await fetch(`${API_URL}/schedules/course-sections/excel`, {
+    const response = await apiFetch('/schedules/course-sections/excel', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer dummy-token' // Mock token
-      },
       body: formData
     });
     if (!response.ok) throw new Error('Failed to import course sections from Excel');
