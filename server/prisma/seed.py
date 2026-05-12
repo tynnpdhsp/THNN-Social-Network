@@ -221,6 +221,8 @@ async def seed():
             "status": "pending"
         })
 
+    print("\n--- additional ----")
+
     print("\n--- SEEDING COMPLETED SUCCESSFULLY! ---")
     await db.disconnect()
 

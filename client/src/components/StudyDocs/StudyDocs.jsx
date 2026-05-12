@@ -1,175 +1,256 @@
-import React, { useState } from 'react';
-import { FileText, Download, Share2, MoreVertical, Folder, Upload, Filter, Star, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Download, Share2, MoreVertical, Folder, Upload, Filter, Star, ChevronDown, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import DocDetailModal from './DocDetailModal';
 import UploadDocModal from './UploadDocModal';
-
-const initialDocuments = [
-  { id: 1, name: 'Đề cương ôn tập Toán cao cấp 1', type: 'PDF', size: '2.4 MB', date: '02/05/2026', author: 'Lê Văn A', rating: 4.8, category: 'Công nghệ thông tin', description: 'Tài liệu chi tiết các chương ôn tập môn Toán cao cấp 1 cho sinh viên năm nhất.' },
-  { id: 2, name: 'Slide bài giảng Kinh tế vĩ mô - Chương 3', type: 'PPTX', size: '15.8 MB', date: '01/05/2026', author: 'Nguyễn Thị B', rating: 4.2, category: 'Kinh tế & Marketing', description: 'Slide tóm tắt các kiến thức trọng tâm chương 3 về cung cầu và thị trường.' },
-  { id: 3, name: 'Báo cáo thực tập doanh nghiệp - Mẫu chuẩn', type: 'DOCX', size: '1.2 MB', date: '28/04/2026', author: 'Trần Văn C', rating: 4.5, category: 'Kỹ thuật', description: 'Mẫu báo cáo thực tập chuẩn theo quy định của nhà trường.' },
-  { id: 4, name: 'Tổng hợp công thức Vật lý hạt nhân', type: 'PDF', size: '850 KB', date: '25/04/2026', author: 'Phạm Minh D', rating: 5.0, category: 'Kỹ thuật', description: 'Tất cả công thức quan trọng cần nhớ cho kỳ thi cuối kỳ môn Vật lý.' },
-  { id: 5, name: 'Dataset bài tập Machine Learning', type: 'CSV', size: '45.2 MB', date: '20/04/2026', author: 'Đặng Thu E', rating: 3.9, category: 'Công nghệ thông tin', description: 'Dữ liệu thô dùng cho các bài tập thực hành môn Machine Learning.' },
-];
+import DeleteConfirmModal from '../Shop/DeleteConfirmModal';
+import * as documentService from '../../services/documentService';
+import toast from 'react-hot-toast';
 
 const StudyDocs = () => {
-  const [documents, setDocuments] = useState(initialDocuments);
+  const [documents, setDocuments] = useState([]);
+  const [categories, setCategories] = useState([{ id: 'all', name: 'Tất cả' }]);
+  const [loading, setLoading] = useState(true);
   const [selectedDoc, setSelectedDoc] = useState(null);
-  const [sortBy, setSortBy] = useState('date');
+  const [sortBy, setSortBy] = useState('newest');
   const [isSortOpen, setIsSortOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('Tất cả');
+  const [activeCategory, setActiveCategory] = useState({ id: 'all', name: 'Tất cả' });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [totalDocs, setTotalDocs] = useState(0);
+  const [activeMenuId, setActiveMenuId] = useState(null);
+  const [docToDelete, setDocToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const DOCS_PER_PAGE = 5;
 
   const sortOptions = [
-    { value: 'date', label: 'Mới nhất' },
+    { value: 'newest', label: 'Mới nhất' },
     { value: 'rating', label: 'Đánh giá cao' },
+    { value: 'oldest', label: 'Cũ nhất' },
   ];
 
-  const categories = ['Tất cả', ...new Set(initialDocuments.map(d => d.category))];
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
-  const filteredDocs = documents.filter(doc => 
-    activeCategory === 'Tất cả' || doc.category === activeCategory
-  );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, sortBy]);
 
-  const sortedDocs = [...filteredDocs].sort((a, b) => {
-    if (sortBy === 'rating') return b.rating - a.rating;
-    return new Date(b.date.split('/').reverse().join('-')) - new Date(a.date.split('/').reverse().join('-'));
-  });
+  useEffect(() => {
+    fetchDocuments();
+  }, [activeCategory, sortBy, currentPage]);
 
-  const handleUpload = (newDoc) => {
-    const doc = {
-      ...newDoc,
-      id: Date.now(),
-      type: 'PDF',
-      size: '1.2 MB',
-      date: new Date().toLocaleDateString('vi-VN'),
-      rating: 5.0,
-    };
-    setDocuments([doc, ...documents]);
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const data = await documentService.getDocumentCategories();
+      setCategories([{ id: 'all', name: 'Tất cả' }, ...data]);
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        sort: sortBy,
+        limit: DOCS_PER_PAGE,
+        skip: (currentPage - 1) * DOCS_PER_PAGE,
+      };
+      if (activeCategory.id !== 'all') {
+        params.category_id = activeCategory.id;
+      }
+      const data = await documentService.getDocuments(params);
+      setDocuments(data.items);
+      setTotalDocs(data.total);
+    } catch (error) {
+      console.error('Failed to fetch documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  const handleUploadSuccess = () => {
+    fetchDocuments();
+    setShowUploadModal(false);
+  };
+
+  const handleUpdateDoc = (updatedDoc) => {
+    setDocuments(prev => prev.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+    if (selectedDoc?.id === updatedDoc.id) {
+      setSelectedDoc(updatedDoc);
+    }
+  };
+
+  const handleShare = (doc, e) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}${doc.file_url}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success('Đã sao chép liên kết tải tài liệu!');
+    }).catch(() => {
+      toast.error('Không thể sao chép liên kết');
+    });
+    setActiveMenuId(null);
+  };
+
+  const handleDeleteClick = (doc, e) => {
+    e.stopPropagation();
+    setDocToDelete(doc);
+    setIsDeleteModalOpen(true);
+    setActiveMenuId(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!docToDelete) return;
+    try {
+      await documentService.deleteDocument(docToDelete.id);
+      fetchDocuments();
+      setIsDeleteModalOpen(false);
+      setDocToDelete(null);
+      toast.success('Đã xoá tài liệu thành công');
+    } catch (error) {
+      toast.error('Lỗi khi xoá tài liệu: ' + error.message);
+    }
   };
 
   return (
-    <div className="container" style={{ paddingTop: 24 }}>
-      <div style={{ display: 'flex', gap: 32 }}>
-        {/* Sidebar */}
-        <div style={{ width: 240, flexShrink: 0 }}>
-          <button 
-            className="btn-primary" 
-            style={{ width: '100%', marginBottom: 32, height: 48 }}
-            onClick={() => setShowUploadModal(true)}
-          >
-            <Upload size={20} />
-            Tải lên tài liệu
-          </button>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div>
-              <h3 className="caption-sm" style={{ padding: '0 12px 8px', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>Bộ sưu tập</h3>
-              {['Đã lưu', 'Của tôi', 'Thùng rác'].map((item, i) => (
-                <button key={item} style={{ 
-                  textAlign: 'left', padding: '12px', border: 'none', borderRadius: 'var(--rounded-md)', 
-                  background: 'transparent', fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                  color: 'var(--mute)'
-                }}>
-                  <Folder size={18} />
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
+    <div className="container" style={{ paddingTop: 80 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/* Header with Upload button and Filters */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 className="heading-xl">Tài liệu học tập</h1>
         </div>
-
-        {/* Content */}
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <h1 className="heading-xl">Tài liệu học tập</h1>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ position: 'relative' }}>
-                <button 
-                  onClick={() => setIsSortOpen(!isSortOpen)}
-                  className="btn-secondary" 
-                  style={{ 
-                    display: 'flex', alignItems: 'center', gap: 8, 
-                    background: 'var(--surface-card)', minWidth: 160, 
-                    justifyContent: 'space-between', padding: '10px 20px' 
-                  }}
-                >
-                  {sortOptions.find(o => o.value === sortBy).label}
-                  <ChevronDown size={18} style={{ transform: isSortOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-                </button>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    className="btn-secondary" 
+                    style={{ 
+                      display: 'flex', alignItems: 'center', gap: 8, 
+                      background: 'var(--surface-card)', minWidth: 160, 
+                      justifyContent: 'space-between', padding: '10px 20px' 
+                    }}
+                  >
+                    {sortOptions.find(o => o.value === sortBy)?.label || 'Mới nhất'}
+                    <ChevronDown size={18} style={{ transform: isSortOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+                  </button>
+                  
+                  {isSortOpen && (
+                    <div style={{ 
+                      position: 'absolute', top: '120%', right: 0, width: '100%', 
+                      background: 'white', borderRadius: 'var(--rounded-md)', 
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
+                      overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
+                    }}>
+                      {sortOptions.map(option => (
+                        <div 
+                          key={option.value}
+                          onClick={() => { setSortBy(option.value); setIsSortOpen(false); }}
+                          style={{ 
+                            padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                            cursor: 'pointer', fontSize: 14, fontWeight: sortBy === option.value ? 700 : 500,
+                            background: sortBy === option.value ? 'var(--surface-soft)' : 'transparent',
+                            color: sortBy === option.value ? 'var(--primary)' : 'var(--body)',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = sortBy === option.value ? 'var(--surface-soft)' : 'transparent'}
+                        >
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 
-                {isSortOpen && (
-                  <div style={{ 
-                    position: 'absolute', top: '120%', right: 0, width: '100%', 
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
-                    overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
-                  }}>
-                    {sortOptions.map(option => (
-                      <div 
-                        key={option.value}
-                        onClick={() => { setSortBy(option.value); setIsSortOpen(false); }}
-                        style={{ 
-                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                          cursor: 'pointer', fontSize: 14, fontWeight: sortBy === option.value ? 700 : 500,
-                          background: sortBy === option.value ? 'var(--surface-soft)' : 'transparent',
-                          color: sortBy === option.value ? 'var(--primary)' : 'var(--body)',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = sortBy === option.value ? 'var(--surface-soft)' : 'transparent'}
-                      >
-                        {option.label}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <div style={{ position: 'relative' }}>
-                <button 
-                  onClick={() => setIsFilterOpen(!isFilterOpen)}
-                  className="btn-secondary" 
-                  style={{ 
-                    display: 'flex', gap: 8, alignItems: 'center', 
-                    background: 'var(--surface-card)',
-                    color: 'var(--ink)'
-                  }}
-                >
-                  <Filter size={18} /> {activeCategory === 'Tất cả' ? 'Lọc' : activeCategory}
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className="btn-secondary" 
+                    style={{ 
+                      display: 'flex', gap: 8, alignItems: 'center', 
+                      background: 'var(--surface-card)',
+                      color: 'var(--ink)'
+                    }}
+                  >
+                    <Filter size={18} /> {activeCategory.name}
+                  </button>
 
-                {isFilterOpen && (
-                  <div style={{ 
-                    position: 'absolute', top: '120%', right: 0, width: 220, 
-                    background: 'white', borderRadius: 'var(--rounded-md)', 
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
-                    overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
-                  }}>
-                    {categories.map(cat => (
-                      <div 
-                        key={cat}
-                        onClick={() => { setActiveCategory(cat); setIsFilterOpen(false); }}
-                        style={{ 
-                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
-                          cursor: 'pointer', fontSize: 14, fontWeight: activeCategory === cat ? 700 : 500,
-                          background: activeCategory === cat ? 'var(--surface-soft)' : 'transparent',
-                          color: activeCategory === cat ? 'var(--primary)' : 'var(--body)',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = activeCategory === cat ? 'var(--surface-soft)' : 'transparent'}
-                      >
-                        {cat}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  {isFilterOpen && (
+                    <div style={{ 
+                      position: 'absolute', top: '120%', right: 0, width: 220, 
+                      background: 'white', borderRadius: 'var(--rounded-md)', 
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
+                      overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
+                    }}>
+                      {categories.map(cat => (
+                        <div 
+                          key={cat.id}
+                          onClick={() => { setActiveCategory(cat); setIsFilterOpen(false); }}
+                          style={{ 
+                            padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                            cursor: 'pointer', fontSize: 14, fontWeight: activeCategory.id === cat.id ? 700 : 500,
+                            background: activeCategory.id === cat.id ? 'var(--surface-soft)' : 'transparent',
+                            color: activeCategory.id === cat.id ? 'var(--primary)' : 'var(--body)',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = activeCategory.id === cat.id ? 'var(--surface-soft)' : 'transparent'}
+                        >
+                          {cat.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+
+              <button 
+                className="btn-primary" 
+                style={{ height: 44, padding: '0 24px' }}
+                onClick={() => setShowUploadModal(true)}
+              >
+                <Upload size={18} />
+                Tải lên tài liệu
+              </button>
             </div>
-          </div>
 
-          <div style={{ background: 'white', borderRadius: 'var(--rounded-lg)', border: '1px solid var(--hairline)', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div style={{ 
+            background: 'white', 
+            borderRadius: 'var(--rounded-lg)', 
+            border: '1px solid var(--hairline)', 
+            overflow: 'hidden', 
+            position: 'relative', 
+            height: 421, // Precise fixed height
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {loading && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                <Loader2 className="animate-spin" size={40} color="var(--primary)" />
+              </div>
+            )}
+            
+            <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: 'var(--surface-soft)', borderBottom: '1px solid var(--hairline)' }}>
                   <th style={{ padding: '16px', fontWeight: 600 }}>Tên tài liệu</th>
@@ -180,56 +261,162 @@ const StudyDocs = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedDocs.map((doc) => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid var(--hairline)', cursor: 'pointer' }} onClick={() => setSelectedDoc(doc)}>
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 40, height: 40, background: 'var(--surface-card)', borderRadius: 'var(--rounded-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <FileText size={20} color="var(--primary)" />
+                {documents.length > 0 ? (
+                  documents.map((doc) => (
+                    <tr key={doc.id} style={{ borderBottom: '1px solid var(--hairline)', cursor: 'pointer' }} onClick={() => setSelectedDoc(doc)}>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 40, height: 40, background: 'var(--surface-card)', borderRadius: 'var(--rounded-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <FileText size={20} color="var(--primary)" />
+                          </div>
+                          <div>
+                            <p style={{ fontWeight: 600 }}>{doc.title}</p>
+                            <p className="caption-sm">Tác giả: {doc.user_info?.full_name || 'Ẩn danh'} • {formatFileSize(doc.file_size)}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p style={{ fontWeight: 600 }}>{doc.name}</p>
-                          <p className="caption-sm">Tác giả: {doc.author} • {doc.size}</p>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <span style={{ padding: '4px 10px', background: 'var(--secondary-bg)', borderRadius: 'var(--rounded-full)', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                          {doc.category?.name || 'Chưa phân loại'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Star size={14} fill="#ffc107" color="#ffc107" />
+                          <span style={{ fontWeight: 700 }}>{doc.avg_rating.toFixed(1)}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <span style={{ padding: '4px 8px', background: 'var(--secondary-bg)', borderRadius: 'var(--rounded-full)', fontSize: 12, fontWeight: 700 }}>
-                        {doc.category}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Star size={14} fill="#ffc107" color="#ffc107" />
-                        <span style={{ fontWeight: 700 }}>{doc.rating}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px', color: 'var(--mute)' }}>{doc.date}</td>
-                    <td style={{ padding: '16px' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'flex', gap: 12 }}>
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }}><Download size={18} /></button>
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }}><Share2 size={18} /></button>
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }}><MoreVertical size={18} /></button>
-                      </div>
-                    </td>
+                      </td>
+                      <td style={{ padding: '16px', color: 'var(--mute)' }}>{formatDate(doc.created_at)}</td>
+                      <td style={{ padding: '16px', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                          <button 
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }} 
+                            title="Tải xuống"
+                          >
+                            <a href={doc.file_url} download target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>
+                              <Download size={18} />
+                            </a>
+                          </button>
+                          <button 
+                            onClick={(e) => handleShare(doc, e)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }} 
+                            title="Chia sẻ"
+                          >
+                            <Share2 size={18} />
+                          </button>
+                          <div style={{ position: 'relative' }}>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === doc.id ? null : doc.id); }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }}
+                            >
+                              <MoreVertical size={18} />
+                            </button>
+                            
+                            {activeMenuId === doc.id && (
+                              <div style={{ 
+                                position: 'absolute', top: '100%', right: 0, width: 180, 
+                                background: 'white', borderRadius: 'var(--rounded-md)', 
+                                boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
+                                overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
+                              }}>
+                                <div 
+                                  onClick={(e) => handleShare(doc, e)}
+                                  style={{ padding: '10px 12px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', fontSize: 14, display: 'flex', gap: 8, alignItems: 'center' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Share2 size={14} /> Sao chép liên kết
+                                </div>
+                                <div 
+                                  onClick={(e) => { e.stopPropagation(); toast.success('Đã báo cáo tài liệu'); setActiveMenuId(null); }}
+                                  style={{ padding: '10px 12px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', fontSize: 14, display: 'flex', gap: 8, alignItems: 'center' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Filter size={14} /> Báo cáo vi phạm
+                                </div>
+                                <div 
+                                  onClick={(e) => handleDeleteClick(doc, e)}
+                                  style={{ padding: '10px 12px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', color: '#ff4d4f' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Download size={14} style={{ transform: 'rotate(180deg)' }} /> Xoá tài liệu
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  !loading && (
+                    <tr>
+                      <td colSpan="5" style={{ padding: '48px', textAlign: 'center', color: 'var(--mute)' }}>
+                        Không tìm thấy tài liệu nào.
+                      </td>
+                    </tr>
+                  )
+                )}
+                {/* Placeholder rows to keep height consistent */}
+                {!loading && documents.length < 5 && Array.from({ length: 5 - documents.length }).map((_, i) => (
+                  <tr key={`empty-${i}`} style={{ borderBottom: 'none' }}>
+                    <td colSpan="5" style={{ padding: '16px' }}>&nbsp;</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination back outside */}
+          {totalDocs > DOCS_PER_PAGE && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 24 }}>
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="btn-secondary"
+                style={{ width: 40, height: 40, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                Trang {currentPage} / {Math.ceil(totalDocs / DOCS_PER_PAGE)}
+              </div>
+
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalDocs / DOCS_PER_PAGE), prev + 1))}
+                disabled={currentPage >= Math.ceil(totalDocs / DOCS_PER_PAGE)}
+                className="btn-secondary"
+                style={{ width: 40, height: 40, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: currentPage >= Math.ceil(totalDocs / DOCS_PER_PAGE) ? 0.5 : 1, cursor: currentPage >= Math.ceil(totalDocs / DOCS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
         </div>
-      </div>
 
       <DocDetailModal 
         isOpen={!!selectedDoc} 
         onClose={() => setSelectedDoc(null)} 
         doc={selectedDoc || {}} 
+        onUpdateDoc={handleUpdateDoc}
       />
 
       <UploadDocModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onUpload={handleUpload}
+        onUploadSuccess={handleUploadSuccess}
+        categories={categories.filter(c => c.id !== 'all')}
+      />
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={docToDelete?.title || ""}
+        itemType="tài liệu"
       />
     </div>
   );

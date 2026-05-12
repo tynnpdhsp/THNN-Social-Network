@@ -13,7 +13,12 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000", 
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ]
 
     # MongoDB
     MONGO_DATABASE_URL: str = "mongodb://localhost:27017/thnn_social_network"
@@ -56,6 +61,11 @@ class Settings(BaseSettings):
     MAX_AVATAR_SIZE_MB: int = 5
     MAX_COVER_SIZE_MB: int = 10
     MAX_BIO_LENGTH: int = 500
+
+    VNPAY_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+    VNPAY_TMN_CODE: str = ""
+    VNPAY_RETURN_URL: str = "" # url của fe - vnpay redirect sau khi thanh toán xong (đã thanh toán, hủy thanh toán)
+    VNPAY_HASH_SECRET: str = "HI71QO6IGT5JGCZAKX8I1XXWOQVXQVTW"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 

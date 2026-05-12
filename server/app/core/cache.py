@@ -1,6 +1,7 @@
 import json
 from typing import Optional, List, Dict, Any
 from app.core.redis import get_redis
+from app.modules.shop.schemas import PurchaseRedis
 
 # --- Account Cache ---
 
@@ -101,7 +102,7 @@ async def get_newsfeed(user_id: str, skip: int = 0, limit: int = 20) -> List[str
     if not await r.exists(key):
         return []
     results = await r.zrevrange(key, skip, skip + limit - 1)
-    return results
+    return result
 
 # --- Friend Cache ---
 

@@ -1,4 +1,4 @@
-// =============================================================================
+ // =============================================================================
 // SCHEMA PRISMA - MANG XA HOI SINH VIEN (THNN)
 // MONGODB-ONLY  Tat ca collections trong 1 database duy nhat
 // =============================================================================
@@ -111,6 +111,7 @@ model User {
   studyNotes             StudyNote[]
   places                 Place[]
   placeBookmarks         PlaceBookmark[]
+  cartItems              CartItem[]
 
   @@index([roleId])
   @@map("users")
@@ -322,6 +323,7 @@ model ShopItem {
   // Reverse relations
   itemImages ItemImage[]
   orders     Order[]
+  cartItems  CartItem[]
 
   @@index([categoryId])
   @@index([sellerId])
@@ -741,4 +743,25 @@ model Review {
 
   @@index([targetId, targetType])
   @@map("reviews")
+}
+
+// -----------------------------------------------------------------------------
+// NHOM 9: GIO HANG (NEW)
+// -----------------------------------------------------------------------------
+
+/// Collection: cart_items  Vat pham trong gio hang
+model CartItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @map("user_id") @db.ObjectId
+  itemId    String   @map("item_id") @db.ObjectId
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // FK Relations
+  user User     @relation(fields: [userId], references: [id])
+  item ShopItem @relation(fields: [itemId], references: [id])
+
+  @@unique([userId, itemId])
+  @@map("cart_items")
 }

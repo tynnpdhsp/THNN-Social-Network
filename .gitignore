@@ -56,4 +56,6 @@ server/minio_data/
 server/minio.exe
 server/run_all.bat
 dump.rdb
+run_all.bat
+server/scratch/
 *.rdb

@@ -1,37 +1,129 @@
+import React, { useState, useEffect } from 'react';
+import { Heart, Plus, ShoppingBag, Search, Filter, Star, Edit2, Trash2, Tag, Book, PenTool, ChevronDown, Loader } from 'lucide-react';
+// import Select from 'react-select';
+import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { Heart, Plus, ShoppingBag, Search, Filter, Star, Edit2, Trash2, Tag, Book, PenTool, ChevronDown } from 'lucide-react';
 import { resolveImageUrl } from '../../config/api';
 import ProductDetailModal from './ProductDetailModal';
 import AddProductModal from './AddProductModal';
-import CartModal from './CartModal';
+import DeleteConfirmModal from './DeleteConfirmModal';
+import CartDrawer from './CartDrawer';
+import * as shopService from '../../services/shopService';
 
-const categories = [
+// Mảng các category icon có thể bỏ nếu ta dùng trực tiếp từ backend
+const hardcodedCategories = [
   { id: 'all', label: 'Tất cả', icon: <Tag size={16} /> },
   { id: 'docs', label: 'Tài liệu', icon: <Book size={16} /> },
   { id: 'books', label: 'Giáo trình', icon: <Book size={16} /> },
   { id: 'supplies', label: 'Vật dụng học tập', icon: <PenTool size={16} /> },
 ];
 
-const initialProducts = [
-  { id: 1, title: 'Balo học sinh phong cách Preppy', price: 450000, category: 'supplies', image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=400', height: 400, rating: 4.5, reviews: 12, description: 'Balo chất liệu bền bỉ, nhiều ngăn chứa đồ, phù hợp đi học và đi chơi.' },
-  { id: 2, title: 'Sổ tay Planner 2026', price: 120000, category: 'supplies', image: 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&q=80&w=400', height: 300, rating: 5, reviews: 8, description: 'Sổ tay thiết kế tinh tế, giấy chống lóa, giúp bạn lập kế hoạch hiệu quả.' },
-  { id: 3, title: 'Bút marker Pastel (Bộ 12 màu)', price: 210000, category: 'supplies', image: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=400', height: 500, rating: 4.8, reviews: 24, description: 'Bộ bút màu pastel nhẹ nhàng, mực ra đều, không bị thấm sang trang sau.' },
-  { id: 4, title: 'Đèn bàn học chống cận thị', price: 890000, category: 'supplies', image: 'https://images.unsplash.com/photo-1534073828943-f801091bb18c?auto=format&fit=crop&q=80&w=400', height: 450, rating: 4.2, reviews: 15, description: 'Đèn LED bảo vệ mắt, có thể điều chỉnh độ sáng và nhiệt độ màu.' },
-  { id: 5, title: 'Tài liệu ôn thi đại học môn Toán', price: 50000, category: 'docs', image: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400', height: 350, rating: 4.9, reviews: 45, description: 'Tổng hợp các dạng bài tập hay và khó, có lời giải chi tiết.' },
-  { id: 6, title: 'Giáo trình Kinh tế vi mô', price: 150000, category: 'books', image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=400', height: 480, rating: 4.0, reviews: 5, description: 'Sách mới 95%, không gạch xóa, đầy đủ các chương học.' },
-];
+
 
 const Shop = () => {
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [priceRange, setPriceRange] = useState(2000000); 
+  const [priceRange, setPriceRange] = useState(10000000); 
   const [sortBy, setSortBy] = useState('popular');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isCartModalOpen, setIsCartModalOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState([]);
+  const [isCartLoading, setIsCartLoading] = useState(false);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+    fetchCart();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const data = await shopService.getCategories();
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Lỗi khi tải danh mục:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true);
+      const data = await shopService.getItems({ limit: 100 });
+      console.log("Danh sách sản phẩm từ API:", data.items);
+      setProducts(data.items || []);
+    } catch (error) {
+      console.error('Lỗi khi tải sản phẩm:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCart = async () => {
+    try {
+      setIsCartLoading(true);
+      const data = await shopService.getCart();
+      setCartItems(data.items || []);
+    } catch (error) {
+      console.error('Lỗi khi tải giỏ hàng:', error);
+    } finally {
+      setIsCartLoading(false);
+    }
+  };
+
+  const handleAddToCart = async (product, quantity = 1) => {
+    try {
+      await shopService.addToCart(product.id, quantity);
+      toast.success(`Đã thêm ${product.title} vào giỏ hàng`);
+      fetchCart();
+    } catch (error) {
+      toast.error("Lỗi khi thêm vào giỏ hàng: " + error.message);
+    }
+  };
+
+  const handleUpdateCartQuantity = async (itemId, quantity) => {
+    try {
+      await shopService.updateCartItem(itemId, quantity);
+      fetchCart();
+    } catch (error) {
+      toast.error("Lỗi khi cập nhật số lượng");
+    }
+  };
+
+  const handleRemoveFromCart = async (itemId) => {
+    try {
+      await shopService.removeFromCart(itemId);
+      toast.success("Đã xóa khỏi giỏ hàng");
+      fetchCart();
+    } catch (error) {
+      toast.error("Lỗi khi xóa sản phẩm");
+    }
+  };
+
+  const handleCartCheckout = async () => {
+    if (cartItems.length === 0) return;
+    
+    // For now, checkout the first item as the backend Order model 
+    // only supports one item at a time.
+    // In a real app, we'd create a multi-item order.
+    try {
+      const firstItem = cartItems[0];
+      await buyNow(firstItem.item);
+      setIsCartOpen(false);
+    } catch (error) {
+      toast.error("Lỗi khi thanh toán");
+    }
+  };
+
+
 
   const sortOptions = [
     { value: 'popular', label: 'Mới nhất' },
@@ -42,39 +134,120 @@ const Shop = () => {
 
   const filteredProducts = products
     .filter(p => {
-      const matchesCategory = activeCategory === 'all' || p.category === activeCategory;
-      const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPrice = p.price <= priceRange;
+      if (!p) return false;
+      const title = p.title || '';
+      const price = p.price || 0;
+      const matchesCategory = activeCategory === 'all' || p.category_id === activeCategory;
+      const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPrice = price <= priceRange;
       return matchesCategory && matchesSearch && matchesPrice;
     })
     .sort((a, b) => {
-      if (sortBy === 'rating') return b.rating - a.rating;
-      if (sortBy === 'price-asc') return a.price - b.price;
-      if (sortBy === 'price-desc') return b.price - a.price;
+      if (!a || !b) return 0;
+      const priceA = a.price || 0;
+      const priceB = b.price || 0;
+      const ratingA = a.avg_rating || 0;
+      const ratingB = b.avg_rating || 0;
+      if (sortBy === 'rating') return ratingB - ratingA;
+      if (sortBy === 'price-asc') return priceA - priceB;
+      if (sortBy === 'price-desc') return priceB - priceA;
       return 0;
     });
 
-  const addToCart = (product) => {
-    setCartItems([...cartItems, product]);
+  const buyNow = async (product) => {
+    console.log("Bắt đầu mua hàng cho sản phẩm:", product);
+    try {
+      const orderData = {
+        item_id: product.id,
+        amount: product.price,
+        payment_method: 'vnpay'
+      };
+      console.log("Dữ liệu đơn hàng gửi đi:", orderData);
+      const order = await shopService.createOrder(orderData);
+      console.log("Đơn hàng đã tạo:", order);
+      
+      // Sau khi tạo đơn hàng, lấy link thanh toán VNPAY
+      const paymentData = {
+        order_id: order.id,
+        ip_addr: '127.0.0.1', // Trong thực tế nên lấy IP thật của client
+        order_type: 'billpayment'
+      };
+      
+      const vnpayRes = await shopService.createVNPayUrl(paymentData);
+      
+      if (vnpayRes.payment_url) {
+        toast.loading("Đang chuyển hướng đến cổng thanh toán VNPAY...", { duration: 2000 });
+        setTimeout(() => {
+          window.location.href = vnpayRes.payment_url;
+        }, 1000);
+      } else {
+        throw new Error("Không lấy được link thanh toán");
+      }
+    } catch (error) {
+      toast.error("Lỗi khi thanh toán: " + error.message);
+    }
   };
 
-  const removeFromCart = (index) => {
-    const newCart = [...cartItems];
-    newCart.splice(index, 1);
-    setCartItems(newCart);
+  const addProduct = async (newProduct, images) => {
+    try {
+      if (productToEdit) {
+        // Edit mode
+        const itemData = {
+          title: newProduct.title,
+          price: parseInt(newProduct.price),
+          description: newProduct.description,
+        };
+        await shopService.updateItem(productToEdit.id, itemData);
+        toast.success("Cập nhật thành công");
+      } else {
+        // Create mode
+        let imageUrls = [];
+        if (images && images.length > 0) {
+          const uploadRes = await shopService.uploadItemImages(images);
+          imageUrls = uploadRes.image_urls || [];
+        }
+
+        const itemData = {
+          title: newProduct.title,
+          price: parseInt(newProduct.price),
+          category_id: newProduct.category,
+          description: newProduct.description,
+          image_urls: imageUrls,
+          condition: 'new',
+          stock: 1
+        };
+
+        await shopService.createItem(itemData);
+        toast.success("Đăng bán thành công");
+      }
+      fetchProducts();
+    } catch (error) {
+      toast.error("Lỗi: " + error.message);
+      throw error;
+    }
   };
 
-  const addProduct = (newProduct) => {
-    const product = {
-      ...newProduct,
-      id: Date.now(),
-      price: parseInt(newProduct.price),
-      height: 350,
-      rating: 5.0,
-      reviews: 0,
-      image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'
-    };
-    setProducts([product, ...products]);
+  const handleDeleteClick = (product) => {
+    setProductToDelete(product);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    try {
+      await shopService.deleteItem(productToDelete.id);
+      setIsDeleteModalOpen(false);
+      setProductToDelete(null);
+      fetchProducts();
+      toast.success("Đã xoá vật phẩm");
+    } catch (error) {
+      toast.error("Lỗi xoá vật phẩm: " + error.message);
+    }
+  };
+
+  const handleEditClick = (product) => {
+    setProductToEdit(product);
+    setIsAddModalOpen(true);
   };
 
   return (
@@ -84,7 +257,7 @@ const Shop = () => {
         <button 
           className="btn-primary" 
           style={{ width: '100%', marginBottom: 32, height: 48 }}
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => { setProductToEdit(null); setIsAddModalOpen(true); }}
         >
           <Plus size={20} /> Đăng bán vật phẩm
         </button>
@@ -97,7 +270,7 @@ const Shop = () => {
               type="text" 
               placeholder="Nhập từ khóa..." 
               className="input-field search-bar" 
-              style={{ height: 44 }}
+              style={{ height: 44, background: 'white', border: '1px solid var(--hairline)' }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -107,6 +280,19 @@ const Shop = () => {
         <div style={{ marginBottom: 32 }}>
           <h3 className="heading-md" style={{ marginBottom: 16 }}>Danh mục</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button 
+                onClick={() => setActiveCategory('all')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                  border: 'none', borderRadius: 'var(--rounded-md)', cursor: 'pointer',
+                  background: activeCategory === 'all' ? 'var(--surface-card)' : 'transparent',
+                  fontWeight: activeCategory === 'all' ? 700 : 500,
+                  color: activeCategory === 'all' ? 'var(--primary)' : 'var(--body)',
+                  textAlign: 'left'
+                }}
+              >
+                <Tag size={16} /> Tất cả
+            </button>
             {categories.map(cat => (
               <button 
                 key={cat.id}
@@ -120,7 +306,7 @@ const Shop = () => {
                   textAlign: 'left'
                 }}
               >
-                {cat.icon} {cat.label}
+                <Tag size={16} /> {cat.name}
               </button>
             ))}
           </div>
@@ -131,7 +317,7 @@ const Shop = () => {
           <input 
             type="range" 
             min="0" 
-            max="2000000" 
+            max="10000000" 
             step="50000"
             value={priceRange}
             onChange={(e) => setPriceRange(parseInt(e.target.value))}
@@ -139,9 +325,10 @@ const Shop = () => {
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--mute)' }}>
             <span>0đ</span>
-            <span>2.000.000đ</span>
+            <span>10.000.000đ</span>
           </div>
         </div>
+
       </div>
 
       {/* Main Content */}
@@ -159,7 +346,7 @@ const Shop = () => {
                   justifyContent: 'space-between', padding: '10px 20px' 
                 }}
               >
-                {sortOptions.find(o => o.value === sortBy).label}
+                {sortOptions.find(o => o.value === sortBy)?.label || 'Sắp xếp'}
                 <ChevronDown size={18} style={{ transform: isSortOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
               
@@ -189,29 +376,27 @@ const Shop = () => {
                 </div>
               )}
             </div>
-            <button 
-              className="btn-secondary" 
-              style={{ display: 'flex', gap: 8, border: '1px solid var(--hairline)' }}
-              onClick={() => setIsCartModalOpen(true)}
-            >
-              <ShoppingBag size={20} color="var(--primary)" /> Giỏ hàng ({cartItems.length})
-            </button>
           </div>
         </div>
 
-        {filteredProducts.length === 0 ? (
+        {isLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '64px 0' }}>
+            <Loader className="spin" size={48} color="var(--primary)" />
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--mute)' }}>
             <Search size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
             <p>Không tìm thấy vật phẩm nào phù hợp.</p>
           </div>
         ) : (
-          <div style={{ columnCount: 3, columnGap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
             {filteredProducts.map((product) => (
               <div key={product.id} className="pin-card" 
                 onClick={() => setSelectedProduct(product)}
-                style={{ marginBottom: 16, breakInside: 'avoid', display: 'inline-block', width: '100%' }}
+                style={{ width: '100%' }}
               >
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--rounded-md)' }}>
+                  <img src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} alt={product.title} style={{ width: '100%', height: 350, objectFit: 'cover' }} />
                   <img src={resolveImageUrl(product.image_url || product.image)} alt={product.title} style={{ width: '100%', height: product.height, objectFit: 'cover' }} />
                   <div className="overlay" style={{ 
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
@@ -222,16 +407,23 @@ const Shop = () => {
                   onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
                   >
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white' }} onClick={(e) => { e.stopPropagation(); /* Edit logic */ }}><Edit2 size={16} /></button>
-                      <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white', color: 'var(--primary)' }} onClick={(e) => { e.stopPropagation(); /* Delete logic */ }}><Trash2 size={16} /></button>
+                      <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white' }} onClick={(e) => { e.stopPropagation(); handleEditClick(product); }}><Edit2 size={16} /></button>
+                      <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white', color: 'var(--primary)' }} onClick={(e) => { e.stopPropagation(); handleDeleteClick(product); }}><Trash2 size={16} /></button>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                       <button 
+                         className="btn-secondary" 
+                         style={{ width: 40, height: 40, padding: 0, borderRadius: '50%', background: 'white' }}
+                         onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
+                       >
+                         <ShoppingBag size={18} color="var(--primary)" />
+                       </button>
                        <button 
                         className="btn-primary" 
                         style={{ padding: '8px 16px', fontSize: 14 }}
-                        onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+                        onClick={(e) => { e.stopPropagation(); buyNow(product); }}
                        >
-                         Thêm vào giỏ
+                         Mua ngay
                        </button>
                     </div>
                   </div>
@@ -242,10 +434,10 @@ const Shop = () => {
                     <div style={{ display: 'flex', color: '#ffc107' }}>
                       <Star size={12} fill="#ffc107" />
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{product.rating}</span>
-                    <span style={{ fontSize: 12, color: 'var(--mute)' }}>({product.reviews})</span>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{product.avg_rating || 0}</span>
+                    <span style={{ fontSize: 12, color: 'var(--mute)' }}>({product.rating_count || 0})</span>
                   </div>
-                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>{product.price.toLocaleString()}đ</p>
+                  <p className="body-md" style={{ color: 'var(--primary)', fontWeight: 800 }}>{(product.price || 0).toLocaleString()}đ</p>
                 </div>
               </div>
             ))}
@@ -257,20 +449,143 @@ const Shop = () => {
         isOpen={!!selectedProduct} 
         onClose={() => setSelectedProduct(null)} 
         product={selectedProduct || {}} 
+        onBuyNow={buyNow}
+        onAddToCart={handleAddToCart}
       />
 
       <AddProductModal 
         isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+        onClose={() => { setIsAddModalOpen(false); setProductToEdit(null); }} 
         onAdd={addProduct}
+        categories={categories}
+        productToEdit={productToEdit}
       />
 
-      <CartModal 
-        isOpen={isCartModalOpen} 
-        onClose={() => setIsCartModalOpen(false)} 
-        cartItems={cartItems}
-        onRemove={removeFromCart}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={productToDelete?.title || ""}
       />
+
+      <CartDrawer 
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        onRemoveItem={handleRemoveFromCart}
+        onCheckout={handleCartCheckout}
+        isLoading={isCartLoading}
+      />
+
+      {/* Floating Cart Button */}
+      <div className="cart-icon-floating" onClick={() => setIsCartOpen(true)}>
+        <ShoppingBag size={24} color="white" />
+        {cartItems.length > 0 && <span className="cart-badge-floating">{cartItems.length}</span>}
+      </div>
+
+      <style jsx>{`
+        .cart-icon-container {
+          position: relative;
+          width: 48px;
+          height: 48px;
+          background: white;
+          border: 1px solid var(--hairline);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .cart-icon-container:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .cart-badge {
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          background: var(--primary);
+          color: white;
+          font-size: 10px;
+          font-weight: 700;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+        }
+
+        .cart-badge-inline {
+          background: var(--primary);
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 12px;
+        }
+
+        .sidebar-cart-list::-webkit-scrollbar {
+          width: 4px;
+        }
+        .sidebar-cart-list::-webkit-scrollbar-track {
+          background: var(--surface-soft);
+        }
+        .sidebar-cart-list::-webkit-scrollbar-thumb {
+          background: var(--ash);
+          border-radius: 2px;
+        }
+
+        .cart-icon-floating {
+          position: fixed;
+          bottom: 32px;
+          right: 32px;
+          width: 64px;
+          height: 64px;
+          background: var(--primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 12px 32px rgba(230, 0, 35, 0.4);
+          z-index: 900;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .cart-icon-floating:hover {
+          transform: scale(1.1) translateY(-4px);
+          box-shadow: 0 16px 40px rgba(230, 0, 35, 0.5);
+        }
+
+        .cart-badge-floating {
+          position: absolute;
+          top: 0;
+          right: 0;
+          background: #ff4757;
+          color: white;
+          font-size: 12px;
+          font-weight: 800;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 3px solid white;
+          animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+          0% { transform: scale(0); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,200 +1,412 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Navigation, Info, Search, Plus, Star, X, User, Send, Bookmark, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { MapPin, Navigation, Info, Search, Plus, Star, X, User, Send } from 'lucide-react';
 import { resolveImageUrl } from '../../config/api';
 import AddLocationModal from './AddLocationModal';
+import LocationInfoModal from './LocationInfoModal';
+import Modal from '../Common/Modal';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 
-const locationTypes = ['Tất cả', 'Học tập', 'Ăn uống', 'Thể thao', 'Sự kiện', 'Nội trú'];
+import {
+  getPlaceCategories,
+  getNearbyPlaces,
+  createPlace,
+  getPlaceReviews,
+  createPlaceReview,
+  togglePlaceBookmark,
+  checkPlaceBookmark,
+  uploadPlaceImages,
+  deletePlace,
+  getCurrentUser
+} from '../../services/placeService';
+import { toast } from 'react-hot-toast';
 
-const initialLocations = [
-  { id: 1, name: 'Thư viện Trung tâm', type: 'Học tập', x: 300, y: 200, status: 'Đang mở cửa', rating: 4.8, reviews: 156, description: 'Không gian yên tĩnh, đầy đủ tài liệu và wifi tốc độ cao.', image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600' },
-  { id: 2, name: 'Căn tin Khu A', type: 'Ăn uống', x: 500, y: 350, status: 'Đông đúc', rating: 4.2, reviews: 89, description: 'Đa dạng món ăn, giá cả sinh viên, sạch sẽ.', image: 'https://images.unsplash.com/photo-1567529684892-0f290465500c?auto=format&fit=crop&q=80&w=600' },
-  { id: 3, name: 'Sân bóng đá', type: 'Thể thao', x: 150, y: 450, status: 'Trống', rating: 4.5, reviews: 45, description: 'Sân cỏ nhân tạo mới nâng cấp, có đèn chiếu sáng ban đêm.', image: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=600' },
-  { id: 4, name: 'Hội trường Lớn', type: 'Sự kiện', x: 700, y: 150, status: 'Có sự kiện', rating: 4.0, reviews: 120, description: 'Nơi tổ chức các buổi lễ và hội thảo quy mô lớn.', image: 'https://images.unsplash.com/photo-1505373630562-402923d98a08?auto=format&fit=crop&q=80&w=600' },
-  { id: 5, name: 'Ký túc xá B', type: 'Nội trú', x: 850, y: 400, status: 'Đang mở cửa', rating: 4.3, reviews: 67, description: 'An ninh tốt, phòng ốc thoáng mát, đầy đủ tiện nghi.', image: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&q=80&w=600' },
-];
+// Fix Leaflet's default icon path issues
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+// Helper component to smoothly pan map to selected location
+function MapUpdater({ selectedLocation }) {
+  const map = useMap();
+  useEffect(() => {
+    if (selectedLocation) {
+      map.flyTo([selectedLocation.latitude, selectedLocation.longitude], 16, { duration: 1.5 });
+    }
+  }, [selectedLocation, map]);
+  return null;
+}
+
+// Helper component to handle map clicks
+function MapEventsHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng);
+    },
+  });
+  return null;
+}
 
 const Map = () => {
-  const [locations, setLocations] = useState(initialLocations);
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeType, setActiveType] = useState('Tất cả');
-  const [zoom, setZoom] = useState(1);
+  const [categories, setCategories] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 2.5));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [clickedCoords, setClickedCoords] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategoryId, setActiveCategoryId] = useState('all');
+
+  const defaultCenter = [10.762622, 106.660172]; // Saigon
+
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const cats = await getPlaceCategories();
+        setCategories(cats);
+
+        const placesData = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
+        setLocations(placesData.data || []);
+      } catch (error) {
+        toast.error('Không thể tải dữ liệu bản đồ');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Fetch reviews and bookmark status when a location is selected
+  useEffect(() => {
+    if (selectedLocation) {
+      const fetchDetails = async () => {
+        try {
+          const reviewsData = await getPlaceReviews(selectedLocation.id);
+          setReviews(reviewsData.items || []);
+
+          const bookmarkStatus = await checkPlaceBookmark(selectedLocation.id);
+          setIsBookmarked(bookmarkStatus.is_bookmarked);
+        } catch (error) {
+          console.error('Error fetching details:', error);
+        }
+      };
+      fetchDetails();
+    } else {
+      setReviews([]);
+      setIsBookmarked(false);
+    }
+  }, [selectedLocation?.id]);
+
+  // Keep selected location data in sync with main locations list
+  useEffect(() => {
+    if (selectedLocation && locations.length > 0) {
+      const updated = locations.find(l => l.id === selectedLocation.id);
+      if (updated) {
+        if (JSON.stringify(updated) !== JSON.stringify(selectedLocation)) {
+          setSelectedLocation(prev => ({ ...prev, ...updated }));
+        }
+      }
+    }
+  }, [locations]);
 
   const filteredLocations = locations.filter(loc => {
-    const matchesSearch = loc.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = activeType === 'Tất cả' || loc.type === activeType;
+    const name = loc.name || '';
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = activeCategoryId === 'all' || loc.category?.id === activeCategoryId;
     return matchesSearch && matchesType;
   });
 
-  const handleAddLocation = (newLoc) => {
-    const added = {
-      ...newLoc,
-      id: Date.now(),
-      x: Math.random() * 800 + 50,
-      y: Math.random() * 400 + 50,
-      status: 'Mới thêm',
-      rating: 5.0,
-      reviews: 0,
-      image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'
-    };
-    setLocations([...locations, added]);
+  const handleAddLocation = async (newLocData) => {
+    try {
+      const { files, ...placeData } = newLocData;
+      const created = await createPlace(placeData);
+
+      if (files && files.length > 0) {
+        await uploadPlaceImages(created.id, files);
+      }
+
+      // Refresh list to show new place
+      const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
+      setLocations(updatedPlace.data || []);
+
+      toast.success('Đã thêm địa điểm mới!');
+    } catch (error) {
+      console.error('Error adding location:', error);
+      toast.error('Lỗi khi thêm địa điểm: ' + (error.message || 'Lỗi không xác định'));
+    }
   };
+
+  const handleDeleteLocation = () => {
+    if (!selectedLocation) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const executeDelete = async () => {
+    if (!selectedLocation) return;
+    try {
+      await deletePlace(selectedLocation.id);
+      toast.success('Đã xóa địa điểm');
+      setShowDeleteConfirm(false);
+      setSelectedLocation(null);
+
+      // Refresh map
+      const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
+      setLocations(updatedPlace.data || []);
+    } catch (error) {
+      toast.error('Lỗi khi xóa địa điểm');
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleToggleBookmark = async () => {
+    if (!selectedLocation) return;
+    try {
+      await togglePlaceBookmark(selectedLocation.id);
+      setIsBookmarked(!isBookmarked);
+      toast.success(isBookmarked ? 'Đã bỏ lưu' : 'Đã lưu địa điểm');
+    } catch (error) {
+      toast.error('Lỗi khi xử lý lưu');
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!selectedLocation || !newReview.comment) return;
+    try {
+      const createdReview = await createPlaceReview(selectedLocation.id, newReview);
+      setReviews([createdReview, ...reviews]);
+      setNewReview({ rating: 5, comment: '' });
+      toast.success('Đã đăng nhận xét');
+
+      // Refresh place data to update rating
+      const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
+      setLocations(updatedPlace.data || []);
+    } catch (error) {
+      toast.error('Lỗi khi đăng nhận xét');
+    }
+  };
+
+  // Determine if current user can delete
+  const currentUser = getCurrentUser();
+  const canDelete = selectedLocation && currentUser && (
+    currentUser.role === 'admin' ||
+    selectedLocation.user_info?.id === currentUser.id
+  );
 
   return (
     <div className="container" style={{ paddingTop: 24, height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 className="heading-xl">Bản đồ học đường</h1>
-        <div style={{ display: 'flex', gap: 12 }}>
-           <div className="search-container" style={{ width: 240 }}>
-             <Search size={18} />
-             <input 
-              type="text" 
-              placeholder="Tìm địa điểm..." 
-              className="input-field search-bar" 
-              style={{ height: 44 }}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', transform: 'translateY(55px)' }}>
+          <div className="search-container" style={{ width: 240 }}>
+            <Search size={18} />
+            <input
+              type="text"
+              placeholder="Tìm địa điểm..."
+              className="input-field search-bar"
+              style={{ height: 38, fontSize: 14, paddingLeft: 40 }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-             />
-           </div>
-           <button className="btn-primary" style={{ gap: 8 }} onClick={() => setShowAddModal(true)}><Plus size={18} /> Thêm địa điểm</button>
+            />
+          </div>
+          <button className="btn-primary" style={{ gap: 8, height: 38, padding: '0 16px', fontSize: 14 }} onClick={() => setShowAddModal(true)}>
+            <Plus size={18} /> Thêm địa điểm
+          </button>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>
-        {locationTypes.map(type => (
-          <button 
-            key={type}
-            onClick={() => setActiveType(type)}
-            style={{ 
+        <button
+          onClick={() => setActiveCategoryId('all')}
+          style={{
+            padding: '8px 20px', borderRadius: 'var(--rounded-full)', border: '1px solid var(--hairline)',
+            background: activeCategoryId === 'all' ? 'var(--ink)' : 'white',
+            color: activeCategoryId === 'all' ? 'white' : 'var(--body)',
+            fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s'
+          }}
+        >
+          Tất cả
+        </button>
+        {categories.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategoryId(cat.id)}
+            style={{
               padding: '8px 20px', borderRadius: 'var(--rounded-full)', border: '1px solid var(--hairline)',
-              background: activeType === type ? 'var(--ink)' : 'white',
-              color: activeType === type ? 'white' : 'var(--body)',
+              background: activeCategoryId === cat.id ? 'var(--ink)' : 'white',
+              color: activeCategoryId === cat.id ? 'white' : 'var(--body)',
               fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s'
             }}
           >
-            {type}
+            {cat.name}
           </button>
         ))}
       </div>
 
       <div style={{ flex: 1, display: 'flex', gap: 24, height: '100%', overflow: 'hidden' }}>
-        {/* Map Area */}
-        <div style={{ 
-          flex: 1, background: '#f0f4f8', borderRadius: 'var(--rounded-lg)', position: 'relative', 
-          overflow: 'auto', border: '2px solid var(--hairline)',
-        }}>
-          <div style={{ 
-            width: '100%', height: '100%', minWidth: 1000, minHeight: 600,
-            position: 'relative',
-            backgroundImage: 'radial-gradient(#d1d9e6 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-            transform: `scale(${zoom})`,
-            transformOrigin: '0 0',
-            transition: 'transform 0.3s ease-out'
-          }}>
-            {filteredLocations.map(loc => (
-              <div key={loc.id} 
-                onClick={() => setSelectedLocation(loc)}
-                style={{
-                  position: 'absolute', left: loc.x, top: loc.y, cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <div style={{ 
-                  width: 40, height: 40, background: 'white', borderRadius: '50%', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '2px solid var(--primary)'
-                }}>
-                  <MapPin size={24} color="var(--primary)" fill="var(--primary)" fillOpacity={0.2} />
-                </div>
-                <div style={{ 
-                  marginTop: 4, background: 'rgba(255,255,255,0.9)', padding: '2px 8px', 
-                  borderRadius: 'var(--rounded-full)', fontSize: 11, fontWeight: 700,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)', whiteSpace: 'nowrap'
-                }}>
-                  {loc.name}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Zoom Controls Overlay */}
-          <div style={{ position: 'absolute', bottom: 20, right: 20, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 100 }}>
-            <button 
-              className="btn-secondary" 
-              style={{ width: 44, height: 44, padding: 0, borderRadius: '50%', background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              onClick={handleZoomIn}
-            >
-              <Plus size={20} />
-            </button>
-            <button 
-              className="btn-secondary" 
-              style={{ width: 44, height: 44, padding: 0, borderRadius: '50%', background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-              onClick={handleZoomOut}
-            >
-              <span style={{ fontSize: 24, lineHeight: 0, marginTop: -4 }}>-</span>
-            </button>
-            <div style={{ 
-              background: 'white', padding: '4px 8px', borderRadius: 'var(--rounded-md)', 
-              fontSize: 12, fontWeight: 700, textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
-            }}>
-              {Math.round(zoom * 100)}%
+        {/* Real Leaflet Map Area */}
+        <div style={{ flex: 1, borderRadius: 'var(--rounded-lg)', overflow: 'hidden', border: '2px solid var(--hairline)', position: 'relative' }}>
+          {loading ? (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, background: 'rgba(255,255,255,0.7)' }}>
+              <div className="loader">Đang tải bản đồ...</div>
             </div>
-          </div>
+          ) : null}
+          <MapContainer center={defaultCenter} zoom={13} style={{ width: '100%', height: '100%', zIndex: 0 }}>
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            />
+            <MapUpdater selectedLocation={selectedLocation} />
+            <MapEventsHandler onMapClick={(latlng) => {
+              setClickedCoords(latlng);
+              setShowAddModal(true);
+            }} />
+
+            {filteredLocations.map(loc => (
+              <Marker
+                key={loc.id}
+                position={[loc.latitude, loc.longitude]}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedLocation(loc);
+                  },
+                }}
+              >
+                <Popup>
+                  <strong>{loc.name}</strong><br />
+                  {loc.category?.name}
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
         </div>
 
         {/* Info Sidebar */}
         <div style={{ width: 340, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {selectedLocation ? (
+            <div className="card" style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ position: 'relative' }}>
+                <img src={selectedLocation.images?.[0]?.image_url || 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600'} style={{ width: '100%', height: 180, objectFit: 'cover' }} />
+                <button
+                  onClick={handleToggleBookmark}
+                  style={{
+                    position: 'absolute', top: 12, right: 12,
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'white', border: 'none', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  <Bookmark size={18} color={isBookmarked ? 'var(--primary)' : 'var(--mute)'} fill={isBookmarked ? 'var(--primary)' : 'none'} />
+                </button>
+              </div>
+
+              <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <img src={resolveImageUrl(selectedLocation.image_url || selectedLocation.image)} style={{ width: '100%', height: 180, objectFit: 'cover' }} />
               <div style={{ padding: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
-                    <span className="caption-sm" style={{ background: 'var(--surface-card)', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>{selectedLocation.type}</span>
+                    <span className="caption-sm" style={{ background: 'var(--surface-card)', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>{selectedLocation.category?.name}</span>
                     <h2 className="heading-lg" style={{ marginTop: 8 }}>{selectedLocation.name}</h2>
                   </div>
-                  <button onClick={() => setSelectedLocation(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                   <div style={{ display: 'flex', color: '#ffc107' }}>
-                     <Star size={16} fill="#ffc107" />
-                   </div>
-                   <span style={{ fontWeight: 700 }}>{selectedLocation.rating}</span>
-                   <span style={{ color: 'var(--mute)', fontSize: 13 }}>({selectedLocation.reviews} nhận xét)</span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {canDelete && (
+                      <button onClick={handleDeleteLocation} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff4d4f', display: 'flex', padding: 4 }} title="Xóa địa điểm">
+                        <Trash2 size={20} />
+                      </button>
+                    )}
+                    <button onClick={() => setSelectedLocation(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 4 }} title="Đóng">
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
 
-                <p className="body-md" style={{ marginBottom: 24, color: 'var(--body)', opacity: 0.8 }}>{selectedLocation.description}</p>
-                
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', color: '#ffc107' }}>
+                    <Star size={16} fill="#ffc107" />
+                  </div>
+                  <span style={{ fontWeight: 700 }}>{selectedLocation.avg_rating?.toFixed(1) || '0.0'}</span>
+                  <span style={{ color: 'var(--mute)', fontSize: 13 }}>({selectedLocation.rating_count} nhận xét)</span>
+                </div>
+
+                <p className="body-md" style={{ marginBottom: 8, color: 'var(--body)', opacity: 0.8 }}>{selectedLocation.description}</p>
+                <p className="caption-sm" style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={12} /> {selectedLocation.address || 'Không có địa chỉ'}</p>
+
                 <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-                  <button className="btn-primary" style={{ flex: 1, gap: 8 }}><Navigation size={18} /> Chỉ đường</button>
-                  <button className="btn-secondary" style={{ width: 48, height: 48, padding: 0 }}><Info size={20} /></button>
+                  <button className="btn-primary" style={{ flex: 1, gap: 8 }} onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedLocation.latitude},${selectedLocation.longitude}`, '_blank')}><Navigation size={18} /> Chỉ đường</button>
+                  <button className="btn-secondary" style={{ width: 48, height: 48, padding: 0 }} onClick={() => setShowInfoModal(true)} title="Thông tin chi tiết"><Info size={20} /></button>
                 </div>
 
                 <hr style={{ border: 'none', borderTop: '1px solid var(--hairline)', marginBottom: 24 }} />
-                
+
                 <h3 className="body-strong" style={{ marginBottom: 16 }}>Nhận xét cộng đồng</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                   <div style={{ display: 'flex', gap: 12 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <User size={16} color="var(--mute)" />
+                  {reviews.length > 0 ? reviews.map(rev => (
+                    <div key={rev.id} style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        {rev.user_info?.avatar_url ? <img src={rev.user_info.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={16} color="var(--mute)" />}
                       </div>
                       <div>
-                        <p style={{ fontSize: 13, fontWeight: 700 }}>Tuấn Anh</p>
-                        <p style={{ fontSize: 13, opacity: 0.7 }}>Địa điểm tuyệt vời để ôn thi!</p>
+                        <p style={{ fontSize: 13, fontWeight: 700 }}>{rev.user_info?.full_name || 'Người dùng'}</p>
+                        <div style={{ display: 'flex', color: '#ffc107', marginBottom: 2 }}>
+                          {[...Array(5)].map((_, i) => <Star key={i} size={10} fill={i < rev.rating ? '#ffc107' : 'none'} />)}
+                        </div>
+                        <p style={{ fontSize: 13, opacity: 0.7 }}>{rev.comment}</p>
                       </div>
-                   </div>
-                   <div style={{ position: 'relative', marginTop: 8 }}>
-                     <input type="text" placeholder="Viết nhận xét..." className="input-field" style={{ fontSize: 13, paddingRight: 40 }} />
-                     <Send size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', cursor: 'pointer' }} />
-                   </div>
+                    </div>
+                  )) : <p className="body-sm" style={{ textAlign: 'center', opacity: 0.5 }}>Chưa có nhận xét nào.</p>}
+
+                  <div style={{ position: 'relative', marginTop: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>Đánh giá của bạn:</span>
+                      <div style={{ display: 'flex', gap: 4, cursor: 'pointer' }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            size={18}
+                            fill={star <= newReview.rating ? '#ffc107' : 'none'}
+                            color={star <= newReview.rating ? '#ffc107' : 'var(--mute)'}
+                            onClick={() => setNewReview({ ...newReview, rating: star })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        placeholder="Viết nhận xét..."
+                        className="input-field"
+                        style={{ fontSize: 13, paddingRight: 40 }}
+                        value={newReview.comment}
+                        onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSubmitReview()}
+                      />
+                      <Send
+                        size={16}
+                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', cursor: 'pointer' }}
+                        onClick={handleSubmitReview}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -208,12 +420,29 @@ const Map = () => {
         </div>
       </div>
 
-      <AddLocationModal 
-        isOpen={showAddModal} 
-        onClose={() => setShowAddModal(false)} 
+      <AddLocationModal
+        isOpen={showAddModal}
+        onClose={() => { setShowAddModal(false); setClickedCoords(null); }}
         onAdd={handleAddLocation}
-        locationTypes={locationTypes}
+        categories={categories}
+        initialCoords={clickedCoords}
       />
+
+      <LocationInfoModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        location={selectedLocation}
+      />
+
+      <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Xóa địa điểm" width={400}>
+        <p className="body-md" style={{ marginBottom: 24, lineHeight: 1.5 }}>
+          Bạn có chắc chắn muốn xóa địa điểm <strong>{selectedLocation?.name}</strong> không? Hành động này sẽ xóa vĩnh viễn địa điểm và toàn bộ đánh giá liên quan.
+        </p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button className="btn-secondary" onClick={() => setShowDeleteConfirm(false)}>Hủy bỏ</button>
+          <button className="btn-primary" style={{ background: '#ff4d4f', border: 'none' }} onClick={executeDelete}>Xóa ngay</button>
+        </div>
+      </Modal>
     </div>
   );
 };
