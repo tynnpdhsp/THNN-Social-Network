@@ -90,6 +90,7 @@ const Map = () => {
       }
     };
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch reviews and bookmark status when a location is selected
@@ -111,6 +112,7 @@ const Map = () => {
       setReviews([]);
       setIsBookmarked(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLocation?.id]);
 
   // Keep selected location data in sync with main locations list
@@ -123,6 +125,7 @@ const Map = () => {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations]);
 
   const filteredLocations = locations.filter(loc => {

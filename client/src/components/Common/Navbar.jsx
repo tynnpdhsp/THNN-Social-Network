@@ -26,7 +26,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
           const data = await msgRes.json();
           setHasUnreadMsg(data.has_unread || false);
         }
-      } catch {}
+      } catch (err) { console.error('Error loading notifications/messages count:', err); }
     };
     load();
     const interval = setInterval(load, 30000);

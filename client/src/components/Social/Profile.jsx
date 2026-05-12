@@ -50,7 +50,7 @@ const Profile = ({ targetUserId, onStartChat }) => {
         const data = await res.json();
         setPosts(data.posts || []);
       }
-    } catch {}
+    } catch (err) { console.error('Error loading profile:', err); }
     setPostsLoading(false);
   }, [userId]);
 
@@ -64,7 +64,7 @@ const Profile = ({ targetUserId, onStartChat }) => {
         const data = await res.json();
         setFriendCount(Array.isArray(data) ? data.length : 0);
       }
-    } catch {}
+    } catch (err) { console.error('Error loading posts:', err); }
   }, [userId, isOwnProfile]);
 
   useEffect(() => { loadProfile(); }, [loadProfile]);
@@ -75,7 +75,7 @@ const Profile = ({ targetUserId, onStartChat }) => {
     try {
       await apiFetch(`/social/posts/${postId}/like`, { method: 'POST' });
       loadPosts();
-    } catch {}
+    } catch (err) { console.error('Error loading friend count:', err); }
   };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><div style={{ width: 32, height: 32, border: '3px solid var(--hairline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /></div>;
@@ -149,7 +149,7 @@ const Profile = ({ targetUserId, onStartChat }) => {
       if (res.ok) {
         loadProfile();
       }
-    } catch {}
+    } catch (err) { console.error('Error uploading avatar:', err); }
   };
 
   const visIcon = (v) => {

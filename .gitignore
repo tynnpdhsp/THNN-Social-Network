@@ -58,4 +58,8 @@ server/run_all.bat
 dump.rdb
 run_all.bat
 server/scratch/
-*.rdb
+minio_data/
+minio.exe
+redis_bin/
+client/package-lock.json
+post_merge_error_report.md

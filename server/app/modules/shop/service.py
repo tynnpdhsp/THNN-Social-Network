@@ -15,6 +15,7 @@ from app.modules.shop.schemas import (
     UserInfoEmbed
 )
 import logging
+from app.utils.storage import upload_files
 
 from app.core.exceptions import (
     BadRequestException,
@@ -112,8 +113,6 @@ class ShopService:
         files: list[tuple[bytes, str]]
     ) -> list[str]:
         """Upload multiple item images to MinIO storage"""
-
-        from app.utils.storage import upload_files
 
         try:
             image_urls = await upload_files(
@@ -546,6 +545,8 @@ class ShopService:
         sellerId = None
         if hasattr(order, "seller") and order.seller:
             sellerId = order.seller.id
+        elif hasattr(order, "sellerId"):
+            sellerId = order.sellerId
 
         return OrderResponse(
             id=order.id,

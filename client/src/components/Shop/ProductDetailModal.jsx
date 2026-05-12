@@ -15,9 +15,10 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
     if (isOpen && product?.id) {
       fetchReviews();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, product?.id]);
 
-  const fetchReviews = async () => {
+  async function fetchReviews() {
     try {
       const res = await shopService.getReviews(product.id);
       setReviews(res.items || []);

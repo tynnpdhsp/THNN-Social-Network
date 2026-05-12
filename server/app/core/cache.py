@@ -102,7 +102,7 @@ async def get_newsfeed(user_id: str, skip: int = 0, limit: int = 20) -> List[str
     if not await r.exists(key):
         return []
     results = await r.zrevrange(key, skip, skip + limit - 1)
-    return result
+    return results
 
 # --- Friend Cache ---
 

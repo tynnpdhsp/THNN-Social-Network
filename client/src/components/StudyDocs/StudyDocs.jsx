@@ -31,6 +31,7 @@ const StudyDocs = () => {
 
   useEffect(() => {
     fetchCategories();
+     
   }, []);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ const StudyDocs = () => {
 
   useEffect(() => {
     fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, sortBy, currentPage]);
 
   // Close menu when clicking outside
@@ -48,7 +50,7 @@ const StudyDocs = () => {
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const fetchCategories = async () => {
+  async function fetchCategories() {
     try {
       const data = await documentService.getDocumentCategories();
       setCategories([{ id: 'all', name: 'Tất cả' }, ...data]);
@@ -57,7 +59,7 @@ const StudyDocs = () => {
     }
   };
 
-  const fetchDocuments = async () => {
+  async function fetchDocuments() {
     setLoading(true);
     try {
       const params = {
@@ -104,7 +106,7 @@ const StudyDocs = () => {
 
   const handleShare = (doc, e) => {
     e.stopPropagation();
-    const url = `${window.location.origin}${doc.file_url}`;
+    const url = doc.file_url?.startsWith('http') ? doc.file_url : `${window.location.origin}${doc.file_url}`;
     navigator.clipboard.writeText(url).then(() => {
       toast.success('Đã sao chép liên kết tải tài liệu!');
     }).catch(() => {

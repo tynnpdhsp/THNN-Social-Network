@@ -23,7 +23,7 @@ const Notifications = ({ onViewProfile, onNavigate }) => {
   const markAsRead = async (id) => {
     try {
       await apiFetch('/notifications/read', { method: 'PUT', body: JSON.stringify({ notification_ids: [id] }) });
-    } catch {}
+    } catch (err) { console.error('Error loading notifications:', err); }
   };
 
   const markAllRead = async () => {

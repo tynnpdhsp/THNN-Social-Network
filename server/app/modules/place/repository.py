@@ -1,4 +1,5 @@
 from typing import Optional
+import math
 
 from prisma import Prisma, Json
 from app.modules.place.schema import (
@@ -74,10 +75,16 @@ class PlaceRepository:
             )
     
     async def filter_places(self, filters: dict) -> list[PlaceResponse]:
-        # TODO: Implement place filtering logic
-        # For now, return all places with basic filtering
+        where_clause = {}
+        if "name" in filters:
+            where_clause["name"] = {"contains": filters["name"], "mode": "insensitive"}
+        if "category_id" in filters:
+            where_clause["categoryId"] = filters["category_id"]
+        if "user_id" in filters:
+            where_clause["userId"] = filters["user_id"]
+            
         return await self.db.place.find_many(
-            where=filters,
+            where=where_clause,
             include={
                 "category": True,
                 "user": True,
@@ -339,8 +346,6 @@ class PlaceRepository:
     # region ---------- nearby places ---------------
     async def get_nearby_places(self, lat: float, lng: float, radius: float, category_id: Optional[str] = None):
         """Get nearby places using Haversine formula"""
-        import math
-        
         # Get all places (or filter by category if provided)
         where_condition = {}
         if category_id:

@@ -14,9 +14,10 @@ const DocDetailModal = ({ isOpen, onClose, doc, onUpdateDoc }) => {
     if (isOpen && doc?.id) {
       fetchReviews();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, doc?.id]);
 
-  const fetchReviews = async () => {
+  async function fetchReviews() {
     setLoadingReviews(true);
     try {
       const data = await documentService.getDocumentReviews(doc.id);

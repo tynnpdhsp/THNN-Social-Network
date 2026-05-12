@@ -68,22 +68,39 @@ async def get_optional_user_id(token: Annotated[str | None, Depends(oauth2_schem
 
 
 async def get_current_user_id(
-    token: Annotated[str | None, Depends(oauth2_scheme_optional)] = None,
-    repo: AccountRepository = Depends(get_account_repo),
+    token: Annotated[str, Depends(oauth2_scheme)],
 ) -> str:
-    # --- MOCK AUTH FOR SHOP DEV ---
-    user = await repo.db.user.find_first()
-    if user:
-        return user.id
-    return "6a00b43ac3838b7d968233c2"
+    """Xác thực JWT token và trả về user_id."""
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "access":
+        raise UnauthorizedException(
+            "Mã xác thực không hợp lệ hoặc đã hết hạn", "INVALID_TOKEN"
+        )
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        raise UnauthorizedException("Mã xác thực không hợp lệ", "INVALID_TOKEN")
+    
+    return user_id
 
 
 async def require_active_user(
     user_id: str = Depends(get_current_user_id),
     repo: AccountRepository = Depends(get_account_repo),
 ) -> str:
-    # --- MOCK AUTH FOR SHOP DEV ---
-    # Temporarily skip DB check to prevent relation errors
+    """Yêu cầu user phải đang hoạt động (không bị khóa, đã verify email)."""
+    user = await repo.get_user_by_id(user_id)
+    if user is None or user.deletedAt is not None:
+        raise UnauthorizedException("Người dùng không tồn tại", "USER_NOT_FOUND")
+    
+    if user.isLocked:
+        raise ForbiddenException(
+            user.lockReason or "Tài khoản của bạn đã bị khóa", "ACCOUNT_LOCKED"
+        )
+        
+    if not user.emailVerified:
+        raise ForbiddenException("Vui lòng xác thực email của bạn", "EMAIL_NOT_VERIFIED")
+        
     return user_id
 
 
@@ -139,7 +156,6 @@ async def require_admin(
         return user_id
         
     raise ForbiddenException("Admin privileges required", "ADMIN_REQUIRED")
-    return SocialService(repo)
 
 # --- Shop ---
 def get_shop_repo(db: Prisma = Depends(get_db)) -> ShopRepository:

@@ -30,7 +30,7 @@ const AdminPanel = ({ onViewProfile }) => {
       if (rRes.ok) { const d = await rRes.json(); setReports(d.reports || []); }
       if (uRes.ok) { const d = await uRes.json(); setUsers(d.users || []); }
       if (lRes.ok) { const d = await lRes.json(); setLogs(d.logs || []); }
-    } catch {}
+    } catch (err) { console.error('Error loading admin panel data:', err); }
     setLoading(false);
   }, [reportFilter, userFilter]);
 
