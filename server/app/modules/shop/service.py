@@ -545,6 +545,8 @@ class ShopService:
         sellerId = None
         if hasattr(order, "seller") and order.seller:
             sellerId = order.seller.id
+        elif hasattr(order, "sellerId"):
+            sellerId = order.sellerId
 
         return OrderResponse(
             id=order.id,

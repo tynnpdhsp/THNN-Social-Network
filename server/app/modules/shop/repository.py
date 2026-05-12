@@ -185,34 +185,31 @@ class ShopRepository:
 
     
     # region ---- Orders ----
-    async def get_order_by_id(self, order_id: str) -> Optional[Order]:
+    async def get_order_by_id(self, order_id: str) -> Order:
+        """Get order by ID"""
         return await self.db.order.find_unique(
             where={"id": order_id},
-            include={
-                "item": {
-                    "include": {"category": True, "itemImages": {"take": 1}}
-                },
-                "buyer": True,
-                "seller": True
-            }
+            include={"item": {"include": {"category": True, "itemImages": True}}, "seller": True}
         )
 
     async def get_orders_by_buyer(self, buyer_id: str, skip: int = 0, limit: int = 20) -> list[Order]:
+        """Get orders by buyer ID"""
         return await self.db.order.find_many(
             where={"buyerId": buyer_id},
-            include={"item": {"include": {"category": True}}},
-            order={"createdAt": "desc"},
+            include={"item": {"include": {"category": True, "itemImages": True}}, "seller": True},
             skip=skip,
-            take=limit
+            take=limit,
+            order={"createdAt": "desc"}
         )
 
     async def get_orders_by_seller(self, seller_id: str, skip: int = 0, limit: int = 20) -> list[Order]:
+        """Get orders by seller ID"""
         return await self.db.order.find_many(
             where={"sellerId": seller_id},
-            include={"item": {"include": {"category": True}}},
-            order={"createdAt": "desc"},
+            include={"item": {"include": {"category": True, "itemImages": True}}, "seller": True},
             skip=skip,
-            take=limit
+            take=limit,
+            order={"createdAt": "desc"}
         )
 
     async def count_orders_by_buyer(self, buyer_id: str) -> int:
@@ -233,7 +230,7 @@ class ShopRepository:
                 "amount": data.amount,
                 "status": "pending"
             },
-            include={"item": {"include": {"category": True}}}
+            include={"item": {"include": {"category": True, "itemImages": True}}, "seller": True}
         )
 
     async def update_order(self, order_id: str, data: dict) -> Order:
@@ -437,7 +434,7 @@ class ShopRepository:
         """Get all cart items for a user"""
         return await self.db.cartitem.find_many(
             where={"userId": user_id},
-            include={"item": {"include": {"itemImages": {"take": 1}, "category": True}}},
+            include={"item": {"include": {"itemImages": {"take": 1}, "category": True, "seller": True}}},
             order={"createdAt": "desc"}
         )
 
