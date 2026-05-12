@@ -23,7 +23,7 @@ const Shop = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [priceRange, setPriceRange] = useState(10000000); 
+  const [priceRange, setPriceRange] = useState(10000000); // Max slider value = no filter
   const [sortBy, setSortBy] = useState('popular');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -41,7 +41,7 @@ const Shop = () => {
     fetchCart();
   }, []);
 
-  const fetchCategories = async () => {
+  async function fetchCategories() {
     try {
       const data = await shopService.getCategories();
       setCategories(data || []);
@@ -50,7 +50,7 @@ const Shop = () => {
     }
   };
 
-  const fetchProducts = async () => {
+  async function fetchProducts() {
     try {
       setIsLoading(true);
       const data = await shopService.getItems({ limit: 100 });
@@ -63,7 +63,7 @@ const Shop = () => {
     }
   };
 
-  const fetchCart = async () => {
+  async function fetchCart() {
     try {
       setIsCartLoading(true);
       const data = await shopService.getCart();
@@ -135,7 +135,7 @@ const Shop = () => {
       const price = p.price || 0;
       const matchesCategory = activeCategory === 'all' || p.category_id === activeCategory;
       const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPrice = price <= priceRange;
+      const matchesPrice = priceRange >= 10000000 || price <= priceRange;
       return matchesCategory && matchesSearch && matchesPrice;
     })
     .sort((a, b) => {

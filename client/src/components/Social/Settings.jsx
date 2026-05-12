@@ -25,7 +25,7 @@ const Settings = () => {
       if (n.ok) setNotifSettings(await n.json());
       if (b.ok) setBlockedUsers(await b.json());
       if (o.ok) { const d = await o.json(); setOrders(d.orders || []); }
-    } catch {}
+    } catch (err) { console.error('Error loading settings:', err); }
   }, []);
 
   useEffect(() => { load(); }, [load]);

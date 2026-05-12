@@ -6,6 +6,7 @@ from app.core.exceptions import ConflictException, NotFoundException, ForbiddenE
 from prisma.models import Document # type: ignore
 import os
 import logging
+from app.utils.storage import delete_file
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,6 @@ class DocumentService:
             # If database insert failed, delete uploaded file
             if file_url:
                 try:
-                    from app.utils.storage import delete_file
                     await delete_file(file_url)
                 except Exception:
                     # Ignore deletion errors during rollback
@@ -139,7 +139,6 @@ class DocumentService:
             
             # Delete file from MinIO
             try:
-                from app.utils.storage import delete_file
                 await delete_file(document.fileUrl)
             except Exception as e:
                 # Log error but don't fail the operation

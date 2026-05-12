@@ -451,7 +451,7 @@ class ShopRepository:
             return await self.db.cartitem.update(
                 where={"id": existing.id},
                 data={"quantity": existing.quantity + quantity},
-                include={"item": True}
+                include={"item": {"include": {"category": True, "itemImages": True, "seller": True}}}
             )
         
         return await self.db.cartitem.create(
@@ -460,7 +460,7 @@ class ShopRepository:
                 "itemId": item_id,
                 "quantity": quantity
             },
-            include={"item": True}
+            include={"item": {"include": {"category": True, "itemImages": True, "seller": True}}}
         )
 
     async def update_cart_item(self, user_id: str, item_id: str, quantity: int):
@@ -468,7 +468,7 @@ class ShopRepository:
         return await self.db.cartitem.update(
             where={"userId_itemId": {"userId": user_id, "itemId": item_id}},
             data={"quantity": quantity},
-            include={"item": True}
+            include={"item": {"include": {"category": True, "itemImages": True, "seller": True}}}
         )
 
     async def remove_from_cart(self, user_id: str, item_id: str) -> None:

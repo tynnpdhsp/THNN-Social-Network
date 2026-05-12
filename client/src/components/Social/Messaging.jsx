@@ -125,7 +125,7 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
           conv = await res.json();
           setConversations(prev => [conv, ...prev]);
         }
-      } catch {}
+      } catch (err) { console.error('Error starting chat:', err); }
     }
 
     if (conv) openChat(conv);
@@ -150,7 +150,7 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
           const data = await res.json();
           setAttachments(prev => [...prev, data.image_url]);
         }
-      } catch {}
+      } catch (err) { console.error('Error uploading attachment:', err); }
     }
     setUploading(false);
     e.target.value = '';

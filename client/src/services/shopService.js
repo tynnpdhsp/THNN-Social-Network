@@ -1,5 +1,4 @@
-import { apiFetch, API_BASE } from '../config/api';
-const API_URL = API_BASE;
+import { apiFetch } from '../config/api';
 
 const getErrMsg = (errData, fallback) => {
   if (!errData) return fallback;
@@ -15,7 +14,7 @@ const getErrMsg = (errData, fallback) => {
 export const getItems = async (params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_URL}/shop/items${query ? `?${query}` : ''}`);
+    const response = await apiFetch(`/shop/items${query ? `?${query}` : ''}`);
     if (!response.ok) throw new Error('Failed to fetch items');
     return await response.json();
   } catch (error) {
@@ -27,7 +26,7 @@ export const getItems = async (params = {}) => {
 // Lấy danh mục
 export const getCategories = async () => {
   try {
-    const response = await fetch(`${API_URL}/shop/categories`);
+    const response = await apiFetch(`/shop/categories`);
     if (!response.ok) throw new Error('Failed to fetch categories');
     return await response.json();
   } catch (error) {
@@ -44,11 +43,8 @@ export const uploadItemImages = async (files) => {
       formData.append('files', files[i]);
     }
 
-    const response = await fetch(`${API_URL}/shop/items/upload-images`, {
+    const response = await apiFetch(`/shop/items/upload-images`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: formData,
     });
 
@@ -66,12 +62,8 @@ export const uploadItemImages = async (files) => {
 // Tạo sản phẩm mới
 export const createItem = async (data) => {
   try {
-    const response = await fetch(`${API_URL}/shop/items`, {
+    const response = await apiFetch(`/shop/items`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
@@ -88,12 +80,8 @@ export const createItem = async (data) => {
 // Tạo đơn hàng mới
 export const createOrder = async (data) => {
   try {
-    const response = await fetch(`${API_URL}/shop/orders`, {
+    const response = await apiFetch(`/shop/orders`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
@@ -110,12 +98,8 @@ export const createOrder = async (data) => {
 // Tạo URL thanh toán VNPAY
 export const createVNPayUrl = async (data) => {
   try {
-    const response = await fetch(`${API_URL}/shop/vnpay/create-url`, {
+    const response = await apiFetch(`/shop/vnpay/create-url`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
@@ -134,12 +118,8 @@ export const createVNPayUrl = async (data) => {
 // Cập nhật sản phẩm
 export const updateItem = async (itemId, data) => {
   try {
-    const response = await fetch(`${API_URL}/shop/items/${itemId}`, {
+    const response = await apiFetch(`/shop/items/${itemId}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
@@ -156,11 +136,8 @@ export const updateItem = async (itemId, data) => {
 // Xoá sản phẩm
 export const deleteItem = async (itemId) => {
   try {
-    const response = await fetch(`${API_URL}/shop/items/${itemId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+    const response = await apiFetch(`/shop/items/${itemId}`, {
+      method: 'DELETE'
     });
     if (!response.ok) {
         const errData = await response.json();
@@ -177,7 +154,7 @@ export const deleteItem = async (itemId) => {
 export const getReviews = async (itemId, params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_URL}/shop/items/${itemId}/reviews${query ? `?${query}` : ''}`);
+    const response = await apiFetch(`/shop/items/${itemId}/reviews${query ? `?${query}` : ''}`);
     if (!response.ok) throw new Error('Failed to fetch reviews');
     return await response.json();
   } catch (error) {
@@ -189,12 +166,8 @@ export const getReviews = async (itemId, params = {}) => {
 // Đăng nhận xét
 export const createReview = async (itemId, data) => {
   try {
-    const response = await fetch(`${API_URL}/shop/items/${itemId}/reviews`, {
+    const response = await apiFetch(`/shop/items/${itemId}/reviews`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: JSON.stringify(data),
     });
     if (!response.ok) {
@@ -211,11 +184,7 @@ export const createReview = async (itemId, data) => {
 // Cart API functions
 export const getCart = async () => {
   try {
-    const response = await fetch(`${API_URL}/shop/cart`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await apiFetch(`/shop/cart`);
     if (!response.ok) throw new Error('Failed to fetch cart');
     return await response.json();
   } catch (error) {
@@ -226,12 +195,8 @@ export const getCart = async () => {
 
 export const addToCart = async (itemId, quantity = 1) => {
   try {
-    const response = await fetch(`${API_URL}/shop/cart`, {
+    const response = await apiFetch(`/shop/cart`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: JSON.stringify({ item_id: itemId, quantity }),
     });
     if (!response.ok) throw new Error('Failed to add to cart');
@@ -244,12 +209,8 @@ export const addToCart = async (itemId, quantity = 1) => {
 
 export const updateCartItem = async (itemId, quantity) => {
   try {
-    const response = await fetch(`${API_URL}/shop/cart/${itemId}`, {
+    const response = await apiFetch(`/shop/cart/${itemId}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
       body: JSON.stringify({ quantity }),
     });
     if (!response.ok) throw new Error('Failed to update cart item');
@@ -262,11 +223,8 @@ export const updateCartItem = async (itemId, quantity) => {
 
 export const removeFromCart = async (itemId) => {
   try {
-    const response = await fetch(`${API_URL}/shop/cart/${itemId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+    const response = await apiFetch(`/shop/cart/${itemId}`, {
+      method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to remove from cart');
     return await response.json();
@@ -278,11 +236,8 @@ export const removeFromCart = async (itemId) => {
 
 export const clearCart = async () => {
   try {
-    const response = await fetch(`${API_URL}/shop/cart`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+    const response = await apiFetch(`/shop/cart`, {
+      method: 'DELETE'
     });
     if (!response.ok) throw new Error('Failed to clear cart');
     return await response.json();

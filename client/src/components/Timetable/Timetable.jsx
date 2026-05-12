@@ -60,6 +60,7 @@ const Timetable = () => {
     fetchInitialData();
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getTimeOffset = (timeStr) => {
@@ -77,7 +78,7 @@ const Timetable = () => {
     }
   }, [isLoading]);
 
-  const fetchInitialData = async () => {
+  async function fetchInitialData() {
     try {
       setIsLoading(true);
       const [schedulesData, notesData] = await Promise.all([
@@ -104,7 +105,7 @@ const Timetable = () => {
     }
   };
 
-  const fetchEntries = async (scheduleId) => {
+  async function fetchEntries(scheduleId) {
     try {
       const entries = await scheduleService.getScheduleEntries(scheduleId);
       setCurrentEntries(entries);

@@ -38,6 +38,43 @@ const InputField = ({ id, icon: Icon, label, type = 'text', placeholder, value, 
   </div>
 );
 
+const PasswordToggle = ({ showPassword, setShowPassword }) => (
+  <button type="button" onClick={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+  </button>
+);
+
+const SubmitBtn = ({ text, loading }) => (
+  <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
+    {loading ? 'Đang xử lý...' : text}
+    {!loading && <ArrowRight size={18} />}
+  </button>
+);
+
+const OtpInputGrid = ({ otpDigits, handleOtpChange, handleOtpKeyDown, handleOtpPaste, otpRefs }) => (
+  <div style={styles.otpRow}>
+    {otpDigits.map((d, i) => (
+      <input
+        key={i}
+        ref={(el) => (otpRefs.current[i] = el)}
+        type="text"
+        inputMode="numeric"
+        maxLength={1}
+        value={d}
+        onChange={(e) => handleOtpChange(i, e.target.value)}
+        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+        onPaste={i === 0 ? handleOtpPaste : undefined}
+        style={{
+          ...styles.otpInput,
+          borderColor: d ? 'var(--primary)' : 'var(--border)',
+          boxShadow: d ? '0 0 0 2px rgba(230,0,35,0.1)' : 'none',
+        }}
+        className="input-field"
+      />
+    ))}
+  </div>
+);
+
 const AuthPage = () => {
   const {
     login, register, verifyOtp, resendVerificationOtp,
@@ -255,44 +292,7 @@ const AuthPage = () => {
 
 
 
-  const PasswordToggle = () => (
-    <button type="button" onClick={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-    </button>
-  );
-
-  const SubmitBtn = ({ text }) => (
-    <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-      {loading ? 'Đang xử lý...' : text}
-      {!loading && <ArrowRight size={18} />}
-    </button>
-  );
-
-  // ─── OTP Input Grid ───────────────────────────────────────────────────────
-
-  const OtpInputGrid = () => (
-    <div style={styles.otpRow}>
-      {otpDigits.map((d, i) => (
-        <input
-          key={i}
-          ref={(el) => (otpRefs.current[i] = el)}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={d}
-          onChange={(e) => handleOtpChange(i, e.target.value)}
-          onKeyDown={(e) => handleOtpKeyDown(i, e)}
-          onPaste={i === 0 ? handleOtpPaste : undefined}
-          style={{
-            ...styles.otpInput,
-            borderColor: d ? 'var(--primary)' : 'var(--border)',
-            boxShadow: d ? '0 0 0 2px rgba(230,0,35,0.1)' : 'none',
-          }}
-          className="input-field"
-        />
-      ))}
-    </div>
-  );
+  // --- Moved outside to prevent re-renders ---
 
   // ─── Determine header text ────────────────────────────────────────────────
 
@@ -420,7 +420,7 @@ const AuthPage = () => {
             <InputField id="login-password" icon={Lock} label="Mật khẩu"
               type={showPassword ? 'text' : 'password'} placeholder="••••••••"
               value={password} onChange={setPassword}>
-              <PasswordToggle />
+              <PasswordToggle showPassword={showPassword} setShowPassword={setShowPassword} />
             </InputField>
             <button
               type="button"
@@ -429,7 +429,7 @@ const AuthPage = () => {
             >
               Quên mật khẩu?
             </button>
-            <SubmitBtn text="Đăng nhập" />
+            <SubmitBtn text="Đăng nhập" loading={loading} />
           </form>
         )}
 
@@ -445,20 +445,26 @@ const AuthPage = () => {
             <InputField id="reg-password" icon={Lock} label="Mật khẩu"
               type={showPassword ? 'text' : 'password'} placeholder="Tối thiểu 8 ký tự"
               value={password} onChange={setPassword} minLength={8}>
-              <PasswordToggle />
+              <PasswordToggle showPassword={showPassword} setShowPassword={setShowPassword} />
             </InputField>
             <InputField id="reg-confirm" icon={Lock} label="Xác nhận mật khẩu"
               type={showPassword ? 'text' : 'password'} placeholder="Nhập lại mật khẩu"
               value={confirmPassword} onChange={setConfirmPassword} minLength={8} />
-            <SubmitBtn text="Tạo tài khoản" />
+            <SubmitBtn text="Tạo tài khoản" loading={loading} />
           </form>
         )}
 
         {/* ═══ VERIFY OTP ═══ */}
         {mode === MODE.VERIFY_OTP && (
           <form onSubmit={handleVerifyOtp} style={styles.form} key="otp">
-            <OtpInputGrid />
-            <SubmitBtn text="Xác thực" />
+            <OtpInputGrid 
+              otpDigits={otpDigits} 
+              handleOtpChange={handleOtpChange} 
+              handleOtpKeyDown={handleOtpKeyDown} 
+              handleOtpPaste={handleOtpPaste} 
+              otpRefs={otpRefs} 
+            />
+            <SubmitBtn text="Xác thực" loading={loading} />
             <div style={styles.resendRow}>
               <span style={{ color: 'var(--mute)', fontSize: 13 }}>Không nhận được mã?</span>
               <button
@@ -481,7 +487,7 @@ const AuthPage = () => {
           <form onSubmit={handleForgotPassword} style={styles.form} key="forgot">
             <InputField id="forgot-email" icon={Mail} label="Email" type="email"
               placeholder="student@thnn.edu.vn" value={email} onChange={setEmail} />
-            <SubmitBtn text="Gửi mã OTP" />
+            <SubmitBtn text="Gửi mã OTP" loading={loading} />
           </form>
         )}
 
@@ -491,9 +497,9 @@ const AuthPage = () => {
             <InputField id="reset-password" icon={Lock} label="Mật khẩu mới"
               type={showPassword ? 'text' : 'password'} placeholder="Tối thiểu 8 ký tự"
               value={newPassword} onChange={setNewPassword} minLength={8}>
-              <PasswordToggle />
+              <PasswordToggle showPassword={showPassword} setShowPassword={setShowPassword} />
             </InputField>
-            <SubmitBtn text="Đặt lại mật khẩu" />
+            <SubmitBtn text="Đặt lại mật khẩu" loading={loading} />
           </form>
         )}
 
