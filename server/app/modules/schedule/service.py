@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from app.modules.notification.service import NotificationService
 from app.modules.schedule.repository import ScheduleRepository
 from app.modules.schedule.schema import (
     ScheduleCreate, ScheduleUpdate, ScheduleResponse, ScheduleListQuery, ScheduleListResponse,
@@ -5,12 +8,15 @@ from app.modules.schedule.schema import (
     CourseSectionCreate, CourseSectionResponse, CourseSectionUpdate, CourseSectionListResponse,
     StudyNoteCreate, StudyNoteUpdate, StudyNoteResponse, StudyNoteListQuery, StudyNoteListResponse
 )
-from app.core.exceptions import ConflictException, NotFoundException, ForbiddenException
-from prisma.models import Schedule, ScheduleEntry, CourseSection, StudyNote, User # type: ignore
+from app.modules.schedule.tasks import send_note_reminder
+from app.core.exceptions import NotFoundException, ForbiddenException
+from prisma.models import Schedule, ScheduleEntry, CourseSection, StudyNote # type: ignore
 
 class ScheduleService:
-    def __init__(self, repo: ScheduleRepository):
+    def __init__(self, repo: ScheduleRepository, notification_svc: NotificationService = None, scheduler: AsyncIOScheduler = None):
         self.repo = repo
+        self.notification_svc = notification_svc
+        self.scheduler = scheduler
 
     # region---- Schedule ----
     async def create_schedule(self, data: ScheduleCreate, user_id: str) -> ScheduleResponse:
@@ -345,6 +351,11 @@ class ScheduleService:
         }
         
         note = await self.repo.create_study_note(note_data)
+        
+        # Schedule reminder
+        if note.remindBeforeMinutes > 0:
+            await self._schedule_note_reminder(note.id, user_id, note.title, note.dueAt, note.remindBeforeMinutes)
+            
         return self._map_study_note_to_response(note)
     
     async def get_study_notes(self, query: StudyNoteListQuery, user_id: str) -> StudyNoteListResponse:
@@ -411,6 +422,17 @@ class ScheduleService:
             raise ValueError("No fields to update")
         
         updated_note = await self.repo.update_study_note(note_id, update_data)
+        
+        # Reschedule reminder if dueAt or remindBeforeMinutes changed
+        if "dueAt" in update_data or "remindBeforeMinutes" in update_data:
+            await self._schedule_note_reminder(
+                updated_note.id, 
+                user_id, 
+                updated_note.title, 
+                updated_note.dueAt, 
+                updated_note.remindBeforeMinutes
+            )
+            
         return self._map_study_note_to_response(updated_note)
     
     async def delete_study_note(self, note_id: str, user_id: str) -> StudyNoteResponse:
@@ -434,6 +456,67 @@ class ScheduleService:
         """Get overdue study notes"""
         notes = await self.repo.get_overdue_notes(user_id)
         return [self._map_study_note_to_response(note) for note in notes]
+
+    async def sync_reminders(self):
+        """Reschedule all pending reminders from database"""
+        if not self.scheduler:
+            return
+        
+        from datetime import timezone
+        
+        now = datetime.now(timezone.utc)
+        
+        notes = await self.repo.db.studynote.find_many(
+            where={
+                "dueAt": {"gt": now},
+                "isReminded": False,
+                "deletedAt": None
+            }
+        )
+        
+        for note in notes:
+            if note.remindBeforeMinutes > 0:
+                await self._schedule_note_reminder(note.id, note.userId, note.title, note.dueAt, note.remindBeforeMinutes)
+
+    async def _schedule_note_reminder(self, note_id: str, user_id: str, title: str, due_at: datetime, remind_before: int):
+        """Schedule a background job for study note reminder"""
+        if not self.scheduler or not due_at or remind_before is None:
+            return
+
+        # Ensure due_at is timezone-aware if it's not
+        if due_at.tzinfo is None:
+            from datetime import timezone
+            due_at = due_at.replace(tzinfo=timezone.utc)
+
+        remind_time = due_at - timedelta(minutes=remind_before)
+        
+        # Job ID should be unique per note
+        job_id = f"note_reminder_{note_id}"
+        
+        # Remove existing job if any
+        if self.scheduler.get_job(job_id):
+            self.scheduler.remove_job(job_id)
+
+        now = datetime.now(due_at.tzinfo)
+        
+        # Trường hợp 1: Thời gian nhắc nhở ở tương lai -> Lập lịch
+        if remind_time > now:
+            self.scheduler.add_job(
+                send_note_reminder,
+                'date',
+                run_date=remind_time,
+                args=[user_id, note_id, title, self.notification_svc, self.repo],
+                id=job_id
+            )
+        # Trường hợp 2: Đã quá giờ nhắc nhưng chưa đến hạn Deadline -> Gửi ngay lập tức
+        elif now < due_at:
+            self.scheduler.add_job(
+                send_note_reminder,
+                'date',
+                run_date=now, # Chạy ngay bây giờ
+                args=[user_id, note_id, title, self.notification_svc, self.repo],
+                id=job_id
+            )
     # endregion
 
     # region---- Helper Methods ----

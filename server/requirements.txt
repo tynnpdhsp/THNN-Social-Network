@@ -19,6 +19,7 @@ email-validator==2.2.0
 
 # Redis
 redis[hiredis]==5.2.1
+apscheduler==3.10.4
 
 # Email
 aiosmtplib==3.0.2
