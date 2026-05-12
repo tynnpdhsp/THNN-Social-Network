@@ -156,7 +156,6 @@ async def require_admin(
         return user_id
         
     raise ForbiddenException("Admin privileges required", "ADMIN_REQUIRED")
-    return SocialService(repo)
 
 # --- Shop ---
 def get_shop_repo(db: Prisma = Depends(get_db)) -> ShopRepository:
