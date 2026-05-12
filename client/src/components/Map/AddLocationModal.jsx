@@ -58,11 +58,10 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories, initialCoords })
   }, [categories, newLoc.category_id]);
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setSelectedFiles(prev => [...prev, ...files]);
-    
-    const newPreviews = files.map(file => URL.createObjectURL(file));
-    setPreviews(prev => [...prev, ...newPreviews]);
+    const file = e.target.files[0];
+    if (!file) return;
+    setSelectedFiles([file]);
+    setPreviews([URL.createObjectURL(file)]);
   };
 
   const removeFile = (index) => {
@@ -209,20 +208,21 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories, initialCoords })
                 </button>
               </div>
             ))}
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              style={{ width: '100%', paddingTop: '100%', border: '2px dashed var(--hairline)', borderRadius: 'var(--rounded-sm)', position: 'relative', cursor: 'pointer', background: 'var(--surface-soft)' }}
-            >
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Camera size={20} color="var(--mute)" />
+            {previews.length === 0 && (
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                style={{ width: '100%', paddingTop: '100%', border: '2px dashed var(--hairline)', borderRadius: 'var(--rounded-sm)', position: 'relative', cursor: 'pointer', background: 'var(--surface-soft)' }}
+              >
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Camera size={20} color="var(--mute)" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <input 
             type="file" 
             ref={fileInputRef} 
             style={{ display: 'none' }} 
-            multiple 
             accept="image/*" 
             onChange={handleFileChange} 
           />
