@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import List, Optional
 
 from prisma import Json
@@ -88,8 +89,28 @@ class NotificationService:
         })
 
         await self._invalidate_unread_cache(req.user_id)
+        
+        # Send real-time push notification via WebSocket
+        await self._invalidate_unread_cache(req.user_id)
         logger.info("Notification created: type=%s user=%s", req.type, req.user_id)
-        return self._map_to_response(notif)
+        
+        res = self._map_to_response(notif)
+
+        # Publish to Redis for real-time delivery via WebSocket
+        try:
+            redis = await get_redis()
+            payload = {
+                "type": "new_notification",
+                "data": res.model_dump(mode='json')
+            }
+            await redis.publish("chat_updates", json.dumps({
+                "target_user_ids": [req.user_id],
+                "payload": payload
+            }))
+        except Exception as e:
+            logger.error("Failed to publish real-time notification: %s", e)
+
+        return res
 
     # ─── Convenience helpers cho Social module ─────────────────────────────
 
@@ -178,6 +199,31 @@ class NotificationService:
     async def _invalidate_unread_cache(self, user_id: str) -> None:
         r = await get_redis()
         await r.delete(_UNREAD_KEY.format(user_id=user_id))
+
+    async def _send_realtime_notification(self, user_id: str, notif) -> None:
+        """Send real-time notification via WebSocket"""
+        try:
+            # Import here to avoid circular imports
+            from app.modules.messaging.ws_manager import manager
+            
+            notification_data = {
+                "type": "notification",
+                "data": {
+                    "id": notif.id,
+                    "user_id": notif.userId,
+                    "notification_type": notif.type,
+                    "title": notif.title,
+                    "content": notif.content,
+                    "metadata": notif.metadata,
+                    "is_read": notif.isRead,
+                    "created_at": notif.createdAt.isoformat() if notif.createdAt else None
+                }
+            }
+            
+            await manager.broadcast_to_user(user_id, notification_data)
+            logger.info(f"Real-time notification sent to user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to send real-time notification: {e}")
 
     def _map_to_response(self, notif) -> NotificationResponse:
         metadata = None
