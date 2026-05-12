@@ -21,8 +21,8 @@ const initialSchedules = {
     { id: 3, day: 1, start: '09:00', end: '12:00', title: 'Tiếng Anh chuyên ngành', room: 'P.105', instructor: 'Ms. Alice' },
   ],
   planAI: [
-    { id: 4, day: 0, start: '08:00', end: '10:00', title: '✨ AI Optimized Class', room: 'P.501', instructor: 'AI System' },
-    { id: 5, day: 1, start: '08:00', end: '10:00', title: '✨ AI Optimized Class', room: 'P.501', instructor: 'AI System' },
+    { id: 4, day: 0, start: '08:00', end: '10:00', title: 'AI Optimized Class', room: 'P.501', instructor: 'AI System' },
+    { id: 5, day: 1, start: '08:00', end: '10:00', title: 'AI Optimized Class', room: 'P.501', instructor: 'AI System' },
   ]
 };
 
@@ -75,7 +75,7 @@ const Timetable = () => {
                     cursor: 'pointer', fontSize: 13
                   }}
                 >
-                  {plan === 'planAI' ? '✨ AI Plan' : `Phương án ${i + 1}`}
+                  {plan === 'planAI' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Sparkles size={14} color="var(--primary)" /> AI Plan</span> : `Phương án ${i + 1}`}
                 </button>
               ))}
             </div>

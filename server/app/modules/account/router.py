@@ -123,7 +123,25 @@ async def get_my_profile(
     user_id: str = Depends(require_active_user),
     svc: AccountService = Depends(get_account_service),
 ):
-    return await svc.get_profile(user_id)
+    return await svc.get_profile(user_id, user_id)
+
+@router.get("/search", response_model=list[ProfileResponse])
+async def search_users(
+    query: str = Query(...),
+    limit: int = Query(10, ge=1, le=50),
+    user_id: Optional[str] = Depends(get_current_user_id),
+    svc: AccountService = Depends(get_account_service),
+):
+    return await svc.search_users(query, user_id, limit)
+
+
+@router.get("/{target_user_id}", response_model=ProfileResponse)
+async def get_user_profile(
+    target_user_id: str,
+    user_id: Optional[str] = Depends(get_current_user_id),
+    svc: AccountService = Depends(get_account_service),
+):
+    return await svc.get_profile(target_user_id, user_id)
 
 
 @router.put("/me", response_model=ProfileResponse)
@@ -239,15 +257,3 @@ async def get_order_history(
     svc: AccountService = Depends(get_account_service),
 ):
     return await svc.get_order_history(user_id, skip, limit)
-
-
-@router.get("/search", response_model=list[ProfileResponse])
-async def search_users(
-    query: str = Query(...),
-    limit: int = Query(10, ge=1, le=50),
-    svc: AccountService = Depends(get_account_service),
-):
-    print(f"DEBUG: Searching for '{query}'")
-    users = await svc.search_users(query, limit)
-    print(f"DEBUG: Found {len(users)} users")
-    return users

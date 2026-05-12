@@ -102,3 +102,25 @@ async def get_newsfeed(user_id: str, skip: int = 0, limit: int = 20) -> List[str
         return []
     results = await r.zrevrange(key, skip, skip + limit - 1)
     return results
+
+# --- Friend Cache ---
+
+async def get_user_friend_ids_cache(user_id: str) -> Optional[List[str]]:
+    r = await get_redis()
+    key = f"social:friends:{user_id}"
+    if not await r.exists(key):
+        return None
+    ids = await r.smembers(key)
+    return list(ids)
+
+async def set_user_friend_ids_cache(user_id: str, friend_ids: List[str]):
+    r = await get_redis()
+    key = f"social:friends:{user_id}"
+    await r.delete(key)
+    if friend_ids:
+        await r.sadd(key, *friend_ids)
+        await r.expire(key, 1800)
+
+async def invalidate_user_friend_cache(user_id: str):
+    r = await get_redis()
+    await r.delete(f"social:friends:{user_id}")

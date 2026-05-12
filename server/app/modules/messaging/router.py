@@ -64,6 +64,13 @@ async def mark_as_read(
 ):
     return await svc.mark_conversation_as_read(user_id, conv_id)
 
+@router.get("/has-unread")
+async def has_unread_messages(
+    user_id: str = Depends(require_active_user),
+    svc: MessagingService = Depends(get_messaging_service)
+):
+    return await svc.has_unread_messages(user_id)
+
 # --- WebSocket ---
 
 @router.websocket("/ws")

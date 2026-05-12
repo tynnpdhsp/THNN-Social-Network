@@ -71,6 +71,7 @@ class ProfileResponse(BaseModel):
     role: str
     email_verified: bool
     created_at: datetime
+    friend_status: Optional[str] = None # 'pending' | 'accepted' | 'rejected' | 'none'
 
     model_config = {"from_attributes": True}
 
