@@ -133,6 +133,14 @@ class OrderResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class PurchaseRedis(BaseModel):
+    id: str
+    seller_id: str
+    category_id: str
+    title: str
+    description: str
+    price: float
+
 class OrderListResponse(BaseModel):
     orders: List[OrderResponse]
     total: int

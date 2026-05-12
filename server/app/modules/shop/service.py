@@ -206,11 +206,6 @@ class ShopService:
         item = await self.repo.get_item_by_id(item_id)
         if not item:
             raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
-        
-        # Check if user purchased the item (Bypassed for dev)
-        # has_purchased = await self.repo.check_user_purchased_item(user_id, item_id)
-        # if not has_purchased:
-        #     raise ForbiddenException("You must purchase this item before reviewing", "MUST_PURCHASE_FIRST")
 
         
         user = await self.repo.db.user.find_unique(where={"id": user_id})
