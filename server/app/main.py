@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prisma import Prisma 
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from app.core.config import get_settings
 from app.core.redis import close_redis
 from app.modules.account.router import router as account_router
@@ -31,7 +33,27 @@ async def lifespan(app: FastAPI):
     # Start Redis Pub/Sub for messaging
     app.state.pubsub_task = asyncio.create_task(manager.start_pubsub())
     
+    # Start Scheduler
+    scheduler = AsyncIOScheduler()
+    app.state.scheduler = scheduler
+    scheduler.start()
+    
+    # Sync reminders
+    from app.modules.schedule.service import ScheduleService
+    from app.modules.schedule.repository import ScheduleRepository
+    from app.modules.notification.service import NotificationService
+    from app.modules.notification.repository import NotificationRepository
+    
+    notif_repo = NotificationRepository(db)
+    notif_svc = NotificationService(notif_repo)
+    schedule_repo = ScheduleRepository(db)
+    schedule_svc = ScheduleService(schedule_repo, notif_svc, scheduler)
+    await schedule_svc.sync_reminders()
+    
     yield
+    
+    # Shutdown Scheduler
+    scheduler.shutdown()
     
     if app.state.pubsub_task:
         app.state.pubsub_task.cancel()
@@ -46,6 +68,7 @@ app = FastAPI(
     version=settings.APP_VERSION,
     lifespan=lifespan,
 )
+
 
 app.add_middleware(
     CORSMiddleware,

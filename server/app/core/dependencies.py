@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends # type: ignore
+from fastapi import Depends, Request # type: ignore
 from fastapi.security import OAuth2PasswordBearer # type: ignore
 
 from prisma import Prisma
@@ -177,8 +177,13 @@ def get_document_service(repo: DocumentRepository=Depends(get_document_repo)) ->
 def get_schedule_repo(db: Prisma=Depends(get_db)) -> ScheduleRepository:
     return ScheduleRepository(db)
 
-def get_schedule_service(repo: ScheduleRepository=Depends(get_schedule_repo)) -> ScheduleService:
-    return ScheduleService(repo)
+def get_schedule_service(
+    request: Request,
+    repo: ScheduleRepository=Depends(get_schedule_repo),
+    notification_svc: NotificationService = Depends(get_notification_service)
+) -> ScheduleService:
+    scheduler = request.app.state.scheduler
+    return ScheduleService(repo, notification_svc, scheduler)
 
 # --- place ----
 def get_place_repo(db: Prisma=Depends(get_db)) -> PlaceRepository:
