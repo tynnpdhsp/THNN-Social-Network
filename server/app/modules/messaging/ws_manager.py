@@ -39,19 +39,24 @@ class ConnectionManager:
 
     async def start_pubsub(self):
         """
-        Listen to Redis for cross-instance communication.
+        Listen to Redis for cross-instance communication with retry logic.
         """
-        redis = await get_redis()
-        pubsub = redis.pubsub()
-        await pubsub.subscribe("chat_updates")
-        
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                data = json.loads(message["data"])
-                target_user_ids = data.get("target_user_ids", [])
-                payload = data.get("payload")
+        while True:
+            try:
+                redis = await get_redis()
+                pubsub = redis.pubsub()
+                await pubsub.subscribe("chat_updates")
                 
-                for uid in target_user_ids:
-                    await self.broadcast_to_user(uid, payload)
+                async for message in pubsub.listen():
+                    if message["type"] == "message":
+                        data = json.loads(message["data"])
+                        target_user_ids = data.get("target_user_ids", [])
+                        payload = data.get("payload")
+                        
+                        for uid in target_user_ids:
+                            await self.broadcast_to_user(uid, payload)
+            except Exception as e:
+                print(f"DEBUG: Redis Pub/Sub error: {e}. Retrying in 5s...")
+                await asyncio.sleep(5)
 
 manager = ConnectionManager()

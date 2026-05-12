@@ -42,6 +42,8 @@ class SocialService:
     async def get_posts_feed(self, user_id: str | None, skip: int = 0, limit: int = 20) -> PaginatedFeedResponse:
         friend_ids = None
         blocked_ids = None
+        privacy_hidden_ids = []  # Users whose privacy restricts post visibility
+        
         if user_id:
             friend_ids = await self.repo.get_friend_ids(user_id)
             # Fetch users who blocked viewer or viewer blocked
@@ -54,6 +56,23 @@ class SocialService:
                 }
             )
             blocked_ids = list(set([b.blockedId if b.blockerId == user_id else b.blockerId for b in blocks]))
+            
+            # Kiểm tra quyền riêng tư: loại bỏ bài viết từ người đặt whoCanSeePosts khác "everyone"
+            restricted_settings = await self.repo.db.privacysetting.find_many(
+                where={"whoCanSeePosts": {"not": "everyone"}}
+            )
+            for ps in restricted_settings:
+                if ps.userId == user_id:
+                    continue  # Luôn hiển thị bài của chính mình
+                if ps.whoCanSeePosts == "only_me":
+                    privacy_hidden_ids.append(ps.userId)
+                elif ps.whoCanSeePosts == "friends":
+                    if not friend_ids or ps.userId not in friend_ids:
+                        privacy_hidden_ids.append(ps.userId)
+            
+            # Gộp vào blocked_ids để lọc chung
+            if privacy_hidden_ids:
+                blocked_ids = list(set((blocked_ids or []) + privacy_hidden_ids))
         
         posts = await self.repo.get_posts_feed(
             skip, limit, post_type="feed",
@@ -65,6 +84,37 @@ class SocialService:
             friend_ids=friend_ids, viewer_id=user_id,
             blocked_ids=blocked_ids
         )
+        items = [await self._map_post_to_response(p) for p in posts]
+        return PaginatedFeedResponse(posts=items, total=total, skip=skip, limit=limit)
+
+    async def get_user_posts(self, target_user_id: str, viewer_id: str | None, skip: int = 0, limit: int = 20) -> PaginatedFeedResponse:
+        """Lấy bài viết của một user cụ thể, có kiểm tra quyền xem."""
+        is_own = viewer_id == target_user_id
+        
+        # Xác định các visibility mà viewer được phép xem
+        allowed_visibility = ["public"]
+        if is_own:
+            allowed_visibility = ["public", "friends", "private"]
+        elif viewer_id:
+            friend_ids = await self.repo.get_friend_ids(target_user_id)
+            if viewer_id in friend_ids:
+                allowed_visibility = ["public", "friends"]
+        
+        where = {
+            "userId": target_user_id,
+            "postType": "feed",
+            "visibility": {"in": allowed_visibility},
+            "NOT": {"isHidden": True},
+        }
+        
+        posts = await self.repo.db.post.find_many(
+            where=where,
+            include={"postImages": True, "user": True},
+            order={"createdAt": "desc"},
+            skip=skip,
+            take=limit,
+        )
+        total = await self.repo.db.post.count(where=where)
         items = [await self._map_post_to_response(p) for p in posts]
         return PaginatedFeedResponse(posts=items, total=total, skip=skip, limit=limit)
 
@@ -115,8 +165,14 @@ class SocialService:
             await self.repo.create_like(post_id, "post", user_id)
             # Bắn thông báo cho chủ bài viết (không tự thông báo cho chính mình)
             if self.notification_svc and post.userId != user_id:
-                actor_name = await self._get_user_name(user_id)
-                await self.notification_svc.notify_like(actor_name, post.userId, post_id)
+                # Kiểm tra cài đặt thông báo của người nhận
+                from app.modules.account.repository import AccountRepository
+                from app.core.dependencies import db as prisma_db
+                acc_repo = AccountRepository(prisma_db)
+                ns = await acc_repo.get_notification_settings(post.userId)
+                if not ns or ns.notifyLike:
+                    actor_name = await self._get_user_name(user_id)
+                    await self.notification_svc.notify_like(actor_name, post.userId, post_id)
             return {"liked": True}
 
     # --- Comments ---
@@ -155,7 +211,10 @@ class SocialService:
             # Thông báo cho chủ comment gốc
             parent_user_id = updated_parent.userInfo.get("id", "") if isinstance(updated_parent.userInfo, dict) else ""
             if self.notification_svc and parent_user_id and parent_user_id != user_id:
-                await self.notification_svc.notify_reply(user.fullName, parent_user_id, post_id)
+                # Kiểm tra cài đặt thông báo
+                ns = await user_repo.db.notificationsetting.find_unique(where={"userId": parent_user_id})
+                if not ns or ns.notifyReply:
+                    await self.notification_svc.notify_reply(user.fullName, parent_user_id, post_id)
 
             return self._map_comment_to_response(updated_parent)
         else:
@@ -165,7 +224,10 @@ class SocialService:
             # Thông báo cho chủ bài viết
             post = await self.repo.get_post_by_id(post_id, include_images=False)
             if self.notification_svc and post and post.userId != user_id:
-                await self.notification_svc.notify_comment(user.fullName, post.userId, post_id)
+                # Kiểm tra cài đặt thông báo
+                ns = await prisma_db.notificationsetting.find_unique(where={"userId": post.userId})
+                if not ns or ns.notifyComment:
+                    await self.notification_svc.notify_comment(user.fullName, post.userId, post_id)
 
             return self._map_comment_to_response(comment)
 
@@ -235,6 +297,9 @@ class SocialService:
     async def accept_friend_request(self, user_id: str, requester_id: str) -> dict:
         updated = await self.repo.accept_friend_request(requester_id, user_id)
         if updated:
+            from app.core.cache import invalidate_user_friend_cache
+            await invalidate_user_friend_cache(user_id)
+            await invalidate_user_friend_cache(requester_id)
             if self.notification_svc:
                 actor_name = await self._get_user_name(user_id)
                 await self.notification_svc.notify_system(
@@ -255,6 +320,9 @@ class SocialService:
 
     async def unfriend(self, user_id: str, other_user_id: str) -> dict:
         ok = await self.repo.remove_friendship(user_id, other_user_id)
+        from app.core.cache import invalidate_user_friend_cache
+        await invalidate_user_friend_cache(user_id)
+        await invalidate_user_friend_cache(other_user_id)
         return {"status": "đã hủy kết bạn" if ok else "không tìm thấy"}
 
     async def list_friends(self, user_id: str) -> list:
@@ -287,6 +355,9 @@ class SocialService:
         
         # Auto-unfriend to ensure privacy consistency
         await self.repo.remove_friendship(user_id, target_user_id)
+        from app.core.cache import invalidate_user_friend_cache
+        await invalidate_user_friend_cache(user_id)
+        await invalidate_user_friend_cache(target_user_id)
         return {"status": "đã chặn", "blocked": target_user_id}
 
     async def list_blocked(self, user_id: str) -> list:

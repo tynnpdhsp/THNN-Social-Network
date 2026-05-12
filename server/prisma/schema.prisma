@@ -672,6 +672,7 @@ model Conversation {
   name        String?
   members     Json               @default("[]") // ConversationMember[]
   lastMessage Json?              @map("last_message") // LastMessageEmbed?
+  participantIds String[]        @map("participant_ids")
   updatedAt   DateTime             @updatedAt @map("updated_at")
 
   // Reverse relations

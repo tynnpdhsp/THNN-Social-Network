@@ -7,6 +7,25 @@ import * as scheduleService from '../../services/scheduleService';
 const timeSlots = Array.from({ length: 16 }, (_, i) => `Tiết ${i + 1}`);
 const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 
+const initialDeadlines = [
+  { id: 1, title: 'Báo cáo Kinh tế chính trị', subject: 'Kinh tế học', time: '2026-05-10T23:59', description: 'Nộp file PDF qua LMS', reminder: '60' },
+  { id: 2, title: 'Kiểm tra Giữa kỳ Toán rời rạc', subject: 'Toán học', time: '2026-05-15T09:00', description: 'Phòng 402 nhà C', reminder: '1440' },
+];
+
+const initialSchedules = {
+  plan1: [
+    { id: 1, day: 0, start: '08:00', end: '11:00', title: 'Lập trình Python', room: 'Lab 201', instructor: 'Thầy Bình' },
+    { id: 2, day: 2, start: '13:00', end: '16:00', title: 'Cấu trúc dữ liệu', room: 'P.302', instructor: 'Cô Mai' },
+  ],
+  plan2: [
+    { id: 3, day: 1, start: '09:00', end: '12:00', title: 'Tiếng Anh chuyên ngành', room: 'P.105', instructor: 'Ms. Alice' },
+  ],
+  planAI: [
+    { id: 4, day: 0, start: '08:00', end: '10:00', title: 'AI Optimized Class', room: 'P.501', instructor: 'AI System' },
+    { id: 5, day: 1, start: '08:00', end: '10:00', title: 'AI Optimized Class', room: 'P.501', instructor: 'AI System' },
+  ]
+};
+
 const Timetable = () => {
   const [activeScheduleId, setActiveScheduleId] = useState(null);
   const [schedules, setSchedules] = useState([]);
@@ -391,6 +410,7 @@ const Timetable = () => {
                   onClick={() => setShowEntryModal(true)}
                 >
                   <Plus size={18} /> Tiết học
+                  {plan === 'planAI' ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Sparkles size={14} color="var(--primary)" /> AI Plan</span> : `Phương án ${i + 1}`}
                 </button>
 
                 <button

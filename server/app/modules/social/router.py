@@ -41,6 +41,17 @@ async def get_post_details(
 
 
 # --- Friends ---
+@router.get("/users/{target_user_id}/posts", response_model=PaginatedFeedResponse)
+async def get_user_posts(
+    target_user_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    user_id: Optional[str] = Depends(get_optional_user_id),
+    svc: SocialService = Depends(get_social_service),
+):
+    return await svc.get_user_posts(target_user_id, user_id, skip, limit)
+
+# --- Friends ---
 
 @router.post("/friends/requests/{target_user_id}", response_model=dict)
 async def send_friend_request(
