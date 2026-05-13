@@ -20,6 +20,9 @@ pipeline {
     }
 
     stage('Sync Deploy Files') {
+      when {
+        buildingTag()
+      }
       steps {
         sh '''
           set -eu
@@ -36,6 +39,9 @@ pipeline {
     }
 
     stage('Ensure Mongo Keyfile') {
+      when {
+        buildingTag()
+      }
       steps {
         sh '''
           set -eu
@@ -48,6 +54,9 @@ pipeline {
     }
 
     stage('Deploy Data Stack') {
+      when {
+        buildingTag()
+      }
       steps {
         sh '''
           set -eu
@@ -57,6 +66,9 @@ pipeline {
     }
 
     stage('Ensure Mongo Replica Set') {
+      when {
+        buildingTag()
+      }
       steps {
         sh '''
           set -eu
@@ -74,6 +86,9 @@ pipeline {
     }
 
     stage('Deploy App Stack') {
+      when {
+        buildingTag()
+      }
       steps {
         sh '''
           set -eu
@@ -84,6 +99,9 @@ pipeline {
     }
 
     stage('Smoke Test') {
+      when {
+        buildingTag()
+      }
       steps {
         sh '''
           set -eu
