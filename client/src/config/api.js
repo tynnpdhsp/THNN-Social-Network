@@ -1,10 +1,33 @@
 // =============================================================================
 // API Configuration - THNN Social Network
+// Deploy: set VITE_API_BASE, VITE_WS_BASE, VITE_MINIO_PUBLIC_URL at build time.
 // =============================================================================
 
-export const API_BASE = 'http://localhost:8000/api/v1';
-export const WS_BASE = 'ws://localhost:8000/api/v1';
-export const MINIO_URL = 'http://localhost:9000';
+function trimTrailingSlashes(s) {
+  return s.replace(/\/+$/, '');
+}
+
+const defaultApi = 'http://localhost:8000/api/v1';
+const rawApi = (import.meta.env.VITE_API_BASE || defaultApi).trim();
+export const API_BASE = trimTrailingSlashes(rawApi);
+
+function wsBaseFromApi(apiBase) {
+  if (apiBase.startsWith('https://')) {
+    return 'wss://' + apiBase.slice('https://'.length);
+  }
+  if (apiBase.startsWith('http://')) {
+    return 'ws://' + apiBase.slice('http://'.length);
+  }
+  return 'ws://localhost:8000/api/v1';
+}
+
+const rawWs = (import.meta.env.VITE_WS_BASE || '').trim();
+export const WS_BASE = trimTrailingSlashes(rawWs || wsBaseFromApi(API_BASE));
+
+const defaultMinio = 'http://localhost:9000';
+export const MINIO_URL = trimTrailingSlashes(
+  (import.meta.env.VITE_MINIO_PUBLIC_URL || defaultMinio).trim()
+);
 
 /**
  * Helper: resolve image URL (handles both full URLs and MinIO relative paths)

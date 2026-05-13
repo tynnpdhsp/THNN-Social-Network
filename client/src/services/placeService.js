@@ -29,7 +29,7 @@ export const getPlaceCategories = async () => {
 export const getNearbyPlaces = async (params = { lat: 10.762622, lng: 106.660172, radius: 10 }) => {
   try {
     const query = new URLSearchParams(params).toString();
-    const response = await apiFetch(`/place/${query ? `?${query}` : ''}`);
+    const response = await apiFetch(query ? `/place/?${query}` : '/place/');
     if (!response.ok) throw new Error('Failed to fetch places');
     return await response.json();
   } catch (error) {
