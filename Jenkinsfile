@@ -23,13 +23,16 @@ pipeline {
       steps {
         sh '''
           set -eu
+          # -u jenkins: HOME mặc định có thể là / → pip ghi /.local bị denied. HOME + cache trong /tmp.
           docker run --rm \
             -u "$(id -u):$(id -g)" \
+            -e HOME=/tmp/jenkins-py-home \
+            -e PIP_CACHE_DIR=/tmp/jenkins-pip-cache \
             -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
             -v "${WORKSPACE}:/ws:rw" \
             -w /ws/server \
             python:3.11-bookworm \
-            bash -ec 'python -m pip install --upgrade pip && python -m pip install --no-cache-dir -r requirements.txt && prisma generate --schema prisma/schema.prisma && python -m pytest tests/unit -q -m unit'
+            bash -ec 'mkdir -p "$HOME" "$PIP_CACHE_DIR" && python -m pip install --upgrade pip && python -m pip install --no-cache-dir -r requirements.txt && prisma generate --schema prisma/schema.prisma && python -m pytest tests/unit -q -m unit'
         '''
       }
     }
