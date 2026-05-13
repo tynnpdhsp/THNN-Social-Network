@@ -20,10 +20,12 @@ pipeline {
     }
 
     stage('Backend unit tests') {
+      when {
+        buildingTag()
+      }
       steps {
         sh '''
           set -eu
-          # -u jenkins: HOME mặc định có thể là / → pip ghi /.local bị denied. HOME + cache trong /tmp.
           docker run --rm \
             -u "$(id -u):$(id -g)" \
             -e HOME=/tmp/jenkins-py-home \
@@ -48,6 +50,9 @@ pipeline {
           mkdir -p "$DATA_DIR" "$APP_DIR"
           cp deploy/data/docker-compose.yml "$DATA_DIR/docker-compose.yml"
           cp deploy/data/env.example "$DATA_DIR/env.example"
+          cp deploy/data/bootstrap_defaults.sh "$DATA_DIR/bootstrap_defaults.sh"
+          cp deploy/data/reset_database.sh "$DATA_DIR/reset_database.sh"
+          chmod +x "$DATA_DIR/bootstrap_defaults.sh" "$DATA_DIR/reset_database.sh"
           cp deploy/app/docker-compose.yml "$APP_DIR/docker-compose.yml"
           cp deploy/app/env.example "$APP_DIR/env.example"
           cp deploy/app/nginx.frontend.conf "$APP_DIR/nginx.frontend.conf"
@@ -100,6 +105,18 @@ pipeline {
                 rs.initiate({_id:"rs0",members:[{_id:0,host:"mongodb:27017"}]})
               }
             '
+        '''
+      }
+    }
+
+    stage('Bootstrap DB defaults (roles, categories, admin)') {
+      when {
+        buildingTag()
+      }
+      steps {
+        sh '''
+          set -eu
+          bash "$DATA_DIR/bootstrap_defaults.sh"
         '''
       }
     }
