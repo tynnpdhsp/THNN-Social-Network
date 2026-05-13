@@ -18,6 +18,11 @@ function wsBaseFromApi(apiBase) {
   if (apiBase.startsWith('http://')) {
     return 'ws://' + apiBase.slice('http://'.length);
   }
+  // Same-origin reverse proxy: /api/v1 → wss://current-host/api/v1
+  if (apiBase.startsWith('/') && typeof window !== 'undefined') {
+    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProto}//${window.location.host}${apiBase}`;
+  }
   return 'ws://localhost:8000/api/v1';
 }
 

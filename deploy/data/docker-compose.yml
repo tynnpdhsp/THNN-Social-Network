@@ -1,0 +1,68 @@
+# MongoDB + Redis + MinIO — chỉ bind 127.0.0.1 (không lộ ra internet).
+# Prisma cần MongoDB replica set: image chạy với --replSet rs0; sau đó rs.initiate() một lần.
+# MongoDB auth + replica set cần keyFile (mongo-keyfile đặt cạnh docker-compose.yml).
+#
+# Chạy trên server:
+#   cd /opt/social-app/data   # hoặc thư mục chứa compose + .env
+#   docker compose up -d
+#
+services:
+  # Tên service là "mongodb" — dùng trong rs.initiate và trong MONGO_DATABASE_URL khi backend chạy cùng Docker network.
+  mongodb:
+    image: mongo:7
+    container_name: social-mongodb
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile"]
+    env_file: .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - social_mongodb_data:/data/db
+      - ./mongo-keyfile:/etc/mongo-keyfile:ro
+    networks:
+      - social_data
+
+  redis:
+    image: redis:7-alpine
+    container_name: social-redis
+    restart: unless-stopped
+    env_file: .env
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - social_redis_data:/data
+    networks:
+      - social_data
+
+  minio:
+    image: quay.io/minio/minio
+    container_name: social-minio
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - social_minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - social_data
+
+volumes:
+  social_mongodb_data:
+  social_redis_data:
+  social_minio_data:
+
+networks:
+  social_data:
+    name: social_data
