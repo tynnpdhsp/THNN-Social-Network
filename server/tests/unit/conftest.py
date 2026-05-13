@@ -59,6 +59,8 @@ def patch_get_redis(mock_redis: MockRedis):
         "app.utils.email.get_redis",
         "app.modules.account.service.get_redis",
         "app.modules.notification.service.get_redis",
+        "app.modules.messaging.service.get_redis",
+        "app.modules.messaging.ws_manager.get_redis",
     )
     with ExitStack() as stack:
         for target in targets:
@@ -181,6 +183,13 @@ def mock_notification_repo(mock_db):
 
 
 @pytest.fixture()
+def mock_messaging_repo(mock_db):
+    repo = AsyncMock()
+    repo.db = mock_db
+    return repo
+
+
+@pytest.fixture()
 def mock_admin_repo(mock_db):
     repo = AsyncMock()
     repo.db = mock_db
@@ -245,6 +254,12 @@ def account_service(mock_account_repo):
 def notification_service(mock_notification_repo):
     from app.modules.notification.service import NotificationService
     return NotificationService(mock_notification_repo)
+
+
+@pytest.fixture()
+def messaging_service(mock_messaging_repo, notification_service):
+    from app.modules.messaging.service import MessagingService
+    return MessagingService(mock_messaging_repo, notification_service)
 
 
 @pytest.fixture()
