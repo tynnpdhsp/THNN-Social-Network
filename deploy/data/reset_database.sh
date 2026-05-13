@@ -32,6 +32,8 @@ if [[ -z "${MONGO_ROOT_USER:-}" || -z "${MONGO_ROOT_PASSWORD:-}" ]]; then
   exit 1
 fi
 
+VERIFY_ADMIN_EMAIL="${BOOTSTRAP_ADMIN_EMAIL:-admin@thnn.com}"
+
 echo "=============================================="
 echo "Database reset plan"
 echo "Compose file : $COMPOSE_FILE"
@@ -80,15 +82,19 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
     }
   '
 
-echo "[5/6] Bootstrapping default roles/categories/tags..."
+echo "[5/6] Bootstrapping default roles/categories/tags + admin user..."
 bash "$SCRIPT_DIR/bootstrap_defaults.sh"
 
-echo "[6/6] Verifying defaults..."
+echo "[6/6] Verifying defaults + admin..."
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
   mongosh -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin --eval "
     db = db.getSiblingDB('$DB_NAME');
     print('Current roles:');
     printjson(db.roles.find({}, {role:1}).toArray());
+    const ar = db.roles.findOne({role: 'admin'});
+    print('Admin user count: ' + (ar ? db.users.countDocuments({role: ar._id}) : 0));
+    print('Bootstrap admin email (expected one match if seeded):');
+    printjson(db.users.find({email: '${VERIFY_ADMIN_EMAIL}'}, {email:1, full_name:1, email_verified:1}).toArray());
     print('Current item categories: ' + db.item_categories.countDocuments());
     print('Current document categories: ' + db.document_categories.countDocuments());
     print('Current board tags: ' + db.board_tags.countDocuments());
@@ -97,5 +103,6 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
 
 echo
 echo "Done. Database '$DB_NAME' has been reset cleanly."
-echo "Default master data initialized. You can register and use core app features immediately."
+echo "Default master data + admin user (see deploy/data/env.example: BOOTSTRAP_ADMIN_*)."
+echo "Default password when not using BOOTSTRAP_ADMIN_PASSWORD_HASH: ChangeMeAdmin123!"
 echo "Recommended: restart backend container to refresh app state."
