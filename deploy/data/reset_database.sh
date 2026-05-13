@@ -46,10 +46,10 @@ if [[ "$CONFIRM" != "RESET" ]]; then
   exit 0
 fi
 
-echo "[1/5] Ensuring data stack is up..."
+echo "[1/6] Ensuring data stack is up..."
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d mongodb
 
-echo "[2/5] Waiting MongoDB ready..."
+echo "[2/6] Waiting MongoDB ready..."
 for i in {1..30}; do
   if docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
     mongosh -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin \
@@ -63,12 +63,12 @@ for i in {1..30}; do
   sleep 2
 done
 
-echo "[3/5] Dropping app database '$DB_NAME'..."
+echo "[3/6] Dropping app database '$DB_NAME'..."
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
   mongosh -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin \
   --eval "db = db.getSiblingDB('$DB_NAME'); printjson(db.dropDatabase())"
 
-echo "[4/5] Ensuring replica set (rs0) is initialized..."
+echo "[4/6] Ensuring replica set (rs0) is initialized..."
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
   mongosh -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin --eval '
     try {
@@ -80,17 +80,22 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
     }
   '
 
-echo "[5/5] Bootstrapping default roles (student, admin)..."
+echo "[5/6] Bootstrapping default roles/categories/tags..."
+bash "$SCRIPT_DIR/bootstrap_defaults.sh"
+
+echo "[6/6] Verifying defaults..."
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T mongodb \
   mongosh -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin --eval "
     db = db.getSiblingDB('$DB_NAME');
-    db.roles.updateOne({role:'student'}, {\$set:{role:'student'}}, {upsert:true});
-    db.roles.updateOne({role:'admin'}, {\$set:{role:'admin'}}, {upsert:true});
     print('Current roles:');
     printjson(db.roles.find({}, {role:1}).toArray());
+    print('Current item categories: ' + db.item_categories.countDocuments());
+    print('Current document categories: ' + db.document_categories.countDocuments());
+    print('Current board tags: ' + db.board_tags.countDocuments());
+    print('Current place categories: ' + db.place_categories.countDocuments());
   "
 
 echo
 echo "Done. Database '$DB_NAME' has been reset cleanly."
-echo "Roles were initialized. You can register account immediately."
+echo "Default master data initialized. You can register and use core app features immediately."
 echo "Recommended: restart backend container to refresh app state."

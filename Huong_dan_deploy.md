@@ -126,6 +126,23 @@ ss -tlnp | grep -E '27017|6379|9000|9001'
 
 Kỳ vọng: tất cả bind `127.0.0.1:*`
 
+### 3.6 Seed dữ liệu mặc định (master data)
+
+Chạy một lần (hoặc nhiều lần, script idempotent) để tạo dữ liệu mặc định:
+
+```bash
+cd /opt/social-app/data
+bash bootstrap_defaults.sh
+```
+
+Script sẽ tự tạo/cập nhật:
+
+- roles: `student`, `admin`
+- `item_categories`
+- `document_categories`
+- `board_tags`
+- `place_categories`
+
 ---
 
 ## 4) Deploy app stack: Backend + Frontend Docker
