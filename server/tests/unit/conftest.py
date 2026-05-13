@@ -58,6 +58,7 @@ def patch_get_redis(mock_redis: MockRedis):
         "app.core.cache.get_redis",
         "app.utils.email.get_redis",
         "app.modules.account.service.get_redis",
+        "app.modules.notification.service.get_redis",
     )
     with ExitStack() as stack:
         for target in targets:
