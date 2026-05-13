@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: ${BUILD_CONTEXT:-../../}
+      dockerfile: server/Dockerfile
+    container_name: social-backend
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - social_data
+
+  frontend:
+    build:
+      context: ${BUILD_CONTEXT:-../../}
+      dockerfile: client/Dockerfile
+      args:
+        VITE_API_BASE: ${VITE_API_BASE}
+        VITE_WS_BASE: ${VITE_WS_BASE}
+        VITE_MINIO_PUBLIC_URL: ${VITE_MINIO_PUBLIC_URL}
+    container_name: social-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - backend
+    networks:
+      - social_data
+
+networks:
+  social_data:
+    external: true

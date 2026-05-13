@@ -495,7 +495,8 @@ class ShopService:
         if hasattr(item, "category") and item.category:
             category = CategoryResponse(id=item.category.id, name=item.category.name)
 
-        domain = f"http://{settings.MINIO_ENDPOINT}"
+        _p = "https" if settings.MINIO_SECURE else "http"
+        domain = f"{_p}://{settings.MINIO_ENDPOINT}"
         images = []
         if hasattr(item, "itemImages") and item.itemImages:
             for img in item.itemImages:

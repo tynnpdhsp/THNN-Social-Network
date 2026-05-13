@@ -1,17 +1,56 @@
 // =============================================================================
 // API Configuration - THNN Social Network
+// Deploy: set VITE_API_BASE, VITE_WS_BASE, VITE_MINIO_PUBLIC_URL at build time.
 // =============================================================================
 
-export const API_BASE = 'http://localhost:8000/api/v1';
-export const WS_BASE = 'ws://localhost:8000/api/v1';
-export const MINIO_URL = 'http://localhost:9000';
+function trimTrailingSlashes(s) {
+  return s.replace(/\/+$/, '');
+}
+
+const defaultApi = 'http://localhost:8000/api/v1';
+const rawApi = (import.meta.env.VITE_API_BASE || defaultApi).trim();
+export const API_BASE = trimTrailingSlashes(rawApi);
+
+function wsBaseFromApi(apiBase) {
+  if (apiBase.startsWith('https://')) {
+    return 'wss://' + apiBase.slice('https://'.length);
+  }
+  if (apiBase.startsWith('http://')) {
+    return 'ws://' + apiBase.slice('http://'.length);
+  }
+  // Same-origin reverse proxy: /api/v1 → wss://current-host/api/v1
+  if (apiBase.startsWith('/') && typeof window !== 'undefined') {
+    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProto}//${window.location.host}${apiBase}`;
+  }
+  return 'ws://localhost:8000/api/v1';
+}
+
+const rawWs = (import.meta.env.VITE_WS_BASE || '').trim();
+export const WS_BASE = trimTrailingSlashes(rawWs || wsBaseFromApi(API_BASE));
+
+const defaultMinio = 'http://localhost:9000';
+export const MINIO_URL = trimTrailingSlashes(
+  (import.meta.env.VITE_MINIO_PUBLIC_URL || defaultMinio).trim()
+);
 
 /**
  * Helper: resolve image URL (handles both full URLs and MinIO relative paths)
  */
 export function resolveImageUrl(url) {
   if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Backward compatibility: rewrite Docker-internal MinIO URLs.
+    try {
+      const parsed = new URL(url);
+      if (parsed.host === 'minio:9000' || parsed.host === 'social-minio:9000') {
+        return MINIO_URL + parsed.pathname;
+      }
+    } catch {
+      return url;
+    }
+    return url;
+  }
   return MINIO_URL + url;
 }
 
