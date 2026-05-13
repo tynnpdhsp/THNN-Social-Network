@@ -87,7 +87,21 @@ pipeline {
       steps {
         sh '''
           set -eu
-          curl -fsS http://127.0.0.1:8000/health
+          ok=0
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              ok=1
+              break
+            fi
+            echo "Waiting for backend health... attempt ${i}/20"
+            sleep 3
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "Backend health check failed after retries. Last logs:"
+            docker logs --tail 200 social-backend || true
+            exit 1
+          fi
+
           curl -fsS http://127.0.0.1:3000 >/dev/null
         '''
       }
