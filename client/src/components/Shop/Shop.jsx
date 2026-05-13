@@ -267,18 +267,20 @@ const Shop = () => {
   };
 
   return (
-    <div className="container" style={{ paddingTop: 24, display: 'flex', flexWrap: 'wrap', gap: 32 }}>
+    <div className="container shop-page-container" style={{ paddingTop: 24, display: 'flex', flexWrap: 'wrap', gap: 32 }}>
       {/* Filter Sidebar */}
-      <div style={{ width: '100%', maxWidth: 280, flexShrink: 0 }}>
-        <button 
-          className="btn-primary" 
-          style={{ width: '100%', marginBottom: 32, height: 48 }}
-          onClick={() => { setProductToEdit(null); setIsAddModalOpen(true); }}
-        >
-          <Plus size={20} /> Đăng bán vật phẩm
-        </button>
+      <div className="shop-sidebar" style={{ width: '100%', maxWidth: 280, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+        <div className="shop-post-btn-wrapper" style={{ order: 1 }}>
+          <button 
+            className="btn-primary" 
+            style={{ width: '100%', marginBottom: 32, height: 48 }}
+            onClick={() => { setProductToEdit(null); setIsAddModalOpen(true); }}
+          >
+            <Plus size={20} /> Đăng bán vật phẩm
+          </button>
+        </div>
 
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ order: 2, marginBottom: 32 }}>
           <h3 className="heading-md" style={{ marginBottom: 16 }}>Tìm kiếm</h3>
           <div className="search-container">
             <Search size={18} />
@@ -293,7 +295,7 @@ const Shop = () => {
           </div>
         </div>
 
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ order: 3, marginBottom: 32 }}>
           <h3 className="heading-md" style={{ marginBottom: 16 }}>Danh mục</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button 
@@ -328,7 +330,7 @@ const Shop = () => {
           </div>
         </div>
 
-        <div>
+        <div style={{ order: 4 }}>
           <h3 className="heading-md" style={{ marginBottom: 16 }}>Khoảng giá</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input 
@@ -642,6 +644,21 @@ const Shop = () => {
         @keyframes popIn {
           0% { transform: scale(0); }
           100% { transform: scale(1); }
+        }
+
+        @media (max-width: 768px) {
+          .cart-icon-floating {
+            width: 48px !important;
+            height: 48px !important;
+            bottom: 16px !important;
+            right: 16px !important;
+          }
+          .cart-badge-floating {
+            width: 20px !important;
+            height: 20px !important;
+            font-size: 10px !important;
+            border-width: 2px !important;
+          }
         }
       `}</style>
     </div>

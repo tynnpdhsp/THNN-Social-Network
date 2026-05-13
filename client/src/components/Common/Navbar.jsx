@@ -76,7 +76,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div className="nav-tabs-container" style={{ display: 'flex', gap: 4 }}>
         {mainTabs.map((tab) => (
           <button
             key={tab.id}
@@ -97,7 +97,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
             }}
           >
             {tab.icon}
-            <span>{tab.label}</span>
+            <span className="nav-label">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -105,7 +105,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
 
       <div style={{ flex: 1 }} />
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="nav-actions-container" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         {/* Notifications */}
         <button
           id="nav-notifications"
@@ -176,16 +176,22 @@ const Navbar = ({ activeTab, setActiveTab }) => {
                 ].map(item => (
                   <button
                     key={item.id}
+                    className="user-menu-item"
                     onClick={() => { setActiveTab(item.id); setShowUserMenu(false); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', fontWeight: 600, fontSize: 13, color: 'var(--body)' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--body)', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     {item.icon} {item.label}
                   </button>
                 ))}
                 <div style={{ borderTop: '1px solid var(--hairline)' }}>
                   <button
+                    className="user-menu-item"
                     onClick={() => { logout(); setShowUserMenu(false); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', fontWeight: 600, fontSize: 13, color: 'var(--primary)' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', border: 'none', background: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', fontWeight: 600, fontSize: 14, color: 'var(--primary)', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <LogOut size={16} /> Đăng xuất
                   </button>

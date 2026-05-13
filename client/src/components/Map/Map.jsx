@@ -71,7 +71,11 @@ const Map = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategoryId, setActiveCategoryId] = useState('all');
 
-  const defaultCenter = [10.762622, 106.660172]; // Saigon
+  const defaultCenter = [10.761353, 106.682205]; // HCMUE - 280 An Dương Vương, Q5
+  const hcmueBounds = [
+    [10.7300, 106.6500], // Southwest boundary limit around District 5/8
+    [10.7900, 106.7100]  // Northeast boundary limit around District 1/3/10
+  ];
 
   // Fetch initial data
   useEffect(() => {
@@ -212,11 +216,11 @@ const Map = () => {
   );
 
   return (
-    <div className="container" style={{ paddingTop: 24, height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div className="container map-page-container" style={{ paddingTop: 24, height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
+      <div className="map-header-bar" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <h1 className="heading-xl">Bản đồ học đường</h1>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', transform: 'translateY(55px)' }}>
-          <div className="search-container" style={{ width: 240 }}>
+        <div className="map-header-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          <div className="search-container" style={{ width: 240, maxWidth: '100%' }}>
             <Search size={18} />
             <input
               type="text"
@@ -261,15 +265,15 @@ const Map = () => {
         ))}
       </div>
 
-      <div style={{ flex: 1, display: 'flex', gap: 24, height: '100%', overflow: 'hidden' }}>
+      <div className="map-split-container" style={{ flex: 1, display: 'flex', gap: 24, height: '100%', overflow: 'hidden' }}>
         {/* Real Leaflet Map Area */}
-        <div style={{ flex: 1, borderRadius: 'var(--rounded-lg)', overflow: 'hidden', border: '2px solid var(--hairline)', position: 'relative' }}>
+        <div style={{ flex: 1, minHeight: 360, borderRadius: 'var(--rounded-lg)', overflow: 'hidden', border: '2px solid var(--hairline)', position: 'relative' }}>
           {loading ? (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, background: 'rgba(255,255,255,0.7)' }}>
               <div className="loader">Đang tải bản đồ...</div>
             </div>
           ) : null}
-          <MapContainer center={defaultCenter} zoom={13} style={{ width: '100%', height: '100%', zIndex: 0 }}>
+          <MapContainer center={defaultCenter} zoom={15} minZoom={13} maxBounds={hcmueBounds} maxBoundsViscosity={1.0} style={{ width: '100%', height: '100%', zIndex: 0 }}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"

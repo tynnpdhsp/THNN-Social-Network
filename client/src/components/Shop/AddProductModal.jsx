@@ -74,7 +74,7 @@ const AddProductModal = ({ isOpen, onClose, onAdd, categories = [], productToEdi
   const selectedCategoryLabel = categories.find(c => c.id === formData.category)?.name || 'Chọn danh mục...';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={productToEdit ? "Cập nhật vật phẩm" : "Đăng bán vật phẩm mới"} width={500} overflow="auto">
+    <Modal isOpen={isOpen} onClose={onClose} title={productToEdit ? "Cập nhật vật phẩm" : "Đăng bán vật phẩm mới"} width={500}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {!productToEdit && (
           <>

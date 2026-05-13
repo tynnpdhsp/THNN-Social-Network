@@ -361,12 +361,12 @@ const Timetable = () => {
   ];
 
   return (
-    <div className="container" style={{ paddingTop: 24, display: 'flex', gap: 32 }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+    <div className="container" style={{ paddingTop: 24, display: 'flex', flexWrap: 'wrap', gap: 32 }}>
+      <div style={{ flex: 1, minWidth: 280 }}>
+        <div className="timetable-header-bar" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 24 }}>
           <h1 className="heading-xl">Quản lý Thời khóa biểu</h1>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="timetable-actions-row" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-card)', borderRadius: 'var(--rounded-full)', padding: 4, gap: 4 }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {schedules.map((schedule) => (
@@ -428,8 +428,8 @@ const Timetable = () => {
         </div>
 
         <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'white', borderRadius: 'var(--rounded-md)', border: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 250px)' }}>
-          <div ref={gridScrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, 1fr)', position: 'relative', minHeight: 16 * 80 }}>
+          <div ref={gridScrollRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', position: 'relative' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, minmax(90px, 1fr))', position: 'relative', minHeight: 16 * 80, minWidth: 710 }}>
               {/* Sticky Headers */}
               <div style={{
                 position: 'sticky', top: 0, left: 0, zIndex: 50, background: 'var(--surface-soft)',
@@ -538,7 +538,7 @@ const Timetable = () => {
         </div>
       </div>
 
-      <div style={{ width: 320 }}>
+      <div style={{ width: '100%', maxWidth: 320, flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 className="heading-md" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertCircle size={20} color="var(--primary)" /> Hạn nộp & Lịch thi

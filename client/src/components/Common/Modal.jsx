@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'visible' }) => {
+const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'auto' }) => {
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
   const isBackdropMouseDown = React.useRef(false);
@@ -51,6 +51,7 @@ const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'visi
       }}
     >
       <div
+        className="premium-modal-box"
         style={{
           background: 'white',
           width: `${width}px`,

@@ -142,7 +142,7 @@ const StudyDocs = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 className="heading-xl">Tài liệu học tập</h1>
         </div>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="docs-action-bar" style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ position: 'relative' }}>
                   <button 
@@ -240,7 +240,8 @@ const StudyDocs = () => {
             background: 'white', 
             borderRadius: 'var(--rounded-lg)', 
             border: '1px solid var(--hairline)', 
-            overflow: 'hidden', 
+            overflowX: 'auto',
+            overflowY: 'hidden', 
             position: 'relative', 
             height: 421, // Precise fixed height
             display: 'flex',

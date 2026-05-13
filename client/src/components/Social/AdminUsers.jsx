@@ -91,7 +91,7 @@ const AdminUsers = ({ users, userFilter, setUserFilter, loadAll, onViewProfile, 
 
   return (
     <div style={{ ...card, animation: 'fadeInUp 0.3s ease' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div className="admin-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h3 style={{ fontWeight: 700, fontSize: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
           <Users size={20} color="var(--primary)" /> Quản lý người dùng ({filtered.length})
         </h3>
@@ -118,7 +118,7 @@ const AdminUsers = ({ users, userFilter, setUserFilter, loadAll, onViewProfile, 
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.map(u => (
-          <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: u.is_locked ? '#fef2f2' : 'white', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', transition: 'all 0.2s ease' }}>
+          <div key={u.id} className="admin-user-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: u.is_locked ? '#fef2f2' : 'white', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', transition: 'all 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => onViewProfile?.(u.id)}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--ash)', fontSize: 16 }}>
                 {u.full_name?.[0]}

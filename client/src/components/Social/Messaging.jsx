@@ -173,9 +173,9 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><div style={{ width: 32, height: 32, border: '3px solid var(--hairline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /></div>;
 
   return (
-    <div style={s.container}>
+    <div className="messaging-container" style={s.container}>
       {/* Conversation List */}
-      <div style={{ ...s.sidebar, ...(activeConv ? { display: 'none' } : {}), '@media (min-width: 768px)': { display: 'block' } }}>
+      <div className="messaging-sidebar" style={{ ...s.sidebar, ...(activeConv ? { display: 'none' } : {}) }}>
         <div style={{ padding: 20 }}>
           <h2 style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>Tin nhắn</h2>
 
@@ -272,7 +272,7 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
       </div>
 
       {/* Chat Area */}
-      <div style={{ ...s.chatArea, ...(activeConv ? {} : { display: 'none' }) }}>
+      <div className="messaging-chat" style={{ ...s.chatArea, ...(activeConv ? {} : { display: 'none' }) }}>
         {activeConv && (
           <>
             {/* Chat Header */}
