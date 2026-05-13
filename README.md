@@ -2,7 +2,7 @@
 
 [![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=40&pause=1000&color=6366F1&center=true&vCenter=true&width=620&lines=THNN+Social+Network)](https://git.io/typing-svg)
 
-<img src="https://img.shields.io/github/v/tag/omokiet/SocialNetworking-And-Learning-App?label=version&style=for-the-badge&color=blue" alt="Version" />
+<img src="https://img.shields.io/github/v/tag/tynnpdhsp/THNN-Social-Network?label=version&style=for-the-badge&color=blue" alt="Version" />
 <img src="https://img.shields.io/badge/license-Apache_2.0-green?style=for-the-badge" alt="License" />
 <img src="https://img.shields.io/badge/status-Active-success?style=for-the-badge" alt="Status" />
 
