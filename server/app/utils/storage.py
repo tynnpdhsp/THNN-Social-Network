@@ -62,8 +62,7 @@ async def upload_file(content: bytes, filename: str, prefix: str) -> str:
         content_type=_guess_content_type(ext),
     )
 
-    protocol = "https" if settings.MINIO_SECURE else "http"
-    return f"{protocol}://{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET}/{object_name}"
+    return _build_public_storage_path(object_name)
 
 
 async def upload_files(files: list[tuple[bytes, str]], prefix: str) -> list[str]:
@@ -106,8 +105,7 @@ async def upload_files(files: list[tuple[bytes, str]], prefix: str) -> list[str]
                 length=len(content),
                 content_type=_guess_content_type(ext),
             )
-            protocol = "https" if settings.MINIO_SECURE else "http"
-            urls.append(f"{protocol}://{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET}/{object_name}")
+            urls.append(_build_public_storage_path(object_name))
         
         return urls
 
@@ -158,3 +156,7 @@ def _guess_content_type(ext: str) -> str:
         "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
     return types.get(ext.lower(), "application/octet-stream")
+
+
+def _build_public_storage_path(object_name: str) -> str:
+    return f"/{settings.MINIO_BUCKET}/{object_name}"

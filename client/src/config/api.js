@@ -39,7 +39,18 @@ export const MINIO_URL = trimTrailingSlashes(
  */
 export function resolveImageUrl(url) {
   if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Backward compatibility: rewrite Docker-internal MinIO URLs.
+    try {
+      const parsed = new URL(url);
+      if (parsed.host === 'minio:9000' || parsed.host === 'social-minio:9000') {
+        return MINIO_URL + parsed.pathname;
+      }
+    } catch {
+      return url;
+    }
+    return url;
+  }
   return MINIO_URL + url;
 }
 
