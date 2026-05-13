@@ -17,7 +17,7 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Jenkins](https://img.shields.io/badge/Jenkins-D24939?style=for-the-badge&logo=jenkins&logoColor=white)
 
-**Mạng xã hội và học tập dành cho sinh viên — kết nối, chia sẻ tài liệu, quản lý thời khoá biểu và mua sắm trong một nền tảng.**
+**Mạng xã hội và học tập dành cho sinh viên - kết nối, chia sẻ tài liệu, quản lý thời khoá biểu và mua sắm trong một nền tảng.**
 
 </div>
 

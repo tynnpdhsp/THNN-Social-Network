@@ -1,4 +1,6 @@
-# Server - Social Networking and Learning App
+# Server — Social Networking and Learning App
+
+Tài liệu tổng quan: [README.md](../README.md) · Triển khai server: [DEPLOY_GUIDE.md](../DEPLOY_GUIDE.md) · Seed dữ liệu mẫu: [README_SEEDING.md](./README_SEEDING.md)
 
 ## Backend của dự án được xây dựng với FastAPI, sử dụng Prisma làm ORM chính kết nối với **MongoDB** (Kiến trúc hợp nhất 35 collections). Hệ thống sử dụng Redis cho caching, rate limiting và xử lý sự kiện realtime qua Pub/Sub.
 
@@ -64,7 +66,8 @@ Hiện tại, hệ thống đã triển khai xong 6 phân hệ cốt lõi:
 ```bash
 cd server
 python -m venv venv
-.\venv\Scripts\activate  # Windows
+# Windows: .\venv\Scripts\activate
+# Linux/macOS: source venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -79,18 +82,22 @@ Copy .env.example thành .env và điền các thông tin:
 ### 3. Khởi tạo Database & Seed dữ liệu
 
 ```bash
-# Tạo Prisma Client
-.\venv\Scripts\python -m prisma generate
+# Tạo Prisma Client và đồng bộ schema
+prisma generate --schema prisma/schema.prisma
+prisma db push --schema prisma/schema.prisma
 
-# Nạp dữ liệu mẫu (20 người dùng, bài viết, tags, v.v.)
-$env:PYTHONPATH="."; .\venv\Scripts\python prisma/seed.py
+# Nạp dữ liệu mẫu (xóa dữ liệu cũ trước khi seed — chỉ dùng dev)
+# Bắt buộc chạy từ thư mục server với PYTHONPATH=. để import app.*
+PYTHONPATH=. python prisma/seed.py
 ```
+
+Chi tiết tài khoản mẫu và nội dung seed: [README_SEEDING.md](./README_SEEDING.md).
 
 ---
 
 ## Chạy Server & Test
 
-Chay Backend:
+Chạy backend:
 
 ```bash
 uvicorn app.main:app --reload
@@ -98,11 +105,7 @@ uvicorn app.main:app --reload
 
 - Swagger UI: http://localhost:8000/docs
 
-Chạy Test Client (Giao diện đơn giản):
-Dự án có sẵn file test_client.html ở thư mục gốc để bạn test nhanh các tính năng mà không cần cài đặt Frontend phức tạp.
-
-1.  Chạy lệnh: python -m http.server 3000 (ở thư mục gốc).
-2.  Truy cập: http://localhost:3000/test_client.html
+Giao diện đầy đủ: chạy frontend trong thư mục `client` (`npm run dev`). Xem [client/README.md](../client/README.md).
 
 ---
 
