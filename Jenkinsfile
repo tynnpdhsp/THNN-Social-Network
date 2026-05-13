@@ -29,6 +29,7 @@ pipeline {
             -e HOME=/tmp/jenkins-py-home \
             -e PIP_CACHE_DIR=/tmp/jenkins-pip-cache \
             -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
+            -e DEBUG=true \
             -v "${WORKSPACE}:/ws:rw" \
             -w /ws/server \
             python:3.11-bookworm \
