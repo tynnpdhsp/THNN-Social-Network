@@ -19,6 +19,24 @@ pipeline {
       }
     }
 
+    /* Chạy mọi build (branch + tag). Nếu fail, các stage deploy bên dưới không chạy. */
+    stage('Backend unit tests') {
+      steps {
+        sh '''
+          set -eu
+          cd "${WORKSPACE}/server"
+          if [ ! -d .venv ]; then
+            python3 -m venv .venv
+          fi
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          prisma generate --schema prisma/schema.prisma
+          python -m pytest tests/unit -q -m unit
+        '''
+      }
+    }
+
     stage('Sync Deploy Files') {
       when {
         buildingTag()
