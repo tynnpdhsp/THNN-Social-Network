@@ -15,7 +15,6 @@ Covers:
 from __future__ import annotations
 
 import pytest
-import pytest_asyncio
 
 from app.core.cache import (
     get_user_profile_cache,
@@ -80,6 +79,13 @@ class TestProfileCache:
         cached = await get_user_profile_cache("u5")
         assert cached is None
 
+    @pytest.mark.asyncio
+    async def test_string_fields_round_trip(self, patch_get_redis):
+        await set_user_profile_cache("u6", {"full_name": "Z", "email": "z@z.com", "email_verified": "true"})
+        cached = await get_user_profile_cache("u6")
+        assert cached["full_name"] == "Z"
+        assert cached["email_verified"] is True
+
 
 # ─── Privacy cache ────────────────────────────────────────────────────────────
 
@@ -102,6 +108,11 @@ class TestPrivacyCache:
         cached = await get_user_privacy_cache("u2")
         assert "x" not in cached
         assert cached["y"] == "val"
+
+    @pytest.mark.asyncio
+    async def test_empty_payload_not_written(self, patch_get_redis):
+        await set_user_privacy_cache("u3", {"k": None})
+        assert await get_user_privacy_cache("u3") is None
 
 
 # ─── Notification settings cache ─────────────────────────────────────────────
@@ -179,6 +190,13 @@ class TestPostCounters:
         counters = await get_post_counters("p4")
         assert counters["like_count"] == 4
 
+    @pytest.mark.asyncio
+    async def test_increment_comment_negative_amount(self, patch_get_redis):
+        await set_post_counters("p5", like_count=0, comment_count=4)
+        await increment_post_comment("p5", -1)
+        counters = await get_post_counters("p5")
+        assert counters["comment_count"] == 3
+
 
 # ─── Newsfeed ─────────────────────────────────────────────────────────────────
 
@@ -217,6 +235,19 @@ class TestNewsfeed:
         # skip=2 → start from p7; limit=3 → p7, p6, p5
         assert len(feed) == 3
         assert feed[0] == "p7"
+
+    @pytest.mark.asyncio
+    async def test_get_skip_beyond_feed_length_returns_empty(self, patch_get_redis):
+        await push_to_newsfeed("u4", "a", 1)
+        await push_to_newsfeed("u4", "b", 2)
+        assert await get_newsfeed("u4", skip=10, limit=5) == []
+
+    @pytest.mark.asyncio
+    async def test_push_same_post_id_updates_score(self, patch_get_redis):
+        await push_to_newsfeed("u5", "dup", 10)
+        await push_to_newsfeed("u5", "dup", 99)
+        feed = await get_newsfeed("u5")
+        assert feed == ["dup"]
 
 
 # ─── Friend cache ────────────────────────────────────────────────────────────

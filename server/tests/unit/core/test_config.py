@@ -10,9 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import os
-from unittest.mock import patch
-
 import pytest
 
 # We need to test Settings directly — NOT the cached singleton
@@ -86,6 +83,15 @@ class TestValidateSecurity:
         )
         assert s.DEBUG is True
 
+    def test_debug_false_non_default_secret_even_if_similar_passes(self):
+        """Any JWT secret different from the exact placeholder is accepted when DEBUG is False."""
+        s = Settings(
+            DEBUG=False,
+            JWT_SECRET_KEY="change-me-in-production-x",
+            _env_file=None,
+        )
+        assert s.JWT_SECRET_KEY == "change-me-in-production-x"
+
 
 class TestGetSettings:
     """``get_settings`` is decorated with ``@lru_cache`` so it must return
@@ -103,3 +109,13 @@ class TestGetSettings:
 
         s = get_settings()
         assert isinstance(s, Settings)
+
+    def test_cache_clear_returns_new_instance(self):
+        """After ``cache_clear``, the next call must build a fresh ``Settings``."""
+        from app.core.config import get_settings
+
+        s1 = get_settings()
+        get_settings.cache_clear()
+        s2 = get_settings()
+        assert s1 is not s2
+        assert isinstance(s2, Settings)

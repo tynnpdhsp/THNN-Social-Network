@@ -45,3 +45,13 @@ class TestGenerateOtp:
     def test_length_0_returns_empty(self):
         otp = generate_otp(length=0)
         assert otp == ""
+
+    def test_negative_length_returns_empty(self):
+        """``range(n)`` for negative *n* is empty → concatenation yields ``\"\"``."""
+        otp = generate_otp(length=-1)
+        assert otp == ""
+
+    def test_large_length_all_digits(self):
+        otp = generate_otp(length=32)
+        assert len(otp) == 32
+        assert otp.isdigit()

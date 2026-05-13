@@ -75,6 +75,29 @@ class TestGetCurrentUserId:
         with pytest.raises(UnauthorizedException):
             await get_current_user_id(token)
 
+    @pytest.mark.asyncio
+    async def test_decode_returns_none_raises_invalid_token(self):
+        """Branch when ``decode_token`` yields no payload (simulated bad/expired JWT)."""
+        with patch("app.core.dependencies.decode_token", return_value=None):
+            with pytest.raises(UnauthorizedException) as exc:
+                await get_current_user_id("any.token.string")
+            assert exc.value.error_code == "INVALID_TOKEN"
+
+    @pytest.mark.asyncio
+    async def test_access_token_missing_type_claim_raises(self):
+        """Payload decodes but ``type`` is not ``access`` → rejected."""
+        from jose import jwt
+        from app.core.config import get_settings
+        s = get_settings()
+        token = jwt.encode(
+            {"sub": "user-1", "exp": 9999999999},
+            s.JWT_SECRET_KEY,
+            algorithm=s.JWT_ALGORITHM,
+        )
+        with pytest.raises(UnauthorizedException) as exc:
+            await get_current_user_id(token)
+        assert exc.value.error_code == "INVALID_TOKEN"
+
 
 # ─── get_optional_user_id ────────────────────────────────────────────────────
 
@@ -102,8 +125,31 @@ class TestGetOptionalUserId:
         result = await get_optional_user_id(token)
         assert result is None
 
+    @pytest.mark.asyncio
+    async def test_empty_string_token_returns_none(self):
+        assert await get_optional_user_id("") is None
 
-# ─── require_active_user ──────────────────────────────────────────────────────
+    @pytest.mark.asyncio
+    async def test_access_token_missing_sub_returns_none(self):
+        from jose import jwt
+        from app.core.config import get_settings
+        s = get_settings()
+        token = jwt.encode(
+            {"type": "access", "exp": 9999999999},
+            s.JWT_SECRET_KEY,
+            algorithm=s.JWT_ALGORITHM,
+        )
+        assert await get_optional_user_id(token) is None
+
+    @pytest.mark.asyncio
+    async def test_decode_exception_returns_none(self):
+        """Any exception from ``decode_token`` is swallowed → None."""
+
+        def boom(_t):
+            raise RuntimeError("decode failed")
+
+        with patch("app.core.dependencies.decode_token", side_effect=boom):
+            assert await get_optional_user_id("token") is None
 
 class TestRequireActiveUser:
     @pytest.mark.asyncio
@@ -208,3 +254,14 @@ class TestRequireAdmin:
 
         result = await require_admin(user_id="u1", repo=repo)
         assert result == "u1"
+
+    @pytest.mark.asyncio
+    async def test_role_admin_case_sensitive(self):
+        """``roleRef.role`` must equal ``admin`` exactly (not ``Admin``)."""
+        role = make_fake_role(role="Admin")
+        user = make_fake_user(roleRef=role)
+        repo = AsyncMock()
+        repo.db.user.find_unique.return_value = user
+
+        with pytest.raises(ForbiddenException):
+            await require_admin(user_id="u1", repo=repo)

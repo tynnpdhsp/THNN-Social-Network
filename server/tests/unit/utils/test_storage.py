@@ -108,6 +108,15 @@ class TestUploadFile:
         mock_minio_client.make_bucket.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_new_bucket_sets_public_read_policy(self, mock_minio_client):
+        mock_minio_client.bucket_exists.return_value = False
+        await upload_file(b"x", "a.png", "pre")
+        mock_minio_client.set_bucket_policy.assert_called_once()
+        policy_arg = mock_minio_client.set_bucket_policy.call_args[0][1]
+        assert settings.MINIO_BUCKET in policy_arg
+        assert "s3:GetObject" in policy_arg
+
+    @pytest.mark.asyncio
     async def test_upload_correct_content_type(self, mock_minio_client):
         await upload_file(b"data", "doc.pdf", "docs")
 
@@ -142,6 +151,22 @@ class TestUploadFiles:
     async def test_upload_empty_list(self, mock_minio_client):
         urls = await upload_files([], "empty")
         assert urls == []
+
+    @pytest.mark.asyncio
+    async def test_each_file_gets_distinct_content_type(self, mock_minio_client):
+        files = [(b"a", "a.jpg"), (b"b", "b.pdf")]
+        await upload_files(files, "mix")
+        calls = mock_minio_client.put_object.call_args_list
+        assert len(calls) == 2
+        ctypes = {c.kwargs.get("content_type") or c[1].get("content_type") for c in calls}
+        assert "image/jpeg" in ctypes
+        assert "application/pdf" in ctypes
+
+    @pytest.mark.asyncio
+    async def test_new_bucket_in_upload_files_sets_policy(self, mock_minio_client):
+        mock_minio_client.bucket_exists.return_value = False
+        await upload_files([(b"x", "f.png")], "pfx")
+        mock_minio_client.set_bucket_policy.assert_called_once()
 
 
 # ─── delete_file ──────────────────────────────────────────────────────────────

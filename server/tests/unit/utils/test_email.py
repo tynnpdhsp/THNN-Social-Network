@@ -16,7 +16,6 @@ Covers:
 
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -29,6 +28,11 @@ from app.utils.email import (
     send_otp_email,
     OTP_EMAIL_SUBJECTS,
 )
+
+
+def test_otp_email_subjects_cover_known_purposes():
+    assert "register" in OTP_EMAIL_SUBJECTS
+    assert "reset_password" in OTP_EMAIL_SUBJECTS
 
 
 # ─── cache_otp / get_cached_otp ──────────────────────────────────────────────
@@ -93,6 +97,30 @@ class TestIncrementOtpAttempts:
         assert data["code"] == "654321"
         assert data["attempts"] == 1
 
+    @pytest.mark.asyncio
+    async def test_increment_uses_ex_zero_when_ttl_minus_one(self, patch_get_redis):
+        """``increment_otp_attempts`` uses ``ex=max(ttl, 0)`` when rewriting JSON."""
+        r = patch_get_redis
+        captured_ex = []
+
+        orig_set = r.set
+
+        async def capture_set(key, value, ex=None):
+            captured_ex.append(ex)
+            return await orig_set(key, value, ex=ex)
+
+        r.set = capture_set
+
+        async def ttl_always_minus_one(_key):
+            return -1
+
+        r.ttl = ttl_always_minus_one
+
+        await cache_otp("ttl@x.com", "register", "123456")
+        await increment_otp_attempts("ttl@x.com", "register")
+
+        assert captured_ex[-1] == 0
+
 
 # ─── delete_cached_otp ───────────────────────────────────────────────────────
 
@@ -130,6 +158,7 @@ class TestSendOtpEmail:
 
             mock_send.assert_called_once()
             msg = mock_send.call_args[0][0]
+            assert msg["Subject"].startswith("[THNN]")
             assert "Xác thực đăng ký tài khoản" in msg["Subject"]
 
     @pytest.mark.asyncio

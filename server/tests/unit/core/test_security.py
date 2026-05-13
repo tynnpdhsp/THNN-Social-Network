@@ -35,6 +35,12 @@ class TestHashPassword:
         hashed = hash_password("MyPassword123!")
         assert hashed.startswith("$2b$")
 
+    def test_hash_empty_password_returns_bcrypt_string(self):
+        """Per passlib/bcrypt, empty string is still hashed (policy is app-level)."""
+        hashed = hash_password("")
+        assert hashed.startswith("$2b$")
+        assert verify_password("", hashed) is True
+
     def test_hash_differs_from_plaintext(self):
         plain = "secret"
         assert hash_password(plain) != plain
@@ -97,6 +103,17 @@ class TestCreateAccessToken:
     def test_extra_claims_empty_dict(self):
         token = create_access_token("user-123", extra_claims={})
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        assert payload["sub"] == "user-123"
+
+    def test_extra_claims_can_override_standard_claims(self):
+        """``claims.update(extra_claims)`` runs after base claims — documents merge order."""
+        future = datetime.now(timezone.utc) + timedelta(days=365)
+        token = create_access_token(
+            "user-123",
+            extra_claims={"type": "custom", "exp": future},
+        )
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        assert payload["type"] == "custom"
         assert payload["sub"] == "user-123"
 
 
@@ -173,3 +190,6 @@ class TestDecodeToken:
     def test_random_bytes_returns_none(self):
         import os
         assert decode_token(os.urandom(64).hex()) is None
+
+    def test_three_segments_non_jwt_returns_none(self):
+        assert decode_token("aaa.bbb.ccc") is None
