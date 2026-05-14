@@ -297,7 +297,30 @@ const Board = () => {
                 {p.images?.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(p.images.length, 3)}, 1fr)`, gap: 4, borderRadius: 12, overflow: 'hidden', marginBottom: 8 }}>
                     {p.images.map((img, i) => (
-                      <img key={i} src={resolveImageUrl(img.image_url)} alt="" style={{ width: '100%', height: 180, objectFit: 'cover' }} />
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'var(--surface-soft)',
+                          minHeight: 180,
+                          maxHeight: 260,
+                        }}
+                      >
+                        <img
+                          src={resolveImageUrl(img.image_url)}
+                          alt=""
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: 220,
+                            width: 'auto',
+                            height: 'auto',
+                            objectFit: 'contain',
+                            display: 'block',
+                          }}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
