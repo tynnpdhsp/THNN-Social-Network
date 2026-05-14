@@ -19,6 +19,25 @@ pipeline {
       }
     }
 
+    stage('Frontend unit tests') {
+      when {
+        buildingTag()
+      }
+      steps {
+        sh '''
+          set -eu
+          docker run --rm \
+            -u "$(id -u):$(id -g)" \
+            -e HOME=/tmp/jenkins-node-home \
+            -e npm_config_cache=/tmp/jenkins-npm-cache \
+            -v "${WORKSPACE}:/ws:rw" \
+            -w /ws/client \
+            node:22-bookworm \
+            bash -ec 'mkdir -p "$HOME" "$npm_config_cache" && npm ci && npm test -- --coverage'
+        '''
+      }
+    }
+
     stage('Backend unit tests') {
       when {
         buildingTag()
