@@ -95,7 +95,7 @@ Chi tiết tài khoản mẫu và nội dung seed: [README_SEEDING.md](./README_
 
 ---
 
-## Chạy Server & Test
+## Chạy Server
 
 Chạy backend:
 
@@ -109,6 +109,31 @@ Giao diện đầy đủ: chạy frontend trong thư mục `client` (`npm run de
 
 ---
 
+## Unit test & integration test (pytest)
+
+Cấu hình marker trong [`pytest.ini`](./pytest.ini):
+
+- **`unit`**: test nhanh, mock/fake — không yêu cầu MongoDB, Redis hay SMTP thật.
+- **`integration`**: test HTTP + Prisma, cần dịch vụ đang chạy (xem `tests/integration/`).
+
+**Chỉ unit test** (giống stage Jenkins *Backend unit tests*):
+
+```bash
+cd server
+pip install -r requirements.txt
+python -m prisma generate --schema prisma/schema.prisma
+python -m pytest tests/unit --confcutdir=tests/unit -q -m unit
+```
+
+**Toàn bộ test trong repo** (unit + integration — integration cần môi trường đầy đủ, xem từng file trong `tests/integration/`):
+
+```bash
+cd server
+python -m pytest tests -q
+```
+
+---
+
 ## Cấu trúc thư mục (Module-based)
 
 - app/core/: Cấu hình hệ thống, Bảo mật, Exception handler.
@@ -118,4 +143,5 @@ Giao diện đầy đủ: chạy frontend trong thư mục `client` (`npm run de
 - app/modules/messaging/: Logic tin nhắn realtime.
 - app/modules/admin/: Logic quản trị và thống kê.
 - prisma/: Schema định nghĩa DB và script Seed.
-- tests/: Integration tests cho các module.
+- tests/unit/: Unit test theo module (pytest `-m unit`).
+- tests/integration/: Integration test (pytest `-m integration`).

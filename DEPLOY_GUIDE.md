@@ -1,4 +1,4 @@
-# Hướng dẫn deploy Social Networking App (chi tiết)
+# Hướng dẫn deploy Social Networking App
 
 Tài liệu này là bản hướng dẫn triển khai đầy đủ theo đúng cách bạn đã làm thực tế:
 

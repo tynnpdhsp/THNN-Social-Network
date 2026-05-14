@@ -41,7 +41,7 @@ THNN Social Network là ứng dụng full-stack dành cho sinh viên, bao gồm 
 ## Cấu trúc thư mục
 
 ```
-SocialNetworking-And-Learning-App/
+THNN Social Network/
 ├── client/                         # Giao diện (React 19 + Vite)
 │   ├── src/
 │   │   ├── components/             # Auth, Common, Map, Shop, Social, StudyDocs, Timetable...
@@ -59,7 +59,7 @@ SocialNetworking-And-Learning-App/
 │   │   │                           # documents, schedule, place, shop, admin
 │   │   └── utils/                  # Storage (MinIO), email, OTP
 │   ├── prisma/                     # Schema, seed, hướng dẫn DB
-│   ├── tests/
+│   ├── tests/                      # unit (pytest -m unit) + integration
 │   ├── Dockerfile
 │   └── .env.example
 │
@@ -126,6 +126,32 @@ npm install && npm run dev
 
 ---
 
+## Unit test (local)
+
+**Frontend** (Vitest, thư mục `client/`):
+
+```bash
+cd client && npm install
+npm test                 # chạy một lần
+npm run test:watch       # theo dõi thay đổi
+npm run test:coverage    # báo cáo coverage
+```
+
+**Backend** (pytest, marker `@pytest.mark.unit`, không cần MongoDB/Redis thật cho các test unit):
+
+```bash
+cd server
+pip install -r requirements.txt
+python -m prisma generate --schema prisma/schema.prisma
+python -m pytest tests/unit --confcutdir=tests/unit -q -m unit
+```
+
+Pipeline **Jenkins** ([`Jenkinsfile`](./Jenkinsfile)) luôn chạy **Frontend unit tests** (kèm coverage) và **Backend unit tests** ở đầu pipeline; các bước copy file và deploy Docker chỉ chạy khi build theo **git tag** (`buildingTag()`).
+
+Chi tiết theo từng phần: [`client/README.md`](./client/README.md) · [`server/README.md`](./server/README.md).
+
+---
+
 ## Cấu hình môi trường
 
 ### Backend (`server/.env`)
@@ -166,7 +192,7 @@ Internet → Nginx (host) :443/:80
              └── /storage   → social-minio     :9000
 ```
 
-CI/CD tự động qua **Jenkins** (Poll SCM `H/5 * * * *`) — mỗi push lên `main` sẽ build và deploy lại toàn bộ app stack.
+CI/CD tự động qua **Jenkins** (Poll SCM `H/5 * * * *`). Luồng pipeline (unit test ở mọi build; deploy Docker theo điều kiện tag) nằm trong [`Jenkinsfile`](./Jenkinsfile) — xem thêm [DEPLOY_GUIDE.md](./DEPLOY_GUIDE.md).
 
 ---
 
