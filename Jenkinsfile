@@ -20,9 +20,6 @@ pipeline {
     }
 
     stage('Frontend unit tests') {
-      when {
-        buildingTag()
-      }
       steps {
         sh '''
           set -eu
@@ -39,9 +36,6 @@ pipeline {
     }
 
     stage('Backend unit tests') {
-      when {
-        buildingTag()
-      }
       steps {
         sh '''
           set -eu
