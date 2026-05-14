@@ -67,7 +67,18 @@ pipeline {
       steps {
         sh '''
           set -eu
-          mkdir -p "$DATA_DIR" "$APP_DIR"
+          mkdir -p "$DATA_DIR" "$APP_DIR" || {
+            echo "ERROR: cannot mkdir $DATA_DIR or $APP_DIR (missing write on parent?)."
+            echo "On the Jenkins agent: sudo mkdir -p $APP_ROOT/{data,app} && sudo chown -R $(id -un):$(id -gn) $APP_ROOT"
+            exit 1
+          }
+          if ! touch "$DATA_DIR/.jenkins-write-test" 2>/dev/null; then
+            echo "ERROR: user $(id -un) cannot write to $DATA_DIR."
+            echo "On the Jenkins agent run once (DEPLOY_GUIDE.md §5.4):"
+            echo "  sudo chown -R $(id -un):$(id -gn) $APP_ROOT && sudo chmod -R u+rwX $APP_ROOT"
+            exit 1
+          fi
+          rm -f "$DATA_DIR/.jenkins-write-test"
           cp deploy/data/docker-compose.yml "$DATA_DIR/docker-compose.yml"
           cp deploy/data/env.example "$DATA_DIR/env.example"
           cp deploy/data/bootstrap_defaults.sh "$DATA_DIR/bootstrap_defaults.sh"
