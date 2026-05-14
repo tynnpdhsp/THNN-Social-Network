@@ -55,7 +55,7 @@ pipeline {
 
     stage('Sync Deploy Files') {
       when {
-        buildingTag()
+        branch 'main'
       }
       steps {
         sh '''
@@ -77,7 +77,7 @@ pipeline {
 
     stage('Ensure Mongo Keyfile') {
       when {
-        buildingTag()
+        branch 'main'
       }
       steps {
         sh '''
@@ -92,7 +92,7 @@ pipeline {
 
     stage('Deploy Data Stack') {
       when {
-        buildingTag()
+        branch 'main'
       }
       steps {
         sh '''
@@ -104,7 +104,7 @@ pipeline {
 
     stage('Ensure Mongo Replica Set') {
       when {
-        buildingTag()
+        branch 'main'
       }
       steps {
         sh '''
@@ -124,7 +124,7 @@ pipeline {
 
     stage('Bootstrap DB defaults (roles, categories, admin)') {
       when {
-        buildingTag()
+        branch 'main'
       }
       steps {
         sh '''
@@ -136,7 +136,7 @@ pipeline {
 
     stage('Deploy App Stack') {
       when {
-        buildingTag()
+        branch 'main'
       }
       steps {
         sh '''
@@ -149,7 +149,7 @@ pipeline {
 
     stage('Smoke Test') {
       when {
-        buildingTag()
+        branch 'main'
       }
       steps {
         sh '''
