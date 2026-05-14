@@ -365,22 +365,39 @@ const Profile = ({ targetUserId, onStartChat }) => {
                       gridTemplateColumns: images.length === 1 ? '1fr' : 'repeat(2, 1fr)',
                       gap: 2,
                     }}>
-                      {images.map((img, i) => (
-                        <img
-                          key={i}
-                          src={resolveImageUrl(img.image_url)}
-                          alt=""
-                          style={{
-                            width: '100%',
-                            height: images.length === 1 ? 360 : 200,
-                            objectFit: 'cover',
-                            cursor: 'pointer',
-                            transition: 'opacity 0.2s ease',
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-                        />
-                      ))}
+                      {images.map((img, i) => {
+                        const multi = images.length > 1;
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: 'var(--surface-soft)',
+                              minHeight: multi ? 200 : 0,
+                              maxHeight: multi ? 280 : 'none',
+                            }}
+                          >
+                            <img
+                              src={resolveImageUrl(img.image_url)}
+                              alt=""
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: multi ? 240 : 480,
+                                width: 'auto',
+                                height: 'auto',
+                                objectFit: 'contain',
+                                cursor: 'pointer',
+                                display: 'block',
+                                transition: 'opacity 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 

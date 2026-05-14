@@ -635,9 +635,38 @@ function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, on
           overflow: 'hidden',
           marginTop: 12,
         }}>
-          {p.images.map((img, i) => (
-            <img key={i} src={resolveImageUrl(img.image_url)} alt="" style={{ width: '100%', height: p.images.length === 1 ? 400 : 200, objectFit: 'cover', transition: 'transform 0.4s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'} />
-          ))}
+          {p.images.map((img, i) => {
+            const multi = p.images.length > 1;
+            return (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--surface-soft)',
+                  minHeight: multi ? 200 : 0,
+                  maxHeight: multi ? 280 : 'none',
+                }}
+              >
+                <img
+                  src={resolveImageUrl(img.image_url)}
+                  alt=""
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: multi ? 240 : 540,
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    display: 'block',
+                    transition: 'transform 0.4s ease',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
