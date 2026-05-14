@@ -16,6 +16,13 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
+        script {
+          def bn = (env.BRANCH_NAME ?: '').trim()
+          def raw = (env.GIT_BRANCH ?: '').trim()
+          def normalized = raw.replaceFirst(/^refs\/heads\//, '').replaceFirst(/^origin\//, '')
+          env.IS_MAIN_DEPLOY = (bn == 'main' || normalized == 'main') ? 'true' : 'false'
+          echo "Deploy gate: IS_MAIN_DEPLOY=${env.IS_MAIN_DEPLOY} (BRANCH_NAME='${bn}' GIT_BRANCH='${raw}')"
+        }
       }
     }
 
@@ -55,7 +62,7 @@ pipeline {
 
     stage('Sync Deploy Files') {
       when {
-        branch 'main'
+        environment name: 'IS_MAIN_DEPLOY', value: 'true'
       }
       steps {
         sh '''
@@ -77,7 +84,7 @@ pipeline {
 
     stage('Ensure Mongo Keyfile') {
       when {
-        branch 'main'
+        environment name: 'IS_MAIN_DEPLOY', value: 'true'
       }
       steps {
         sh '''
@@ -92,7 +99,7 @@ pipeline {
 
     stage('Deploy Data Stack') {
       when {
-        branch 'main'
+        environment name: 'IS_MAIN_DEPLOY', value: 'true'
       }
       steps {
         sh '''
@@ -104,7 +111,7 @@ pipeline {
 
     stage('Ensure Mongo Replica Set') {
       when {
-        branch 'main'
+        environment name: 'IS_MAIN_DEPLOY', value: 'true'
       }
       steps {
         sh '''
@@ -124,7 +131,7 @@ pipeline {
 
     stage('Bootstrap DB defaults (roles, categories, admin)') {
       when {
-        branch 'main'
+        environment name: 'IS_MAIN_DEPLOY', value: 'true'
       }
       steps {
         sh '''
@@ -136,7 +143,7 @@ pipeline {
 
     stage('Deploy App Stack') {
       when {
-        branch 'main'
+        environment name: 'IS_MAIN_DEPLOY', value: 'true'
       }
       steps {
         sh '''
@@ -149,7 +156,7 @@ pipeline {
 
     stage('Smoke Test') {
       when {
-        branch 'main'
+        environment name: 'IS_MAIN_DEPLOY', value: 'true'
       }
       steps {
         sh '''
