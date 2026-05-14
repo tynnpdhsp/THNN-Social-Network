@@ -416,7 +416,7 @@ const AuthPage = () => {
         {mode === MODE.LOGIN && (
           <form onSubmit={handleLogin} style={styles.form} key="login">
             <InputField id="login-email" icon={Mail} label="Email" type="email"
-              placeholder="student@thnn.edu.vn" value={email} onChange={setEmail} />
+              placeholder="Nhập email của bạn" value={email} onChange={setEmail} />
             <InputField id="login-password" icon={Lock} label="Mật khẩu"
               type={showPassword ? 'text' : 'password'} placeholder="••••••••"
               value={password} onChange={setPassword}>
@@ -439,7 +439,7 @@ const AuthPage = () => {
             <InputField id="reg-name" icon={User} label="Họ và tên"
               placeholder="Nguyễn Văn A" value={fullName} onChange={setFullName} />
             <InputField id="reg-email" icon={Mail} label="Email" type="email"
-              placeholder="student@thnn.edu.vn" value={email} onChange={setEmail} />
+              placeholder="Nhập email của bạn" value={email} onChange={setEmail} />
             <InputField id="reg-phone" icon={Phone} label="Số điện thoại" type="tel"
               placeholder="0901234567" value={phone} onChange={setPhone} minLength={10} />
             <InputField id="reg-password" icon={Lock} label="Mật khẩu"
@@ -486,7 +486,7 @@ const AuthPage = () => {
         {mode === MODE.FORGOT_PASSWORD && (
           <form onSubmit={handleForgotPassword} style={styles.form} key="forgot">
             <InputField id="forgot-email" icon={Mail} label="Email" type="email"
-              placeholder="student@thnn.edu.vn" value={email} onChange={setEmail} />
+              placeholder="Nhập email của bạn" value={email} onChange={setEmail} />
             <SubmitBtn text="Gửi mã OTP" loading={loading} />
           </form>
         )}
