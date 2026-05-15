@@ -5,6 +5,7 @@ import UploadDocModal from './UploadDocModal';
 import DeleteConfirmModal from '../Shop/DeleteConfirmModal';
 import * as documentService from '../../services/documentService';
 import toast from 'react-hot-toast';
+import { resolveImageUrl } from '../../config/api';
 
 const StudyDocs = () => {
   const [documents, setDocuments] = useState([]);
@@ -110,7 +111,7 @@ const StudyDocs = () => {
 
   const handleShare = (doc, e) => {
     e.stopPropagation();
-    const url = doc.file_url?.startsWith('http') ? doc.file_url : `${window.location.origin}${doc.file_url}`;
+    const url = resolveImageUrl(doc.file_url);
     navigator.clipboard.writeText(url).then(() => {
       toast.success('Đã sao chép liên kết tải tài liệu!');
     }).catch(() => {
@@ -123,6 +124,37 @@ const StudyDocs = () => {
     e.stopPropagation();
     setDocToDelete(doc);
     setIsDeleteModalOpen(true);
+    setActiveMenuId(null);
+  };
+
+  const handleDownload = async (doc, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      const url = resolveImageUrl(doc.file_url);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = doc.file_name || 'document';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      a.remove();
+    } catch (error) {
+      console.warn("Fetch download failed, falling back to direct link", error);
+      const a = document.createElement('a');
+      a.href = resolveImageUrl(doc.file_url);
+      a.download = doc.file_name || 'document';
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
     setActiveMenuId(null);
   };
 
@@ -301,12 +333,11 @@ const StudyDocs = () => {
                       <td style={{ padding: '16px', position: 'relative' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                           <button 
+                            onClick={(e) => handleDownload(doc, e)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }} 
                             title="Tải xuống"
                           >
-                            <a href={doc.file_url} download target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>
-                              <Download size={18} />
-                            </a>
+                            <Download size={18} />
                           </button>
                           <button 
                             onClick={(e) => handleShare(doc, e)}
