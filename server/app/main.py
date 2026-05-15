@@ -14,7 +14,7 @@ from app.modules.social.board_router import router as board_router
 from app.modules.notification.router import router as notification_router
 from app.modules.messaging.router import router as messaging_router
 from app.modules.admin.router import router as admin_router
-from app.modules.messaging.ws_manager import manager
+from app.modules.messaging.ws_manager import cleanup_stale_online_users, manager
 from app.modules.shop.router import router as shop_router
 from app.modules.documents.router import router as documents_router
 from app.modules.schedule.router import router as schedule_router
