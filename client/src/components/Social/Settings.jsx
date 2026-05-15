@@ -9,7 +9,8 @@ const Settings = () => {
   const [notifSettings, setNotifSettings] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [saved, setSaved] = useState(false);
+  const [privacySaved, setPrivacySaved] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [pwMsg, setPwMsg] = useState('');
@@ -36,12 +37,12 @@ const Settings = () => {
 
   const savePrivacy = async () => {
     await apiFetch('/account/me/privacy', { method: 'PUT', body: JSON.stringify(privacy) });
-    setSaved(true); setTimeout(() => setSaved(false), 2000);
+    setPrivacySaved(true); setTimeout(() => setPrivacySaved(false), 2000);
   };
 
   const saveNotif = async () => {
     await apiFetch('/account/me/notification-settings', { method: 'PUT', body: JSON.stringify(notifSettings) });
-    setSaved(true); setTimeout(() => setSaved(false), 2000);
+    setNotifSaved(true); setTimeout(() => setNotifSaved(false), 2000);
   };
 
   const unblock = async (id) => { await apiFetch(`/social/blocks/${id}`, { method: 'DELETE' }); load(); };
@@ -134,7 +135,7 @@ const Settings = () => {
                 </div>
               );
             })}
-            <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={savePrivacy}>{saved ? <><Check size={16}/> Đã lưu</> : <><Save size={16}/> Lưu</>}</button>
+            <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={savePrivacy}>{privacySaved ? <><Check size={16}/> Đã lưu</> : <><Save size={16}/> Lưu</>}</button>
           </div>
         </div>
 
@@ -149,7 +150,7 @@ const Settings = () => {
                 </button>
               </div>
             ))}
-            <button className="btn-primary" style={{ width: '100%', height: 44, marginTop: 8 }} onClick={saveNotif}><Save size={16}/> Lưu</button>
+            <button className="btn-primary" style={{ width: '100%', height: 44, marginTop: 8 }} onClick={saveNotif}>{notifSaved ? <><Check size={16}/> Đã lưu</> : <><Save size={16}/> Lưu</>}</button>
           </div>
         </div>
 
