@@ -1,3 +1,4 @@
+import { mockUseAuth, defaultAuthMockValue } from '../../_fakes/setupAuthMock.js';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -16,6 +17,7 @@ import Settings from '@/components/Social/Settings.jsx';
 
 describe('Settings', () => {
   beforeEach(() => {
+    mockUseAuth.mockReturnValue(defaultAuthMockValue());
     hoisted.mockApiFetch.mockReset();
   });
 

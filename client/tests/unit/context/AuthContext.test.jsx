@@ -3,10 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext.jsx';
+import { installMockWebSocket } from '../_fakes/websocket.js';
 
-vi.mock('@/config/api.js', () => ({
-  apiFetch: vi.fn(),
-}));
+vi.mock('@/config/api.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    apiFetch: vi.fn(),
+  };
+});
 
 import { apiFetch } from '@/config/api.js';
 import { makeResponse } from '../_fakes/fetch.js';
@@ -61,11 +66,15 @@ function ActionsProbe() {
 }
 
 describe('AuthContext', () => {
+  let restoreWs;
+
   beforeEach(() => {
+    restoreWs = installMockWebSocket();
     vi.mocked(apiFetch).mockReset();
   });
 
   afterEach(() => {
+    restoreWs?.();
     vi.clearAllMocks();
   });
 

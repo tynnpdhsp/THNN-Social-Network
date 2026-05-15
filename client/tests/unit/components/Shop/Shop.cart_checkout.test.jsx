@@ -1,3 +1,4 @@
+import '../../_fakes/setupAuthMock.js';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -34,8 +35,28 @@ vi.mock('react-hot-toast', () => ({
 import Shop from '@/components/Shop/Shop.jsx';
 
 const SAMPLE_ITEMS = [
-  { id: 'p-cheap', title: 'Cheap Supply', category_id: 'supplies', price: 10000, avg_rating: 3, rating_count: 0, images: [], description: 'd' },
-  { id: 'p-doc', title: 'Alpha Doc', category_id: 'docs', price: 100000, avg_rating: 4, rating_count: 2, images: [], description: 'd' },
+  {
+    id: 'p-cheap',
+    title: 'Cheap Supply',
+    category_id: 'supplies',
+    price: 10000,
+    avg_rating: 3,
+    rating_count: 0,
+    images: [],
+    description: 'd',
+    seller_id: 'other-seller',
+  },
+  {
+    id: 'p-doc',
+    title: 'Alpha Doc',
+    category_id: 'docs',
+    price: 100000,
+    avg_rating: 4,
+    rating_count: 2,
+    images: [],
+    description: 'd',
+    seller_id: 'other-seller',
+  },
 ];
 
 const CART_LINE = {
@@ -52,6 +73,12 @@ function setupCategoriesAndProducts() {
 function cardByProductTitle(title) {
   const h = screen.getByText(title);
   return h.closest('.pin-card');
+}
+
+function addToCartButtonInCard(card) {
+  return within(card)
+    .getAllByRole('button')
+    .find((b) => b.querySelector('svg.lucide-shopping-bag'));
 }
 
 describe('Shop — cart & checkout', () => {
@@ -96,8 +123,9 @@ describe('Shop — cart & checkout', () => {
     render(<Shop />);
     await screen.findByText('Cheap Supply');
     const card = cardByProductTitle('Cheap Supply');
-    const buttons = within(card).getAllByRole('button');
-    await user.click(buttons[2]);
+    const cartBtn = addToCartButtonInCard(card);
+    expect(cartBtn).toBeTruthy();
+    await user.click(cartBtn);
 
     await waitFor(() => {
       expect(hoisted.addToCart).toHaveBeenCalledWith('p-cheap', 1);
@@ -114,7 +142,9 @@ describe('Shop — cart & checkout', () => {
     render(<Shop />);
     await screen.findByText('Cheap Supply');
     const card = cardByProductTitle('Cheap Supply');
-    await user.click(within(card).getAllByRole('button')[2]);
+    const cartBtn = addToCartButtonInCard(card);
+    expect(cartBtn).toBeTruthy();
+    await user.click(cartBtn);
 
     await waitFor(() =>
       expect(hoisted.toastError).toHaveBeenCalledWith('Lỗi khi thêm vào giỏ hàng: out of stock')

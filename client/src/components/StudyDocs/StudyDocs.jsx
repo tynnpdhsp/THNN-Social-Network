@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Download, Share2, MoreVertical, Upload, Filter, Star, ChevronDown, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import DocDetailModal from './DocDetailModal';
 import UploadDocModal from './UploadDocModal';
