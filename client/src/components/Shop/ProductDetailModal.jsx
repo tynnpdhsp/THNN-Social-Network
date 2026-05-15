@@ -181,11 +181,11 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
                   reviews.map(c => (
                     <div key={c.id} style={{ display: 'flex', gap: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {c.user_info?.avatar_url ? (
-                          <img src={resolveImageUrl(c.user_info.avatar_url) || getDefaultAvatar(c.user_info.full_name)} alt={c.user_info.full_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          <User size={20} color="var(--mute)" />
-                        )}
+                        <img 
+                          src={resolveImageUrl(c.user_info?.avatar_url) || getDefaultAvatar(c.user_info?.full_name)} 
+                          alt={c.user_info?.full_name} 
+                          style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                        />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
