@@ -495,14 +495,14 @@ class ShopService:
         if hasattr(item, "category") and item.category:
             category = CategoryResponse(id=item.category.id, name=item.category.name)
 
-        _p = "https" if settings.MINIO_SECURE else "http"
-        domain = f"{_p}://{settings.MINIO_ENDPOINT}"
+        # _p = "https" if settings.MINIO_SECURE else "http"
+        # domain = f"{_p}://{settings.MINIO_ENDPOINT}"
         images = []
         if hasattr(item, "itemImages") and item.itemImages:
             for img in item.itemImages:
                 url = img.imageUrl
-                if not url.startswith("http://") and not url.startswith("https://"):
-                    url = f"{domain}{url}"
+                # if not url.startswith("http://") and not url.startswith("https://"):
+                #     url = f"{domain}{url}"
                 images.append(ImageResponse(image_url=url, display_order=img.displayOrder))
 
         return ItemResponse(
