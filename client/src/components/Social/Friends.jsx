@@ -141,7 +141,7 @@ const Friends = ({ onViewProfile, onStartChat }) => {
                       <button onClick={() => onStartChat?.(u)} style={{ ...s.actionBtn, background: 'var(--primary)', color: 'white' }}><MessageSquare size={14} /> Nhắn tin</button>
                     )}
                     {u.friend_status !== 'me' && (
-                      <button onClick={() => blockUser(u.id)} style={{ ...s.actionBtn, color: 'var(--primary)', background: '#fef2f2' }}><Ban size={14} /></button>
+                      <button onClick={() => blockUser(u.id)} style={{ ...s.actionBtn, color: 'var(--primary)', background: '#fef2f2' }}><Ban size={14} />Chặn {u.full_name}</button>
                     )}
                   </div>
                 </div>
