@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Star, ShoppingCart, MessageSquare, Send, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as shopService from '../../services/shopService';
+import { resolveImageUrl, getDefaultAvatar } from '../../config/api';
 
 const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart }) => {
   const [comment, setComment] = useState('');
@@ -109,7 +110,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
         {/* Left: Image Area */}
         <div style={{ flex: '1 1 350px', minHeight: 350, background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <img 
-            src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} 
+            src={product.images && product.images.length > 0 ? resolveImageUrl(product.images[0].image_url) : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} 
             alt={product.title} 
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
           />
@@ -177,7 +178,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
                     <div key={c.id} style={{ display: 'flex', gap: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {c.user_info?.avatar_url ? (
-                          <img src={c.user_info.avatar_url} alt={c.user_info.full_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          <img src={resolveImageUrl(c.user_info.avatar_url) || getDefaultAvatar(c.user_info.full_name)} alt={c.user_info.full_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                         ) : (
                           <User size={20} color="var(--mute)" />
                         )}

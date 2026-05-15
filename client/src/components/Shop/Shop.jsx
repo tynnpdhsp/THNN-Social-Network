@@ -6,6 +6,7 @@ import AddProductModal from './AddProductModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import CartDrawer from './CartDrawer';
 import * as shopService from '../../services/shopService';
+import { resolveImageUrl } from '../../config/api';
 
 // Mảng các category icon có thể bỏ nếu ta dùng trực tiếp từ backend
 const hardcodedCategories = [
@@ -454,7 +455,7 @@ const Shop = () => {
                 style={{ width: '100%' }}
               >
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--rounded-md)' }}>
-                  <img src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} alt={product.title} style={{ width: '100%', height: 350, objectFit: 'cover' }} />
+                  <img src={product.images && product.images.length > 0 ? resolveImageUrl(product.images[0].image_url) : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} alt={product.title} style={{ width: '100%', height: 350, objectFit: 'cover' }} />
 
                   <div className="overlay" style={{ 
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
