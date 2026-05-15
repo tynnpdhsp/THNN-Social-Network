@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { FileText, Download, Share2, MoreVertical, Upload, Filter, Star, ChevronDown, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, Download, Share2, MoreVertical, Upload, Filter, Star, ChevronDown, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import DocDetailModal from './DocDetailModal';
 import UploadDocModal from './UploadDocModal';
 import DeleteConfirmModal from '../Shop/DeleteConfirmModal';
+import Modal from '../Common/Modal';
 import * as documentService from '../../services/documentService';
 import toast from 'react-hot-toast';
 import { resolveImageUrl } from '../../config/api';
@@ -39,9 +40,6 @@ const StudyDocs = () => {
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory, sortBy]);
 
   useEffect(() => {
     fetchDocuments();
@@ -120,6 +118,13 @@ const StudyDocs = () => {
     }).catch(() => {
       toast.error('Không thể sao chép liên kết');
     });
+    setActiveMenuId(null);
+  };
+
+  const handleDeleteClick = (doc, e) => {
+    if (e) e.stopPropagation();
+    setDocToDelete(doc);
+    setIsDeleteModalOpen(true);
     setActiveMenuId(null);
   };
 
@@ -218,7 +223,7 @@ const StudyDocs = () => {
                       {sortOptions.map(option => (
                         <div 
                           key={option.value}
-                          onClick={() => { setSortBy(option.value); setIsSortOpen(false); }}
+                          onClick={() => { setSortBy(option.value); setCurrentPage(1); setIsSortOpen(false); }}
                           style={{ 
                             padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                             cursor: 'pointer', fontSize: 14, fontWeight: sortBy === option.value ? 700 : 500,
@@ -260,7 +265,7 @@ const StudyDocs = () => {
                       {categories.map(cat => (
                         <div 
                           key={cat.id}
-                          onClick={() => { setActiveCategory(cat); setIsFilterOpen(false); }}
+                          onClick={() => { setActiveCategory(cat); setCurrentPage(1); setIsFilterOpen(false); }}
                           style={{ 
                             padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                             cursor: 'pointer', fontSize: 14, fontWeight: activeCategory.id === cat.id ? 700 : 500,

@@ -139,7 +139,13 @@ class AccountRepository:
         return await self.db.notificationsetting.create(data=data)
 
     async def update_notification_settings(self, user_id: str, data: NotificationSettingUpdateInput) -> NotificationSetting:
-        return await self.db.notificationsetting.update(where={"userId": user_id}, data=data)
+        return await self.db.notificationsetting.upsert(
+            where={"userId": user_id},
+            data={
+                "create": {**data, "userId": user_id},
+                "update": data
+            }
+        )
 
     # ─── Order History ─────────────────────────────────────────────────────
 
