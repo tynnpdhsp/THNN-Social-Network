@@ -18,6 +18,7 @@ class AdminUserResponse(BaseModel):
     full_name: str
     role: str
     is_locked: bool
+    avatar_url: Optional[str] = None
     created_at: datetime
     last_login_at: Optional[datetime] = None
 

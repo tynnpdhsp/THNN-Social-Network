@@ -32,6 +32,7 @@ class AdminService:
                 role=u.roleRef.role if u.roleRef else "unknown",
                 is_locked=u.isLocked,
                 created_at=u.createdAt,
+                avatar_url=u.avatarUrl if u.avatarUrl else None,
                 last_login_at=u.lastLoginAt
             ) for u in users
         ]
