@@ -119,6 +119,16 @@ export function AuthProvider({ children }) {
     return { success: false, error: extractError(data, 'Đặt lại mật khẩu thất bại') }; 
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    const res = await apiFetch('/account/me/password', {
+      method: 'PUT',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    const data = await res.json();
+    if (res.ok) return { success: true, message: data.message };
+    return { success: false, error: extractError(data, 'Đổi mật khẩu thất bại') };
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -131,7 +141,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, token, loading,
       login, register, verifyOtp, resendVerificationOtp,
-      forgotPassword, resetPassword, logout, refreshProfile,
+      forgotPassword, resetPassword, changePassword, logout, refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

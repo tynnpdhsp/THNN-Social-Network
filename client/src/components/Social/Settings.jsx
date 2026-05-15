@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, Bell, Lock, Save, Check, X, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Settings = () => {
   const [privacy, setPrivacy] = useState({ who_can_see_posts: 'everyone', who_can_message: 'everyone', who_can_friend_req: 'everyone' });
@@ -12,6 +13,9 @@ const Settings = () => {
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [pwMsg, setPwMsg] = useState('');
+  const [isPwError, setIsPwError] = useState(false);
+
+  const { changePassword } = useAuth();
 
   const load = useCallback(async () => {
     try {
@@ -43,10 +47,24 @@ const Settings = () => {
   const unblock = async (id) => { await apiFetch(`/social/blocks/${id}`, { method: 'DELETE' }); load(); };
 
   const changePw = async () => {
+    if (!oldPw || !newPw) {
+      setPwMsg('Vui lòng nhập đầy đủ thông tin');
+      setIsPwError(true);
+      return;
+    }
     setPwMsg('');
-    const r = await apiFetch('/account/me/password', { method: 'PUT', body: JSON.stringify({ old_password: oldPw, new_password: newPw }) });
-    if (r.ok) { setPwMsg('Thành công!'); setOldPw(''); setNewPw(''); }
-    else { const d = await r.json(); setPwMsg(d.detail || 'Lỗi'); }
+    setIsPwError(false);
+    
+    const result = await changePassword(oldPw, newPw);
+    if (result.success) {
+      setPwMsg(result.message || 'Thành công!');
+      setIsPwError(false);
+      setOldPw('');
+      setNewPw('');
+    } else {
+      setPwMsg(result.error);
+      setIsPwError(true);
+    }
   };
 
   const toggle = (k) => setNotifSettings(p => ({ ...p, [k]: !p[k] }));
@@ -140,7 +158,7 @@ const Settings = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <input type="password" className="input-field" placeholder="Mật khẩu hiện tại" value={oldPw} onChange={e => setOldPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
             <input type="password" className="input-field" placeholder="Mật khẩu mới" value={newPw} onChange={e => setNewPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
-            {pwMsg && <p style={{ fontSize: 13, fontWeight: 600, color: pwMsg === 'Thành công!' ? '#16a34a' : 'var(--primary)' }}>{pwMsg}</p>}
+            {pwMsg && <p style={{ fontSize: 13, fontWeight: 600, color: isPwError ? 'var(--primary)' : '#16a34a' }}>{pwMsg}</p>}
             <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={changePw}>Đổi mật khẩu</button>
           </div>
         </div>
