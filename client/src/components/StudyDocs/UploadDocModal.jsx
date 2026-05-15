@@ -66,7 +66,7 @@ const UploadDocModal = ({ isOpen, onClose, onUploadSuccess, categories }) => {
   const selectedCategory = categories?.find(c => c.id === formData.category_id);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Tải lên tài liệu mới" width={540}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Tải lên tài liệu mới" width={540} overflow="visible">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '4px 0' }}>
         <input 
           type="file" 

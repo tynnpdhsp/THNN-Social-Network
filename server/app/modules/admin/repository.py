@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from prisma import Prisma
+from prisma import Prisma, Json
 from prisma.models import User, Post, Report, AuditLog
 import logging
 
@@ -182,8 +182,8 @@ class AdminRepository:
                     "userId": user_id,
                     "action": action,
                     "severity": severity,
-                    "request_info": request_info, # Changed from requestInfo
-                    "payload": payload
+                    "requestInfo": Json(request_info) if request_info else None,
+                    "payload": Json(payload) if payload else None
                 }
             )
         except Exception as e:

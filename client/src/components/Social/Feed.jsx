@@ -83,20 +83,29 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
 
   const handleUploadImages = async (e) => {
     const files = e.target.files;
+    const MAX_SIZE = 50 * 1024 * 1024;
+
     for (let f of files) {
+      if (f.size > MAX_SIZE) {
+        toast.error(`File "${f.name}" quá lớn (tối đa 50MB)`);
+        continue;
+      }
+
       const fd = new FormData();
       fd.append('file', f);
       try {
         const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          toast.error(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
+          toast.error(`Tải lên thất bại: ${err.detail || res.statusText}`);
           continue;
         }
         const data = await res.json();
-        if (data.image_url) setUploadedImages(prev => [...prev, data.image_url]);
+        if (data.media_url) {
+          setUploadedImages(prev => [...prev, { url: data.media_url, type: data.media_type }]);
+        }
       } catch (err) {
-        toast.error('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+        toast.error('Không thể tải file. Kiểm tra kết nối server/MinIO.');
         console.error('Upload error:', err);
       }
     }
@@ -110,7 +119,11 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
       const body = {
         content: newContent,
         visibility: visibility,
-        images: uploadedImages.map((u, i) => ({ image_url: u, display_order: i })),
+        images: uploadedImages.map((u, i) => ({ 
+          image_url: u.url, 
+          media_type: u.type,
+          display_order: i 
+        })),
       };
       const res = await apiFetch('/social/posts', {
         method: 'POST',
@@ -140,9 +153,18 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
       icon: 'delete',
     });
     if (!ok) return;
-    await apiFetch(`/social/posts/${postId}`, { method: 'DELETE' });
-    toast.success('Đã xóa bài viết');
-    loadFeed();
+    try {
+      const res = await apiFetch(`/social/posts/${postId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Đã xóa bài viết');
+        loadFeed();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(`Không thể xóa bài viết: ${err.detail || 'Lỗi không xác định'}`);
+      }
+    } catch (err) {
+      toast.error('Lỗi kết nối khi xóa bài viết');
+    }
   };
 
   const handleUpdatePost = async () => {
@@ -243,9 +265,18 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
 
         {uploadedImages.length > 0 && (
           <div style={s.previewRow}>
-            {uploadedImages.map((img, i) => (
+            {uploadedImages.map((media, i) => (
               <div key={i} style={{ ...s.previewItem, animation: 'popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1)' }}>
-                <img src={resolveImageUrl(img)} alt="" style={s.previewImg} />
+                {media.type === 'video' ? (
+                  <div style={{ ...s.previewImg, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000' }}>
+                    <video src={resolveImageUrl(media.url)} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: 12 }}>
+                      <span style={{ color: 'white', fontSize: 10, fontWeight: 700 }}>VIDEO</span>
+                    </div>
+                  </div>
+                ) : (
+                  <img src={resolveImageUrl(media.url)} alt="" style={s.previewImg} />
+                )}
                 <button
                   onClick={() => setUploadedImages(prev => prev.filter((_, j) => j !== i))}
                   style={s.previewRemove}
@@ -259,7 +290,7 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
           <label style={s.mediaBtn}>
             <Image size={18} color="var(--primary)" />
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--mute)' }}>Ảnh/Video</span>
-            <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
+            <input type="file" multiple accept="image/*,video/*" hidden onChange={handleUploadImages} />
           </label>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <div style={{ position: 'relative' }}>
@@ -347,7 +378,7 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
       )}
 
       {/* Edit Modal */}
-      <Modal isOpen={!!editPost} onClose={() => setEditPost(null)} title="Chỉnh sửa bài viết" width={500}>
+      <Modal isOpen={!!editPost} onClose={() => setEditPost(null)} title="Chỉnh sửa bài viết" width={500} overflow="visible">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <textarea
             className="input-field"
@@ -477,7 +508,7 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
       </Modal>
 
       {/* Report Modal */}
-      <Modal isOpen={!!reportTarget} onClose={() => setReportTarget(null)} title="Báo cáo nội dung" width={420}>
+      <Modal isOpen={!!reportTarget} onClose={() => setReportTarget(null)} title="Báo cáo nội dung" width={420} overflow="visible">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>Lý do</label>
@@ -637,6 +668,7 @@ function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, on
         }}>
           {p.images.map((img, i) => {
             const multi = p.images.length > 1;
+            const isVideo = img.media_type === 'video';
             return (
               <div
                 key={i}
@@ -649,21 +681,35 @@ function PostCard({ id, post: p, index = 0, currentUserId, onLike, onComment, on
                   maxHeight: multi ? 280 : 'none',
                 }}
               >
-                <img
-                  src={resolveImageUrl(img.image_url)}
-                  alt=""
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: multi ? 240 : 540,
-                    width: 'auto',
-                    height: 'auto',
-                    objectFit: 'contain',
-                    display: 'block',
-                    transition: 'transform 0.4s ease',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-                />
+                {isVideo ? (
+                  <video
+                    src={resolveImageUrl(img.image_url)}
+                    controls
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: multi ? 240 : 540,
+                      width: '100%',
+                      height: 'auto',
+                      borderRadius: 8,
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={resolveImageUrl(img.image_url)}
+                    alt=""
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: multi ? 240 : 540,
+                      width: 'auto',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      display: 'block',
+                      transition: 'transform 0.4s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  />
+                )}
               </div>
             );
           })}

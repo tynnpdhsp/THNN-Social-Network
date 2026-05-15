@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, MapPin, X, ChevronDown } from 'lucide-react';
+import { resolveImageUrl } from '../../config/api';
 import Modal from '../Common/Modal';
 
 const AddLocationModal = ({ isOpen, onClose, onAdd, categories, initialCoords }) => {
@@ -222,7 +223,7 @@ const AddLocationModal = ({ isOpen, onClose, onAdd, categories, initialCoords })
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
             {previews.map((preview, idx) => (
               <div key={idx} style={{ position: 'relative', width: '100%', paddingTop: '100%', borderRadius: 'var(--rounded-sm)', overflow: 'hidden' }}>
-                <img src={preview} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={resolveImageUrl(preview)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                 <button 
                   onClick={() => removeFile(idx)}
                   style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', padding: 2, color: 'white', cursor: 'pointer' }}

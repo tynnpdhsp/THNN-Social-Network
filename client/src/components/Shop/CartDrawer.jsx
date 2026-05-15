@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Minus, Plus, Trash2, ShoppingBag, ArrowRight, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { resolveImageUrl } from '../../config/api';
 
 const CartDrawer = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, onCheckout, isLoading }) => {
   if (!isOpen) return null;
@@ -44,7 +45,7 @@ const CartDrawer = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem
                 <div key={item.item_id} className="cart-item-card">
                   <div className="cart-item-image">
                     <img 
-                      src={item.item?.images?.[0]?.image_url || 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=200'} 
+                      src={item.item?.images?.[0]?.image_url ? resolveImageUrl(item.item.images[0].image_url) : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=200'} 
                       alt={item.item?.title} 
                     />
                   </div>

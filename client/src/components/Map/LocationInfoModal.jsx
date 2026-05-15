@@ -1,17 +1,18 @@
 import React from 'react';
 import { MapPin, Navigation, Star, X, Map, Layers } from 'lucide-react';
 import Modal from '../Common/Modal';
+import { resolveImageUrl } from '../../config/api';
 
 const LocationInfoModal = ({ isOpen, onClose, location }) => {
   if (!location) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width={500}>
+    <Modal isOpen={isOpen} onClose={onClose} width={500} showClose={false}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Header Image */}
         <div style={{ margin: '-32px -32px 20px -32px', position: 'relative' }}>
           <img 
-            src={location.images?.[0]?.image_url || 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600'} 
+            src={resolveImageUrl(location.images?.[0]?.image_url) || 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600'} 
             alt={location.name}
             style={{ width: '100%', height: 200, objectFit: 'cover', borderTopLeftRadius: 'var(--rounded-lg)', borderTopRightRadius: 'var(--rounded-lg)' }} 
           />

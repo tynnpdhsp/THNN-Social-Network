@@ -3,6 +3,7 @@ import asyncio
 from typing import Dict, Set
 from fastapi import WebSocket
 from app.core.redis import get_redis
+from app.core.cache import add_online_user, remove_online_user, get_online_users
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,12 +19,16 @@ class ConnectionManager:
         if user_id not in self.active_connections:
             self.active_connections[user_id] = set()
         self.active_connections[user_id].add(websocket)
+        await add_online_user(user_id)
+        await self.broadcast_online_users()
 
-    def disconnect(self, user_id: str, websocket: WebSocket):
+    async def disconnect(self, user_id: str, websocket: WebSocket):
         if user_id in self.active_connections:
             self.active_connections[user_id].discard(websocket)
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
+                await remove_online_user(user_id)
+                await self.broadcast_online_users()
 
     async def send_personal_message(self, message: dict, user_id: str):
         if user_id in self.active_connections:
@@ -39,6 +44,18 @@ class ConnectionManager:
         Send to all connections of a specific user.
         """
         await self.send_personal_message(payload, user_id)
+
+    async def broadcast_online_users(self):
+        """
+        Broadcast the list of online users to all connected users.
+        """
+        online_users = await get_online_users()
+        payload = {
+            "type": "ONLINE_USERS_LIST",
+            "data": online_users
+        }
+        for user_id in self.active_connections:
+            await self.broadcast_to_user(user_id, payload)
 
     async def start_pubsub(self):
         """
@@ -63,3 +80,44 @@ class ConnectionManager:
                 await asyncio.sleep(5)
 
 manager = ConnectionManager()
+
+async def notify_user_locked(user_id: str):
+    """
+    Publish a lock event to Redis to notify all instances to kick the user.
+    """
+    redis = await get_redis()
+    payload = {
+        "target_user_ids": [user_id],
+        "payload": {"type": "ACCOUNT_LOCKED"}
+    }
+    await redis.publish("chat_updates", json.dumps(payload))
+
+async def broadcast_online_users_list(manager: ConnectionManager):
+    """
+    Broadcast the list of online users to all connected users.
+    """
+    online_users = await get_online_users()
+    payload = {
+        "type": "ONLINE_USERS_LIST",
+        "data": online_users
+    }
+    for user_id in manager.active_connections:
+        await manager.broadcast_to_user(user_id, payload)
+
+async def cleanup_stale_online_users():
+    """
+    Cleanup job to remove users from online list who are not actually connected.
+    This handles cases where server crashes or restarts without proper disconnect.
+    """
+    redis = await get_redis()
+    online_users = await get_online_users()
+    
+    # Remove users who are not in active_connections
+    stale_users = set(online_users) - set(manager.active_connections.keys())
+    
+    for user_id in stale_users:
+        await remove_online_user(user_id)
+    
+    if stale_users:
+        logger.info(f"Cleaned up {len(stale_users)} stale online users")
+        await broadcast_online_users_list(manager)

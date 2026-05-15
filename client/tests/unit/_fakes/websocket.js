@@ -36,7 +36,12 @@ export class MockWebSocket {
    * @param {string} data
    */
   send(data) {
-    this.sent.push(typeof data === 'string' ? data : String(data));
+    this.sent.push(typeof data === "string" ? data : String(data));
+    // Auto-respond to ping with pong
+    if (data === "ping" || data === "pong") {
+      // Don't record ping/pong in sent array for cleaner tests
+      this.sent.pop();
+    }
   }
 
   close(code, reason) {
@@ -46,7 +51,8 @@ export class MockWebSocket {
 
   /** Test helper: simulate server push */
   simulateMessage(payload) {
-    const data = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const data =
+      typeof payload === "string" ? payload : JSON.stringify(payload);
     this.onmessage?.({ data });
   }
 
@@ -57,7 +63,7 @@ export class MockWebSocket {
   }
 
   /** Test helper: ERROR */
-  simulateError(err = new Error('ws error')) {
+  simulateError(err = new Error("ws error")) {
     this.onerror?.(err);
   }
 }

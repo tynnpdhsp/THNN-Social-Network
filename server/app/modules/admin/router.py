@@ -36,30 +36,36 @@ async def get_admin_users(
 async def lock_user(
     user_id: str,
     body: LockAccountRequest,
+    request: Request,
     admin_id: str = Depends(require_admin),
     svc: AdminService = Depends(get_admin_service),
 ):
     """Khóa tài khoản người dùng."""
-    return await svc.lock_user(user_id, admin_id, body.reason)
+    request_info = {"ip": request.client.host, "ua": request.headers.get("user-agent")}
+    return await svc.lock_user(user_id, admin_id, body.reason, request_info)
 
 @router.post("/users/{user_id}/unlock", response_model=AdminUserResponse)
 async def unlock_user(
     user_id: str,
+    request: Request,
     admin_id: str = Depends(require_admin),
     svc: AdminService = Depends(get_admin_service),
 ):
     """Mở khóa tài khoản người dùng."""
-    return await svc.unlock_user(user_id)
+    request_info = {"ip": request.client.host, "ua": request.headers.get("user-agent")}
+    return await svc.unlock_user(user_id, admin_id, request_info)
 
 @router.patch("/users/{user_id}/role", response_model=AdminUserResponse)
 async def update_user_role(
     user_id: str,
     body: UpdateUserRoleRequest,
+    request: Request,
     admin_id: str = Depends(require_admin),
     svc: AdminService = Depends(get_admin_service),
 ):
     """Gán vai trò cho người dùng (UC-28)."""
-    return await svc.update_user_role(user_id, body.role)
+    request_info = {"ip": request.client.host, "ua": request.headers.get("user-agent")}
+    return await svc.update_user_role(user_id, body.role, admin_id, request_info)
 
 # --- Report Management ---
 
@@ -78,11 +84,13 @@ async def get_admin_reports(
 async def resolve_report(
     report_id: str,
     body: ResolveReportRequest,
+    request: Request,
     admin_id: str = Depends(require_admin),
     svc: AdminService = Depends(get_admin_service),
 ):
     """Xử lý báo cáo vi phạm."""
-    return await svc.resolve_report(report_id, admin_id, body.action)
+    request_info = {"ip": request.client.host, "ua": request.headers.get("user-agent")}
+    return await svc.resolve_report(report_id, admin_id, body.action, request_info)
 
 # --- Audit Logs ---
 

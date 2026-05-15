@@ -4,7 +4,21 @@ import { toast } from 'react-hot-toast';
 import Modal from '../Common/Modal';
 import * as scheduleService from '../../services/scheduleService';
 
-const timeSlots = Array.from({ length: 16 }, (_, i) => `Tiết ${i + 1}`);
+const timeSlots = Array.from({ length: 16 }, (_, i) => {
+  const startTotal = 390 + i * 50; // 6:30 is 390 mins from 00:00
+  const endTotal = startTotal + 50;
+  const format = (total) => {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+  return {
+    label: `Tiết ${i + 1}`,
+    range: `${format(startTotal)} - ${format(endTotal)}`,
+    start: format(startTotal),
+    end: format(endTotal)
+  };
+});
 const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 
 const initialDeadlines = [
@@ -66,7 +80,9 @@ const Timetable = () => {
   const getTimeOffset = (timeStr) => {
     if (!timeStr) return 0;
     const [h, m] = timeStr.split(':').map(Number);
-    return ((h - 7) * 60 + m) * (80 / 60); // 80px per period (1 hour)
+    const totalMins = h * 60 + m;
+    // Offset from 6:30 (390 mins). 80px per 50-min period.
+    return (totalMins - 390) * (80 / 50);
   };
 
   const gridScrollRef = React.useRef(null);
@@ -144,18 +160,14 @@ const Timetable = () => {
     });
   };
 
-  const handleGridClick = (dayIndex, timeLabel) => {
-    const period = parseInt(timeLabel.replace('Tiết ', ''));
-    const startTime = `${(period + 6).toString().padStart(2, '0')}:00`;
-    const endTime = `${(period + 7).toString().padStart(2, '0')}:00`;
-
+  const handleGridClick = (dayIndex, slot) => {
     setEditingEntry(null);
     setNewEntry({
       title: '',
       room: '',
       day_of_week: dayIndex + 1,
-      start_time: startTime,
-      end_time: endTime,
+      start_time: slot.start,
+      end_time: slot.end,
       entry_type: 'custom'
     });
     setShowEntryModal(true);
@@ -202,7 +214,7 @@ const Timetable = () => {
     });
 
     if (hasOverlap) {
-      toast.error('⚠️ Trùng lịch! Tiết học này bị chồng chéo thời gian.');
+      toast.error('Trùng lịch! Tiết học này bị chồng chéo thời gian.');
       return;
     }
 
@@ -453,22 +465,26 @@ const Timetable = () => {
 
               {/* Time Column */}
               <div style={{ display: 'flex', flexDirection: 'column', gridRow: '2 / span 16' }}>
-                {timeSlots.map(time => (
-                  <div key={time} style={{
-                    height: 80, padding: 8, borderBottom: '1px solid var(--hairline)',
-                    borderRight: '1px solid var(--hairline)', fontSize: 13, color: 'var(--mute)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600,
-                    background: 'var(--surface-soft)'
-                  }}>{time}</div>
+                {timeSlots.map(slot => (
+                  <div key={slot.label} style={{
+                    height: 80, padding: '4px 8px', borderBottom: '1px solid var(--hairline)',
+                    borderRight: '1px solid var(--hairline)', fontSize: 11, color: 'var(--mute)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontWeight: 600,
+                    background: 'var(--surface-soft)', gap: 2
+                  }}>
+                    <div style={{ fontSize: 13, color: 'var(--ink)' }}>{slot.label}</div>
+                    <div style={{ opacity: 0.7, fontWeight: 500 }}>{slot.start}</div>
+                    <div style={{ opacity: 0.7, fontWeight: 500 }}>{slot.end}</div>
+                  </div>
                 ))}
               </div>
 
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} style={{ position: 'relative', borderRight: '1px solid var(--hairline)', gridRow: '2 / span 16', gridColumn: i + 2 }}>
-                  {timeSlots.map(time => (
+                  {timeSlots.map(slot => (
                     <div
-                      key={time}
-                      onClick={() => handleGridClick(i, time)}
+                      key={slot.label}
+                      onClick={() => handleGridClick(i, slot)}
                       style={{
                         height: 80, borderBottom: '1px dotted var(--hairline)',
                         cursor: 'pointer', transition: 'background 0.2s'
@@ -482,7 +498,8 @@ const Timetable = () => {
                     const now = currentTime;
                     const currentHour = now.getHours();
                     const currentMin = now.getMinutes();
-                    if (currentHour >= 7 && currentHour < 23) {
+                    const totalNow = currentHour * 60 + currentMin;
+                    if (totalNow >= 390 && totalNow < 1200) {
                       const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
                       const top = getTimeOffset(timeStr);
                       return (
@@ -526,8 +543,9 @@ const Timetable = () => {
                           display: 'flex', flexDirection: 'column', justifyContent: 'center'
                         }}
                       >
-                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{event.title}</div>
-                        <div style={{ opacity: 0.7 }}>{event.room || 'N/A'} {event.section?.instructor ? `• ${event.section.instructor}` : ''}</div>
+                        <div style={{ fontWeight: 700, marginBottom: 2 }}>{event.title}</div>
+                        <div style={{ opacity: 0.8, fontSize: 11, marginBottom: 2 }}>{startTime} - {endTime}</div>
+                        <div style={{ opacity: 0.7, fontSize: 11 }}>{event.room || 'N/A'} {event.section?.instructor ? `• ${event.section.instructor}` : ''}</div>
                       </div>
                     );
                   })}

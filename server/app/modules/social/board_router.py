@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_social_service, get_current_user_id, get_optional_user_id
+from app.core.dependencies import get_social_service, require_active_user, get_current_user_id, get_optional_user_id
 from app.modules.account.schemas import MessageResponse
 from app.modules.social.service import SocialService
 from app.modules.social.schemas import (
@@ -40,7 +40,7 @@ async def get_board_posts(
 @router.post("/posts", response_model=PostResponse)
 async def create_board_post(
     body: BoardPostCreateRequest,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(require_active_user),
     svc: SocialService = Depends(get_social_service),
 ):
     """Tạo bài viết bảng tin chung (bắt buộc chọn tag)."""
@@ -61,7 +61,7 @@ async def get_board_post_details(
 @router.post("/posts/{post_id}/like", response_model=dict)
 async def toggle_board_like(
     post_id: str,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(require_active_user),
     svc: SocialService = Depends(get_social_service),
 ):
     return await svc.toggle_like(user_id, post_id)
@@ -79,7 +79,7 @@ async def get_board_comments(
 async def add_board_comment(
     post_id: str,
     body: CommentRequest,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(require_active_user),
     svc: SocialService = Depends(get_social_service),
 ):
     return await svc.add_comment(user_id, post_id, body)

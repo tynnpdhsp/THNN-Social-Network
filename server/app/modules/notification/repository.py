@@ -11,6 +11,9 @@ class NotificationRepository:
     async def create(self, data: dict) -> Notification:
         return await self.db.notification.create(data=data)
 
+    async def get_notification_setting(self, user_id: str):
+        return await self.db.notificationsetting.find_unique(where={"userId": user_id})
+
     async def get_by_id(self, notification_id: str) -> Optional[Notification]:
         return await self.db.notification.find_unique(where={"id": notification_id})
 

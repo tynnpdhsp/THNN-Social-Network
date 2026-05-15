@@ -26,6 +26,7 @@ const AdminPanel = ({ onViewProfile }) => {
         apiFetch(`/admin/users?limit=50${userFilter === 'locked' ? '&is_locked=true' : userFilter === 'active' ? '&is_locked=false' : ''}`),
         apiFetch('/admin/audit-logs?limit=20'),
       ]);
+      
       if (sRes.ok) setStats(await sRes.json());
       if (rRes.ok) { const d = await rRes.json(); setReports(d.reports || []); }
       if (uRes.ok) { const d = await uRes.json(); setUsers(d.users || []); }

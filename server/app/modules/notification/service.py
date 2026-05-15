@@ -77,7 +77,24 @@ class NotificationService:
 
     # ─── Create (Internal — called by other services) ──────────────────────
 
-    async def create_notification(self, req: CreateNotificationRequest) -> NotificationResponse:
+    async def create_notification(self, req: CreateNotificationRequest) -> Optional[NotificationResponse]:
+        setting = await self.repo.get_notification_setting(req.user_id)
+        if setting:
+            if req.type == "like" and not setting.notifyLike:
+                return None
+            if req.type == "comment" and not setting.notifyComment:
+                return None
+            if req.type == "reply" and not setting.notifyReply:
+                return None
+            if req.type == "friend_request" and not setting.notifyFriendReq:
+                return None
+            if req.type == "message" and not setting.notifyMessage:
+                return None
+            if req.type == "schedule" and not setting.notifySchedule:
+                return None
+            if req.type == "study_note_reminder" and not setting.notifySchedule:
+                return None
+
         metadata_dict = req.metadata.model_dump() if req.metadata else None
 
         notif = await self.repo.create(data={

@@ -42,6 +42,7 @@ class SocialRepository:
         
         where = {
             "postType": post_type,
+            "deletedAt": None,
             "NOT": {"isHidden": True},
         }
         
@@ -75,6 +76,7 @@ class SocialRepository:
         
         where = {
             "postType": post_type,
+            "deletedAt": None,
         }
         if len(base_filters) == 1:
             where.update(base_filters[0])
@@ -107,8 +109,9 @@ class SocialRepository:
             data=[
                 {
                     "postId": post_id,
-                    "imageUrl": img["image_url"],
-                    "displayOrder": img.get("display_order", 0)
+                    "imageUrl": img.get("imageUrl") or img.get("image_url"),
+                    "mediaType": img.get("mediaType") or img.get("media_type") or "image",
+                    "displayOrder": img.get("displayOrder") or img.get("display_order") or 0
                 }
                 for img in images
             ]
@@ -328,6 +331,7 @@ class SocialRepository:
     ) -> List[Post]:
         where: dict = {
             "postType": "board",
+            "deletedAt": None,
             "NOT": {"isHidden": True},
         }
         if tag_id:
@@ -346,6 +350,7 @@ class SocialRepository:
     async def count_board_posts(self, tag_id: str | None = None, blocked_ids: list[str] | None = None) -> int:
         where: dict = {
             "postType": "board",
+            "deletedAt": None,
         }
         if tag_id:
             where["boardTagId"] = tag_id

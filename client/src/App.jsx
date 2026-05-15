@@ -101,7 +101,7 @@ function App() {
       case 'feed': return <Feed onViewProfile={onViewProfile} focusPostId={focusPostId} onPostFocused={() => setFocusPostId(null)} />;
       case 'board': return <Board onViewProfile={onViewProfile} />;
       case 'profile': return <Profile targetUserId={viewingUserId} onStartChat={onStartChat} />;
-      case 'friends': return <Friends onViewProfile={onViewProfile} />;
+      case 'friends': return <Friends onViewProfile={onViewProfile} onStartChat={onStartChat} />;
       case 'messaging': return <Messaging onViewProfile={onViewProfile} preselectedUser={chatTarget} />;
       case 'notifications': return <Notifications onViewProfile={onViewProfile} onNavigate={(tab, ctx) => { if (ctx?.scrollToPost) setFocusPostId(ctx.scrollToPost); handleSetTab(tab); }} />;
       case 'settings': return <Settings />;

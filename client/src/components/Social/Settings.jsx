@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, Bell, Lock, Save, Check, X, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 const Settings = () => {
-  const [privacy, setPrivacy] = useState({ whoCanSeePosts: 'everyone', whoCanMessage: 'everyone', whoCanFriendReq: 'everyone' });
+  const [privacy, setPrivacy] = useState({ who_can_see_posts: 'everyone', who_can_message: 'everyone', who_can_friend_req: 'everyone' });
   const [openDropdown, setOpenDropdown] = useState(null);
   const [notifSettings, setNotifSettings] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [saved, setSaved] = useState(false);
+  const [privacySaved, setPrivacySaved] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [pwMsg, setPwMsg] = useState('');
+  const [isPwError, setIsPwError] = useState(false);
+
+  const { changePassword } = useAuth();
 
   const load = useCallback(async () => {
     try {
@@ -32,21 +37,35 @@ const Settings = () => {
 
   const savePrivacy = async () => {
     await apiFetch('/account/me/privacy', { method: 'PUT', body: JSON.stringify(privacy) });
-    setSaved(true); setTimeout(() => setSaved(false), 2000);
+    setPrivacySaved(true); setTimeout(() => setPrivacySaved(false), 2000);
   };
 
   const saveNotif = async () => {
     await apiFetch('/account/me/notification-settings', { method: 'PUT', body: JSON.stringify(notifSettings) });
-    setSaved(true); setTimeout(() => setSaved(false), 2000);
+    setNotifSaved(true); setTimeout(() => setNotifSaved(false), 2000);
   };
 
   const unblock = async (id) => { await apiFetch(`/social/blocks/${id}`, { method: 'DELETE' }); load(); };
 
   const changePw = async () => {
+    if (!oldPw || !newPw) {
+      setPwMsg('Vui lòng nhập đầy đủ thông tin');
+      setIsPwError(true);
+      return;
+    }
     setPwMsg('');
-    const r = await apiFetch('/account/me/password', { method: 'PUT', body: JSON.stringify({ old_password: oldPw, new_password: newPw }) });
-    if (r.ok) { setPwMsg('Thành công!'); setOldPw(''); setNewPw(''); }
-    else { const d = await r.json(); setPwMsg(d.detail || 'Lỗi'); }
+    setIsPwError(false);
+    
+    const result = await changePassword(oldPw, newPw);
+    if (result.success) {
+      setPwMsg(result.message || 'Thành công!');
+      setIsPwError(false);
+      setOldPw('');
+      setNewPw('');
+    } else {
+      setPwMsg(result.error);
+      setIsPwError(true);
+    }
   };
 
   const toggle = (k) => setNotifSettings(p => ({ ...p, [k]: !p[k] }));
@@ -62,9 +81,9 @@ const Settings = () => {
           <h3 style={t}><Shield size={18} color="var(--primary)" /> Quyền riêng tư</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[
-              { key: 'whoCanSeePosts', label: 'Ai xem bài viết?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
-              { key: 'whoCanMessage', label: 'Ai nhắn tin?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
-              { key: 'whoCanFriendReq', label: 'Ai kết bạn?', opts: [['everyone','Mọi người'],['friends_of_friends','Bạn của bạn bè'],['no_one','Không ai']] },
+              { key: 'who_can_see_posts', label: 'Ai xem bài viết?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
+              { key: 'who_can_message', label: 'Ai nhắn tin?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
+              { key: 'who_can_friend_req', label: 'Ai kết bạn?', opts: [['everyone','Mọi người'],['friends_of_friends','Bạn của bạn bè'],['no_one','Không ai']] },
             ].map(f => {
               const selectedLabel = f.opts.find(o => o[0] === privacy[f.key])?.[1] || '';
               const isOpen = openDropdown === f.key;
@@ -116,14 +135,14 @@ const Settings = () => {
                 </div>
               );
             })}
-            <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={savePrivacy}>{saved ? <><Check size={16}/> Đã lưu</> : <><Save size={16}/> Lưu</>}</button>
+            <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={savePrivacy}>{privacySaved ? <><Check size={16}/> Đã lưu</> : <><Save size={16}/> Lưu</>}</button>
           </div>
         </div>
 
         <div style={c}>
           <h3 style={t}><Bell size={18} color="var(--focus-outer)" /> Thông báo</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[['notifyLike','Thích'],['notifyComment','Bình luận'],['notifyReply','Trả lời'],['notifyFriendReq','Kết bạn'],['notifyMessage','Tin nhắn'],['notifySchedule','Lịch học']].map(([k,l]) => (
+            {[['notify_like','Thích'],['notify_comment','Bình luận'],['notify_reply','Trả lời'],['notify_friend_req','Kết bạn'],['notify_message','Tin nhắn'],['notify_schedule','Lịch học']].map(([k,l]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{l}</span>
                 <button onClick={() => toggle(k)} style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: notifSettings[k] ? 'var(--primary)' : 'var(--hairline)', position: 'relative', padding: 2, transition: 'background 0.2s' }}>
@@ -131,7 +150,7 @@ const Settings = () => {
                 </button>
               </div>
             ))}
-            <button className="btn-primary" style={{ width: '100%', height: 44, marginTop: 8 }} onClick={saveNotif}><Save size={16}/> Lưu</button>
+            <button className="btn-primary" style={{ width: '100%', height: 44, marginTop: 8 }} onClick={saveNotif}>{notifSaved ? <><Check size={16}/> Đã lưu</> : <><Save size={16}/> Lưu</>}</button>
           </div>
         </div>
 
@@ -140,7 +159,7 @@ const Settings = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <input type="password" className="input-field" placeholder="Mật khẩu hiện tại" value={oldPw} onChange={e => setOldPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
             <input type="password" className="input-field" placeholder="Mật khẩu mới" value={newPw} onChange={e => setNewPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
-            {pwMsg && <p style={{ fontSize: 13, fontWeight: 600, color: pwMsg === 'Thành công!' ? '#16a34a' : 'var(--primary)' }}>{pwMsg}</p>}
+            {pwMsg && <p style={{ fontSize: 13, fontWeight: 600, color: isPwError ? 'var(--primary)' : '#16a34a' }}>{pwMsg}</p>}
             <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={changePw}>Đổi mật khẩu</button>
           </div>
         </div>

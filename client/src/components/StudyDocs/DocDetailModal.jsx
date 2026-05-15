@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Star, FileText, MessageSquare, Send, User, Download, Loader2 } from 'lucide-react';
 import * as documentService from '../../services/documentService';
 import toast from 'react-hot-toast';
+import { resolveImageUrl } from '../../config/api';
 
 const DocDetailModal = ({ isOpen, onClose, doc, onUpdateDoc }) => {
   const [reviews, setReviews] = useState([]);
@@ -135,16 +136,42 @@ const DocDetailModal = ({ isOpen, onClose, doc, onUpdateDoc }) => {
                     <p className="caption-sm">{formatFileSize(doc.file_size)}</p>
                   </div>
                 </div>
-                <a 
-                  href={doc.file_url} 
-                  download 
-                  target="_blank" 
-                  rel="noreferrer"
+                <button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const url = resolveImageUrl(doc.file_url);
+                    fetch(url)
+                      .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.blob();
+                      })
+                      .then(blob => {
+                        const blobUrl = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = blobUrl;
+                        a.download = doc.file_name || 'document';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(blobUrl);
+                        a.remove();
+                      })
+                      .catch(err => {
+                        console.warn("Fetch download failed, falling back to direct link", err);
+                        const a = document.createElement('a');
+                        a.href = resolveImageUrl(doc.file_url);
+                        a.download = doc.file_name || 'document';
+                        a.target = "_blank";
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                      });
+                  }}
                   className="btn-primary" 
-                  style={{ padding: '8px 16px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
+                  style={{ border: 'none', cursor: 'pointer', padding: '8px 16px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
                 >
                   <Download size={18} /> Tải xuống
-                </a>
+                </button>
               </div>
             </div>
           </div>
