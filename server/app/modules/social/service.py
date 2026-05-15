@@ -28,7 +28,14 @@ class SocialService:
         })
         
         if body.images:
-            await self.repo.create_post_images(post.id, [img.model_dump() for img in body.images])
+            await self.repo.create_post_images(post.id, [
+                {
+                    "imageUrl": img.image_url,
+                    "mediaType": img.media_type,
+                    "displayOrder": img.display_order
+                }
+                for img in body.images
+            ])
             post = await self.repo.get_post_by_id(post.id)
 
         from app.core.cache import push_to_newsfeed, set_post_counters
@@ -104,6 +111,7 @@ class SocialService:
             "userId": target_user_id,
             "postType": "feed",
             "visibility": {"in": allowed_visibility},
+            "deletedAt": None,
             "NOT": {"isHidden": True},
         }
         
@@ -410,7 +418,15 @@ class SocialService:
             "deletedAt": None,
         })
         if body.images:
-            await self.repo.create_post_images(post.id, [img.model_dump() for img in body.images])
+            # Handle images/videos
+            await self.repo.create_post_images(post.id, [
+                {
+                    "imageUrl": img.image_url,
+                    "mediaType": img.media_type,
+                    "displayOrder": img.display_order
+                }
+                for img in body.images
+            ])
             post = await self.repo.get_post_by_id(post.id)
         return await self._map_post_to_response(post, user_id)
 
@@ -418,7 +434,15 @@ class SocialService:
     async def _map_post_to_response(self, post, viewer_id: str | None = None) -> PostResponse:
         images = []
         if hasattr(post, "postImages") and post.postImages:
-            images = [PostImageResponse(id=img.id, image_url=img.imageUrl, display_order=img.displayOrder) for img in post.postImages]
+            images = [
+                PostImageResponse(
+                    id=img.id, 
+                    image_url=img.imageUrl, 
+                    media_type=getattr(img, "mediaType", "image"),
+                    display_order=img.displayOrder
+                ) 
+                for img in post.postImages
+            ]
         
         user_info = None
         if hasattr(post, "user") and post.user:

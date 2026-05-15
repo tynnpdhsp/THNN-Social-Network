@@ -2,8 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Star, ShoppingCart, MessageSquare, Send, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as shopService from '../../services/shopService';
+import { resolveImageUrl, getDefaultAvatar } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart }) => {
+  const { user } = useAuth();
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [reviews, setReviews] = useState([]);
@@ -109,7 +112,7 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
         {/* Left: Image Area */}
         <div style={{ flex: '1 1 350px', minHeight: 350, background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <img 
-            src={product.images && product.images.length > 0 ? product.images[0].image_url : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} 
+            src={product.images && product.images.length > 0 ? resolveImageUrl(product.images[0].image_url) : 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80&w=600'} 
             alt={product.title} 
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
           />
@@ -144,22 +147,24 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
               <p className="body-md" style={{ color: 'var(--body)', opacity: 0.8 }}>{product.description}</p>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
-              <button 
-                className="btn-primary" 
-                style={{ flex: 1, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                onClick={() => onBuyNow(product)}
-              >
-                Mua ngay
-              </button>
-              <button 
-                className="btn-secondary" 
-                style={{ width: 56, height: 56, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                onClick={() => onAddToCart(product)}
-              >
-                <ShoppingCart size={24} color="var(--primary)" />
-              </button>
-            </div>
+            {user?.id !== product.seller_id && (
+              <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 1, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  onClick={() => onBuyNow(product)}
+                >
+                  Mua ngay
+                </button>
+                <button 
+                  className="btn-secondary" 
+                  style={{ width: 56, height: 56, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => onAddToCart(product)}
+                >
+                  <ShoppingCart size={24} color="var(--primary)" />
+                </button>
+              </div>
+            )}
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--hairline)', marginBottom: 32 }} />
 
@@ -176,11 +181,11 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
                   reviews.map(c => (
                     <div key={c.id} style={{ display: 'flex', gap: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {c.user_info?.avatar_url ? (
-                          <img src={c.user_info.avatar_url} alt={c.user_info.full_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          <User size={20} color="var(--mute)" />
-                        )}
+                        <img 
+                          src={resolveImageUrl(c.user_info?.avatar_url) || getDefaultAvatar(c.user_info?.full_name)} 
+                          alt={c.user_info?.full_name} 
+                          style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+                        />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

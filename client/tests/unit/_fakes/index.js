@@ -6,3 +6,4 @@ export * from './websocket.js';
 export * from './time.js';
 export { createReactLeafletStub } from './leaflet.jsx';
 export { renderWithAuth, renderWithConfirm } from './auth.jsx';
+export { authMock, mockUseAuth, defaultAuthMockValue } from './setupAuthMock.js';

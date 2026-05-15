@@ -1,3 +1,5 @@
+import '../../_fakes/setupAuthMock.js';
+import { mockUseAuth, defaultAuthMockValue } from '../../_fakes/setupAuthMock.js';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -33,9 +35,31 @@ vi.mock('react-hot-toast', () => ({
 
 import Shop from '@/components/Shop/Shop.jsx';
 
+const SHOP_OWNER_ID = 'u-test';
+
 const SAMPLE_ITEMS = [
-  { id: 'p-cheap', title: 'Cheap Supply', category_id: 'supplies', price: 10000, avg_rating: 3, rating_count: 0, images: [], description: 'd' },
-  { id: 'p-doc', title: 'Alpha Doc', category_id: 'docs', price: 100000, avg_rating: 4, rating_count: 2, images: [], description: 'desc' },
+  {
+    id: 'p-cheap',
+    title: 'Cheap Supply',
+    category_id: 'supplies',
+    price: 10000,
+    avg_rating: 3,
+    rating_count: 0,
+    images: [],
+    description: 'd',
+    seller_id: SHOP_OWNER_ID,
+  },
+  {
+    id: 'p-doc',
+    title: 'Alpha Doc',
+    category_id: 'docs',
+    price: 100000,
+    avg_rating: 4,
+    rating_count: 2,
+    images: [],
+    description: 'desc',
+    seller_id: SHOP_OWNER_ID,
+  },
 ];
 
 function setupDefaults() {
@@ -55,6 +79,31 @@ function cardByProductTitle(title) {
   return screen.getByText(title).closest('.pin-card');
 }
 
+function editButtonInCard(card) {
+  const buttons = within(card).getAllByRole('button');
+  const deleteBtn = deleteButtonInCard(card);
+  if (deleteBtn) {
+    const deleteIdx = buttons.indexOf(deleteBtn);
+    if (deleteIdx > 0) return buttons[deleteIdx - 1];
+  }
+  return buttons.find((b) => {
+    const svg = b.querySelector('svg');
+    if (!svg) return false;
+    const cls = svg.getAttribute('class') || '';
+    return (
+      cls.includes('lucide-') &&
+      !cls.includes('trash') &&
+      !cls.includes('shopping-bag')
+    );
+  });
+}
+
+function deleteButtonInCard(card) {
+  return within(card)
+    .getAllByRole('button')
+    .find((b) => b.querySelector('svg.lucide-trash, svg.lucide-trash-2'));
+}
+
 describe('Shop — product CRUD', () => {
   let origRaf;
 
@@ -69,6 +118,16 @@ describe('Shop — product CRUD', () => {
       if (typeof fn?.mockReset === 'function') fn.mockReset();
     });
     setupDefaults();
+    mockUseAuth.mockReturnValue(
+      defaultAuthMockValue({
+        user: {
+          id: SHOP_OWNER_ID,
+          full_name: 'Test User',
+          avatar_url: null,
+          role: 'student',
+        },
+      }),
+    );
   });
 
   afterEach(() => {
@@ -140,11 +199,15 @@ describe('Shop — product CRUD', () => {
   });
 
   it('edit_mode_calls_updateItem_with_three_fields_only', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ pointerEventsCheck: false });
     render(<Shop />);
     await screen.findByText('Alpha Doc');
     const card = cardByProductTitle('Alpha Doc');
-    await user.click(within(card).getAllByRole('button')[0]);
+    const overlay = card.querySelector('.overlay');
+    if (overlay) await user.hover(overlay);
+    const editBtn = editButtonInCard(card);
+    expect(editBtn).toBeTruthy();
+    await user.click(editBtn);
 
     expect(await screen.findByRole('heading', { name: /Cập nhật vật phẩm/ })).toBeInTheDocument();
     expect(screen.queryByText(/Tải lên hình ảnh/)).not.toBeInTheDocument();
@@ -170,7 +233,7 @@ describe('Shop — product CRUD', () => {
     const user = userEvent.setup();
     render(<Shop />);
     await screen.findByText('Cheap Supply');
-    await user.click(within(cardByProductTitle('Cheap Supply')).getAllByRole('button')[1]);
+    await user.click(deleteButtonInCard(cardByProductTitle('Cheap Supply')));
 
     await screen.findByRole('heading', { name: 'Xác nhận xoá' });
     expect(screen.getAllByText(/Cheap Supply/).length).toBeGreaterThanOrEqual(2);
@@ -190,7 +253,7 @@ describe('Shop — product CRUD', () => {
 
     render(<Shop />);
     await screen.findByText('Cheap Supply');
-    await user.click(within(cardByProductTitle('Cheap Supply')).getAllByRole('button')[1]);
+    await user.click(deleteButtonInCard(cardByProductTitle('Cheap Supply')));
     await screen.findByRole('heading', { name: 'Xác nhận xoá' });
     await user.click(screen.getByRole('button', { name: 'Xác nhận xoá' }));
 

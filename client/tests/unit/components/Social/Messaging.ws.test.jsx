@@ -33,6 +33,7 @@ describe('Messaging — WebSocket new_message', () => {
     hoisted.mockUseAuth.mockReturnValue({
       user: { id: 'me', full_name: 'Me', avatar_url: null },
       token: 'jwt-token',
+      onlineUsers: [],
     });
     hoisted.mockApiFetch.mockReset();
   });

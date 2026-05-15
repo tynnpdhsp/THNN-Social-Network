@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'auto' }) => {
+const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'auto', showClose = true }) => {
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
   const isBackdropMouseDown = React.useRef(false);
@@ -76,21 +76,24 @@ const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'auto
           marginBottom: 24,
         }}>
           {title && <h2 className="heading-lg">{title}</h2>}
-          <button
-            onClick={handleClose}
-            style={{
-              position: title ? 'static' : 'absolute',
-              top: title ? 'auto' : 20,
-              right: title ? 'auto' : 20,
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: 6, borderRadius: '50%',
-              transition: 'background 0.2s, transform 0.2s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
-          >
-            <X size={24} color="var(--mute)" />
-          </button>
+          {showClose && (
+            <button
+              onClick={handleClose}
+              style={{
+                position: title ? 'static' : 'absolute',
+                top: title ? 'auto' : 20,
+                right: title ? 'auto' : 20,
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: 6, borderRadius: '50%',
+                transition: 'background 0.2s, transform 0.2s',
+                zIndex: 10,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
+            >
+              <X size={24} color="var(--mute)" />
+            </button>
+          )}
         </div>
 
         {children}

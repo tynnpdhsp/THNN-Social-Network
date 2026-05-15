@@ -26,6 +26,7 @@ vi.mock('react-hot-toast', () => ({
 }));
 
 import StudyDocs from '@/components/StudyDocs/StudyDocs.jsx';
+import { MINIO_URL } from '@/config/api.js';
 
 const DOCS = [
   {
@@ -204,8 +205,9 @@ describe('StudyDocs', () => {
     await screen.findByText('Doc Beta');
     const row = screen.getByText('Doc Beta').closest('tr');
     await user.click(within(row).getByTitle('Chia sẻ'));
-    const origin = window.location.origin;
-    await waitFor(() => expect(writeTextSpy).toHaveBeenCalledWith(`${origin}/static/b.pdf`));
+    await waitFor(() =>
+      expect(writeTextSpy).toHaveBeenCalledWith(`${MINIO_URL}/static/b.pdf`),
+    );
   });
 
   it('clipboard_failure_shows_error_toast', async () => {

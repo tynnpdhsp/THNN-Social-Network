@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Share2, MoreVertical, Folder, Upload, Filter, Star, ChevronDown, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Download, Share2, MoreVertical, Upload, Filter, Star, ChevronDown, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import DocDetailModal from './DocDetailModal';
 import UploadDocModal from './UploadDocModal';
 import DeleteConfirmModal from '../Shop/DeleteConfirmModal';
+import Modal from '../Common/Modal';
 import * as documentService from '../../services/documentService';
 import toast from 'react-hot-toast';
+import { resolveImageUrl } from '../../config/api';
 
 const StudyDocs = () => {
   const [documents, setDocuments] = useState([]);
@@ -20,6 +22,11 @@ const StudyDocs = () => {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [docToDelete, setDocToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [reportDoc, setReportDoc] = useState(null);
+  const [reportReason, setReportReason] = useState('Nội dung không phù hợp');
+  const [reportDesc, setReportDesc] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
+  const [isReportReasonOpen, setIsReportReasonOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const DOCS_PER_PAGE = 5;
 
@@ -31,21 +38,20 @@ const StudyDocs = () => {
 
   useEffect(() => {
     fetchCategories();
-     
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory, sortBy]);
 
   useEffect(() => {
     fetchDocuments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, sortBy, currentPage]);
 
-  // Close menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => setActiveMenuId(null);
+    const handleClickOutside = () => {
+      setActiveMenuId(null);
+      setIsSortOpen(false);
+      setIsFilterOpen(false);
+    };
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
@@ -106,7 +112,7 @@ const StudyDocs = () => {
 
   const handleShare = (doc, e) => {
     e.stopPropagation();
-    const url = doc.file_url?.startsWith('http') ? doc.file_url : `${window.location.origin}${doc.file_url}`;
+    const url = resolveImageUrl(doc.file_url);
     navigator.clipboard.writeText(url).then(() => {
       toast.success('Đã sao chép liên kết tải tài liệu!');
     }).catch(() => {
@@ -116,9 +122,56 @@ const StudyDocs = () => {
   };
 
   const handleDeleteClick = (doc, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     setDocToDelete(doc);
     setIsDeleteModalOpen(true);
+    setActiveMenuId(null);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportDoc) return;
+    setIsReporting(true);
+    try {
+      await documentService.reportDocument(reportDoc.id, { reason: reportReason, description: reportDesc });
+      toast.success('Đã gửi báo cáo tài liệu thành công');
+      setReportDoc(null);
+      setReportReason('Nội dung không phù hợp');
+      setReportDesc('');
+    } catch (err) {
+      toast.error('Lỗi khi gửi báo cáo: ' + err.message);
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  const handleDownload = async (doc, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      const url = resolveImageUrl(doc.file_url);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = doc.file_name || 'document';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      a.remove();
+    } catch (error) {
+      console.warn("Fetch download failed, falling back to direct link", error);
+      const a = document.createElement('a');
+      a.href = resolveImageUrl(doc.file_url);
+      a.download = doc.file_name || 'document';
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
     setActiveMenuId(null);
   };
 
@@ -146,7 +199,7 @@ const StudyDocs = () => {
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ position: 'relative' }}>
                   <button 
-                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    onClick={(e) => { e.stopPropagation(); setIsSortOpen(!isSortOpen); setIsFilterOpen(false); }}
                     className="btn-secondary" 
                     style={{ 
                       display: 'flex', alignItems: 'center', gap: 8, 
@@ -159,8 +212,10 @@ const StudyDocs = () => {
                   </button>
                   
                   {isSortOpen && (
-                    <div style={{ 
-                      position: 'absolute', top: '120%', right: 0, width: '100%', 
+                    <div 
+                      onClick={e => e.stopPropagation()}
+                      style={{ 
+                      position: 'absolute', top: '120%', left: 0, width: '100%', 
                       background: 'white', borderRadius: 'var(--rounded-md)', 
                       boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
                       overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
@@ -168,7 +223,7 @@ const StudyDocs = () => {
                       {sortOptions.map(option => (
                         <div 
                           key={option.value}
-                          onClick={() => { setSortBy(option.value); setIsSortOpen(false); }}
+                          onClick={() => { setSortBy(option.value); setCurrentPage(1); setIsSortOpen(false); }}
                           style={{ 
                             padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                             cursor: 'pointer', fontSize: 14, fontWeight: sortBy === option.value ? 700 : 500,
@@ -187,7 +242,7 @@ const StudyDocs = () => {
                 
                 <div style={{ position: 'relative' }}>
                   <button 
-                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    onClick={(e) => { e.stopPropagation(); setIsFilterOpen(!isFilterOpen); setIsSortOpen(false); }}
                     className="btn-secondary" 
                     style={{ 
                       display: 'flex', gap: 8, alignItems: 'center', 
@@ -199,8 +254,10 @@ const StudyDocs = () => {
                   </button>
 
                   {isFilterOpen && (
-                    <div style={{ 
-                      position: 'absolute', top: '120%', right: 0, width: 220, 
+                    <div 
+                      onClick={e => e.stopPropagation()}
+                      style={{ 
+                      position: 'absolute', top: '120%', left: 0, width: 220, 
                       background: 'white', borderRadius: 'var(--rounded-md)', 
                       boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
                       overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
@@ -208,7 +265,7 @@ const StudyDocs = () => {
                       {categories.map(cat => (
                         <div 
                           key={cat.id}
-                          onClick={() => { setActiveCategory(cat); setIsFilterOpen(false); }}
+                          onClick={() => { setActiveCategory(cat); setCurrentPage(1); setIsFilterOpen(false); }}
                           style={{ 
                             padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
                             cursor: 'pointer', fontSize: 14, fontWeight: activeCategory.id === cat.id ? 700 : 500,
@@ -293,12 +350,11 @@ const StudyDocs = () => {
                       <td style={{ padding: '16px', position: 'relative' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                           <button 
+                            onClick={(e) => handleDownload(doc, e)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)' }} 
                             title="Tải xuống"
                           >
-                            <a href={doc.file_url} download target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>
-                              <Download size={18} />
-                            </a>
+                            <Download size={18} />
                           </button>
                           <button 
                             onClick={(e) => handleShare(doc, e)}
@@ -331,12 +387,12 @@ const StudyDocs = () => {
                                   <Share2 size={14} /> Sao chép liên kết
                                 </div>
                                 <div 
-                                  onClick={(e) => { e.stopPropagation(); toast.success('Đã báo cáo tài liệu'); setActiveMenuId(null); }}
+                                  onClick={(e) => { e.stopPropagation(); setReportDoc(doc); setActiveMenuId(null); }}
                                   style={{ padding: '10px 12px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', fontSize: 14, display: 'flex', gap: 8, alignItems: 'center' }}
                                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
                                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                 >
-                                  <Filter size={14} /> Báo cáo vi phạm
+                                  <AlertTriangle size={14} /> Báo cáo vi phạm
                                 </div>
                                 <div 
                                   onClick={(e) => handleDeleteClick(doc, e)}
@@ -421,6 +477,75 @@ const StudyDocs = () => {
         itemName={docToDelete?.title || ""}
         itemType="tài liệu"
       />
+
+      <Modal isOpen={!!reportDoc} onClose={() => setReportDoc(null)} title="Báo cáo tài liệu" width={420} overflow="visible">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>Lý do</label>
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setIsReportReasonOpen(!isReportReasonOpen)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  background: 'white', border: '1px solid var(--hairline)',
+                  borderRadius: 'var(--rounded-md)', padding: '0 16px',
+                  fontSize: 13, fontWeight: 600, color: 'var(--ink)',
+                  cursor: 'pointer', height: 40, width: '100%'
+                }}
+              >
+                <span>{reportReason}</span>
+                <ChevronDown size={16} />
+              </button>
+
+              {isReportReasonOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setIsReportReasonOpen(false)} />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: '100%',
+                    background: 'white', borderRadius: 'var(--rounded-md)',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 100,
+                    overflow: 'hidden', padding: 8, border: '1px solid var(--hairline)'
+                  }}>
+                    {['Nội dung không phù hợp', 'Spam / Lừa đảo', 'Vi phạm bản quyền', 'Tài liệu sai lệch', 'Khác'].map(r => (
+                      <div
+                        key={r}
+                        onClick={() => { setReportReason(r); setIsReportReasonOpen(false); }}
+                        style={{
+                          padding: '10px 12px', borderRadius: 'var(--rounded-sm)',
+                          cursor: 'pointer', fontSize: 13, fontWeight: reportReason === r ? 700 : 500,
+                          background: reportReason === r ? 'var(--surface-soft)' : 'transparent',
+                          color: reportReason === r ? 'var(--primary)' : 'var(--body)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = reportReason === r ? 'var(--surface-soft)' : 'transparent'}
+                      >
+                        {r}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>Mô tả chi tiết (không bắt buộc)</label>
+            <textarea
+              className="input-field"
+              placeholder="Vui lòng cung cấp thêm thông tin..."
+              style={{ height: 100, resize: 'none', padding: '12px 16px', fontSize: 13 }}
+              value={reportDesc}
+              onChange={(e) => setReportDesc(e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+            <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setReportDoc(null)}>Hủy</button>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={handleReportSubmit} disabled={isReporting}>
+              {isReporting ? 'Đang gửi...' : 'Gửi báo cáo'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

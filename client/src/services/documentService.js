@@ -100,9 +100,24 @@ export const deleteDocument = async (documentId) => {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete document');
-    return await response.json();
+    return response;
   } catch (error) {
     console.error('Error deleting document:', error);
+    throw error;
+  }
+};
+
+// Báo cáo tài liệu
+export const reportDocument = async (documentId, data) => {
+  try {
+    const response = await apiFetch(`/social/reports/document/${documentId}?reason=${encodeURIComponent(data.reason)}`, {
+      method: 'POST',
+      body: JSON.stringify({ description: data.description }),
+    });
+    if (!response.ok) throw new Error('Failed to report document');
+    return await response.json();
+  } catch (error) {
+    console.error('Error reporting document:', error);
     throw error;
   }
 };

@@ -1,4 +1,5 @@
 from typing import Optional
+import asyncio
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 
 from app.core.dependencies import get_current_user_id, require_active_user, get_db
@@ -78,17 +79,41 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(
     if not token:
         await websocket.close(code=4001, reason="Missing token")
         return
-        
+
     payload = decode_token(token)
     if not payload or "sub" not in payload:
         await websocket.close(code=4002, reason="Invalid token")
         return
-        
+
     user_id = payload["sub"]
+
+    # Verify account is not locked
+    db = get_db()
+    user = await db.user.find_unique(where={"id": user_id})
+    if not user or user.isLocked:
+        await websocket.close(code=4003, reason="Account locked")
+        return
+
     await manager.connect(user_id, websocket)
+
     try:
         while True:
-            # Keep connection alive
-            await websocket.receive_text()
+            # Use receive with timeout to detect dead connections
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                # Echo back ping if client sends ping
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except asyncio.TimeoutError:
+                # Send ping to keep connection alive and check if client is still there
+                try:
+                    await websocket.send_text("ping")
+                    # Wait for pong response
+                    await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+                except (asyncio.TimeoutError, WebSocketDisconnect):
+                    # Client didn't respond, consider disconnected
+                    break
     except WebSocketDisconnect:
-        manager.disconnect(user_id, websocket)
+        pass
+    finally:
+        await manager.disconnect(user_id, websocket)

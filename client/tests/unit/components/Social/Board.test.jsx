@@ -70,13 +70,14 @@ describe('Board', () => {
     hoisted.mockApiFetch.mockImplementation(async (path, init) => {
       if (path === '/board/tags') return makeResponse(200, [{ id: 't1', name: 'X' }]);
       if (path === '/board/posts') return makeResponse(200, { posts: [] });
-      if (path === '/social/media/upload' && init?.method === 'POST') return makeResponse(200, { image_url: 'img1' });
+      if (path === '/social/media/upload' && init?.method === 'POST')
+        return makeResponse(200, { media_url: 'img1', media_type: 'image' });
       return makeResponse(404, {});
     });
     const user = userEvent.setup();
     render(<Board />);
     await waitFor(() => document.getElementById('board-post-input'));
-    const fileInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const fileInput = document.querySelector('input[type="file"]');
     await user.upload(fileInput, new File(['x'], 'a.png', { type: 'image/png' }));
     await waitFor(() => expect(hoisted.mockApiFetch).toHaveBeenCalledWith('/social/media/upload', expect.anything()));
     const n = hoisted.mockApiFetch.mock.calls.length;
@@ -84,7 +85,7 @@ describe('Board', () => {
     expect(hoisted.mockApiFetch.mock.calls.length).toBe(n);
   });
 
-  it('handleCreatePost_POSTs_board_posts_with_board_tag_id_and_visibility', async () => {
+  it('handleCreatePost_POSTs_board_posts_with_board_tag_id', async () => {
     hoisted.mockApiFetch.mockImplementation(async (path, init) => {
       if (path === '/board/tags') return makeResponse(200, [{ id: 'tag-x', name: 'TagX' }]);
       if (path === '/board/posts' && !init?.method) return makeResponse(200, { posts: [] });
@@ -95,15 +96,12 @@ describe('Board', () => {
     render(<Board />);
     await waitFor(() => expect(screen.getAllByText('TagX').length).toBeGreaterThanOrEqual(1));
     await user.type(document.getElementById('board-post-input'), 'Sell bike');
-    await user.click(screen.getByRole('button', { name: /Công khai/ }));
-    await user.click(screen.getByText('Riêng tư'));
     await user.click(screen.getByRole('button', { name: 'Đăng tin ngay' }));
     await waitFor(() => {
       const post = hoisted.mockApiFetch.mock.calls.find((c) => c[0] === '/board/posts' && c[1]?.method === 'POST');
       expect(post).toBeTruthy();
       expect(JSON.parse(post[1].body)).toEqual({
         content: 'Sell bike',
-        visibility: 'private',
         board_tag_id: 'tag-x',
         images: [],
       });
@@ -121,6 +119,6 @@ describe('Board', () => {
     render(<Board />);
     await waitFor(() => document.getElementById('board-post-input'));
     await user.upload(document.querySelector('input[type="file"]'), new File(['1'], '1.png', { type: 'image/png' }));
-    await waitFor(() => expect(hoisted.toastError).toHaveBeenCalledWith('Tải ảnh thất bại: bad'));
+    await waitFor(() => expect(hoisted.toastError).toHaveBeenCalledWith('Tải lên thất bại: bad'));
   });
 });

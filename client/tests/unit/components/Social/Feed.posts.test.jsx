@@ -32,6 +32,7 @@ vi.mock('@/config/api.js', () => ({
 
 import Feed from '@/components/Social/Feed.jsx';
 import { ConfirmProvider } from '@/components/Common/ConfirmDialog.jsx';
+import { resolveImageUrl } from '@/config/api.js';
 
 function makePost(overrides = {}) {
   return {
@@ -156,14 +157,14 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
     const post = makePost();
     hoisted.mockApiFetch
       .mockResolvedValueOnce(makeResponse(200, { posts: [post] }))
-      .mockResolvedValueOnce(makeResponse(200, { image_url: 'minio/x.png' }))
+      .mockResolvedValueOnce(makeResponse(200, { media_url: 'minio/x.png', media_type: 'image' }))
       .mockResolvedValueOnce(makeResponse(201, {}, { ok: true }))
       .mockResolvedValue(makeResponse(200, { posts: [post] }));
     const user = userEvent.setup();
     renderFeed();
     await waitForFeedReady();
     await user.type(screen.getByPlaceholderText(/Chia sẻ suy nghĩ/), '   ');
-    const hiddenInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const hiddenInput = document.querySelector('input[type="file"]');
     expect(hiddenInput).toBeTruthy();
     await user.upload(hiddenInput, new File(['x'], 'a.png', { type: 'image/png' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đăng bài' })).toBeTruthy());
@@ -174,7 +175,9 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
       );
       expect(createCall).toBeTruthy();
       const body = JSON.parse(createCall[1].body);
-      expect(body.images).toEqual([{ image_url: 'minio/x.png', display_order: 0 }]);
+      expect(body.images).toEqual([
+        { image_url: 'minio/x.png', media_type: 'image', display_order: 0 },
+      ]);
       expect(body.content).toBe('   ');
     });
   });
@@ -210,9 +213,9 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
     const user = userEvent.setup();
     renderFeed();
     await waitForFeedReady();
-    const hiddenInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const hiddenInput = document.querySelector('input[type="file"]');
     await user.upload(hiddenInput, new File(['x'], 'a.png', { type: 'image/png' }));
-    await waitFor(() => expect(hoisted.toastError).toHaveBeenCalledWith('Tải ảnh thất bại: File too large'));
+    await waitFor(() => expect(hoisted.toastError).toHaveBeenCalledWith('Tải lên thất bại: File too large'));
   });
 
   it('handleUploadImages_toasts_statusText_when_no_detail', async () => {
@@ -222,10 +225,10 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
     const user = userEvent.setup();
     renderFeed();
     await waitForFeedReady();
-    const hiddenInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const hiddenInput = document.querySelector('input[type="file"]');
     await user.upload(hiddenInput, new File(['x'], 'b.png', { type: 'image/png' }));
     await waitFor(() => expect(hoisted.toastError).toHaveBeenCalled());
-    expect(String(hoisted.toastError.mock.calls[0][0])).toMatch(/Tải ảnh thất bại/);
+    expect(String(hoisted.toastError.mock.calls[0][0])).toMatch(/Tải lên thất bại/);
   });
 
   it('handleUploadImages_network_error_toasts_MinIO_message', async () => {
@@ -235,11 +238,11 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
     const user = userEvent.setup();
     renderFeed();
     await waitForFeedReady();
-    const hiddenInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const hiddenInput = document.querySelector('input[type="file"]');
     await user.upload(hiddenInput, new File(['x'], 'c.png', { type: 'image/png' }));
     await waitFor(() =>
       expect(hoisted.toastError).toHaveBeenCalledWith(
-        'Không thể tải ảnh. Kiểm tra kết nối server/MinIO.',
+        'Không thể tải file. Kiểm tra kết nối server/MinIO.',
       ),
     );
   });
@@ -247,12 +250,12 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
   it('handleUploadImages_appends_multiple_successful_uploads', async () => {
     hoisted.mockApiFetch
       .mockResolvedValueOnce(makeResponse(200, { posts: [] }))
-      .mockResolvedValueOnce(makeResponse(200, { image_url: 'u1' }))
-      .mockResolvedValueOnce(makeResponse(200, { image_url: 'u2' }));
+      .mockResolvedValueOnce(makeResponse(200, { media_url: 'u1', media_type: 'image' }))
+      .mockResolvedValueOnce(makeResponse(200, { media_url: 'u2', media_type: 'image' }));
     const user = userEvent.setup();
     renderFeed();
     await waitForFeedReady();
-    const hiddenInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const hiddenInput = document.querySelector('input[type="file"]');
     const f1 = new File(['1'], '1.png', { type: 'image/png' });
     const f2 = new File(['2'], '2.png', { type: 'image/png' });
     await user.upload(hiddenInput, [f1, f2]);
@@ -271,7 +274,7 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
     const user = userEvent.setup();
     const { container } = renderFeed();
     await waitForFeedReady();
-    const hiddenInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const hiddenInput = document.querySelector('input[type="file"]');
     await user.upload(hiddenInput, new File(['x'], 'a.png', { type: 'image/png' }));
     await waitFor(() => expect(hoisted.mockApiFetch).toHaveBeenCalledWith('/social/media/upload', expect.anything()));
     const imgs = container.querySelectorAll('img');
@@ -281,11 +284,11 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
   it('preview_remove_button_removes_uploaded_preview', async () => {
     hoisted.mockApiFetch
       .mockResolvedValueOnce(makeResponse(200, { posts: [] }))
-      .mockResolvedValueOnce(makeResponse(200, { image_url: 'only' }));
+      .mockResolvedValueOnce(makeResponse(200, { media_url: 'only', media_type: 'image' }));
     const user = userEvent.setup();
     const { container } = renderFeed();
     await waitForFeedReady();
-    const hiddenInput = document.querySelector('input[type="file"][accept="image/*"]');
+    const hiddenInput = document.querySelector('input[type="file"]');
     await user.upload(hiddenInput, new File(['x'], 'a.png', { type: 'image/png' }));
     await waitFor(() => expect(container.querySelectorAll('img').length).toBeGreaterThanOrEqual(2));
     const submitBtn = screen.getByRole('button', { name: 'Đăng bài' });
@@ -295,7 +298,7 @@ describe('Feed — posts / composer / feed load / focus / like / friend', () => 
     }
     expect(createCard).toBeTruthy();
     const previewRemove = [...createCard.querySelectorAll('img')]
-      .find((i) => i.getAttribute('src') === 'only')
+      .find((i) => i.getAttribute('src') === resolveImageUrl('only'))
       ?.parentElement?.querySelector('button');
     expect(previewRemove).toBeTruthy();
     await user.click(previewRemove);

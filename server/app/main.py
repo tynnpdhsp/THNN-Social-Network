@@ -32,11 +32,17 @@ async def lifespan(app: FastAPI):
     
     # Start Redis Pub/Sub for messaging
     app.state.pubsub_task = asyncio.create_task(manager.start_pubsub())
+
+    # Cleanup stale online users on startup
+    await cleanup_stale_online_users()
     
     # Start Scheduler
     scheduler = AsyncIOScheduler()
     app.state.scheduler = scheduler
     scheduler.start()
+
+    # Add cleanup job for stale online users (every 5 minutes)
+    scheduler.add_job(cleanup_stale_online_users, 'interval', minutes=10, id='cleanup_online_users')
     
     # Sync reminders
     from app.modules.schedule.service import ScheduleService

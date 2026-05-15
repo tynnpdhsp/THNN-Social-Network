@@ -91,5 +91,20 @@ export async function apiFetch(path, options = {}) {
     throw new Error('Phiên đăng nhập đã hết hạn');
   }
 
+  // Handle 403 Forbidden — account locked
+  if (res.status === 403) {
+    const clone = res.clone();
+    try {
+      const data = await clone.json();
+      if (data.code === 'ACCOUNT_LOCKED') {
+        localStorage.removeItem('token');
+        window.location.href = '/login?error=account_locked';
+        throw new Error(data.detail || 'Tài khoản của bạn đã bị khóa');
+      }
+    } catch (e) {
+      // Not account locked, just a regular 403
+    }
+  }
+
   return res;
 }

@@ -48,11 +48,12 @@ def make_fake_post(**overrides) -> MagicMock:
     return m
 
 
-def make_fake_post_image(img_id="img-1", url="https://x/a.jpg", order=0):
+def make_fake_post_image(img_id="img-1", url="https://x/a.jpg", order=0, media_type="image"):
     im = MagicMock()
     im.id = img_id
     im.imageUrl = url
     im.displayOrder = order
+    im.mediaType = media_type
     return im
 
 

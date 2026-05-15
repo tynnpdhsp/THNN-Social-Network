@@ -18,6 +18,7 @@ class AdminUserResponse(BaseModel):
     full_name: str
     role: str
     is_locked: bool
+    avatar_url: Optional[str] = None
     created_at: datetime
     last_login_at: Optional[datetime] = None
 
@@ -64,6 +65,7 @@ class ResolveReportRequest(BaseModel):
 class AuditLogResponse(BaseModel):
     id: str
     user_id: Optional[str] = None
+    admin_name: Optional[str] = "Hệ thống"
     action: str
     severity: str
     created_at: datetime

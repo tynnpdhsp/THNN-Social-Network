@@ -33,6 +33,7 @@ describe('Messaging — list & open chat', () => {
     hoisted.mockUseAuth.mockReturnValue({
       user: { id: 'me', full_name: 'Me', avatar_url: null },
       token: 'jwt-token',
+      onlineUsers: [],
     });
     hoisted.mockApiFetch.mockReset();
   });

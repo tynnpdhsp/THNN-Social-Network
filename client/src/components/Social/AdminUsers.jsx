@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Lock, Unlock, RefreshCw, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { resolveImageUrl } from '../../config/api';
 import Modal from '../Common/Modal';
 
 const CustomDropdown = ({ value, options, onChange, style, width = 130, buttonStyle }) => {
@@ -80,6 +81,8 @@ const AdminUsers = ({ users, userFilter, setUserFilter, loadAll, onViewProfile, 
     ? users.filter(u => u.full_name?.toLowerCase().includes(userSearch.toLowerCase()) || u.email?.toLowerCase().includes(userSearch.toLowerCase()))
     : users;
 
+  console.log("u", filtered)
+
   const handleConfirmLock = () => {
     if (!lockReason.trim() || !userToLock) return;
     onLockUserSubmit(userToLock, lockReason);
@@ -121,7 +124,7 @@ const AdminUsers = ({ users, userFilter, setUserFilter, loadAll, onViewProfile, 
           <div key={u.id} className="admin-user-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: u.is_locked ? '#fef2f2' : 'white', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--hairline)', transition: 'all 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => onViewProfile?.(u.id)}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--ash)', fontSize: 16 }}>
-                {u.full_name?.[0]}
+                {u?.avatar_url ? <img src={resolveImageUrl(u.avatar_url)} style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--ash)', fontSize: 16 }}/> : u.full_name?.[0]}
               </div>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 700 }}>
