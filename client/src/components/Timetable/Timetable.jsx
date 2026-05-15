@@ -214,7 +214,7 @@ const Timetable = () => {
     });
 
     if (hasOverlap) {
-      toast.error('⚠️ Trùng lịch! Tiết học này bị chồng chéo thời gian.');
+      toast.error('Trùng lịch! Tiết học này bị chồng chéo thời gian.');
       return;
     }
 
