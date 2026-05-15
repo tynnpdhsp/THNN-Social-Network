@@ -132,11 +132,11 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
   }, [conversations, openChat]);
 
   useEffect(() => {
-    if (preselectedUser && conversations.length > 0 && !processedPreselect.current) {
+    if (preselectedUser && !loading && !processedPreselect.current) {
       processedPreselect.current = true;
       startChat(preselectedUser);
     }
-  }, [preselectedUser, conversations.length, startChat]);
+  }, [preselectedUser, loading, startChat]);
 
   const handleUpload = async (e) => {
     const files = e.target.files;

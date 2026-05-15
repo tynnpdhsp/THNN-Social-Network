@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, UserPlus, UserCheck, UserX, Flag, Ban } from 'lucide-react';
+import { Search, UserPlus, UserCheck, UserX, Flag, Ban, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../Common/ConfirmDialog';
 
-const Friends = ({ onViewProfile }) => {
+const Friends = ({ onViewProfile, onStartChat }) => {
   const { user } = useAuth();
   const confirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
@@ -138,7 +138,7 @@ const Friends = ({ onViewProfile }) => {
                       <button onClick={() => acceptRequest(u.id)} style={{ ...s.actionBtn, background: 'var(--primary)', color: 'white' }}><UserCheck size={14} /> Chấp nhận</button>
                     )}
                     {u.friend_status === 'accepted' && (
-                      <button style={{ ...s.actionBtn, color: '#16a34a' }} disabled><UserCheck size={14} /> Bạn bè</button>
+                      <button onClick={() => onStartChat?.(u)} style={{ ...s.actionBtn, background: 'var(--primary)', color: 'white' }}><MessageSquare size={14} /> Nhắn tin</button>
                     )}
                     {u.friend_status !== 'me' && (
                       <button onClick={() => blockUser(u.id)} style={{ ...s.actionBtn, color: 'var(--primary)', background: '#fef2f2' }}><Ban size={14} /></button>
@@ -201,7 +201,12 @@ const Friends = ({ onViewProfile }) => {
                       onClick={() => onViewProfile?.(f.id)}
                     >{f.full_name}</span>
                   </div>
-                  <button onClick={() => unfriend(f.id)} style={{ ...s.smallBtn, color: 'var(--primary)' }}>Hủy bạn</button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => onStartChat?.(f)} style={{ ...s.smallBtn, background: 'var(--surface-card)', color: 'var(--primary)' }}>
+                        <MessageSquare size={14} />
+                      </button>
+                      <button onClick={() => unfriend(f.id)} style={{ ...s.smallBtn, color: 'var(--mute)' }}>Hủy bạn</button>
+                    </div>
                 </div>
               ))}
             </div>
