@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { apiFetch } from '../config/api';
+import { apiFetch, WS_BASE } from '../config/api';
 
 const AuthContext = createContext(null);
 
@@ -36,6 +36,44 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // Global WebSocket listener for system events (like immediate kick on lock)
+  useEffect(() => {
+    if (!token) return;
+
+    let ws;
+    let reconnectTimer;
+
+    const connect = () => {
+      ws = new WebSocket(`${WS_BASE}/messaging/ws?token=${token}`);
+      
+      ws.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data);
+          if (event.type === 'ACCOUNT_LOCKED') {
+            logout();
+            window.location.href = '/login?error=account_locked';
+          }
+        } catch (err) {
+          console.error('WS parsing error:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        // Reconnect after 5s if still have token
+        if (localStorage.getItem('token')) {
+          reconnectTimer = setTimeout(connect, 5000);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, [token]);
 
   // Helper to extract error message from FastAPI responses
   const extractError = (data, fallback) => {

@@ -63,3 +63,14 @@ class ConnectionManager:
                 await asyncio.sleep(5)
 
 manager = ConnectionManager()
+
+async def notify_user_locked(user_id: str):
+    """
+    Publish a lock event to Redis to notify all instances to kick the user.
+    """
+    redis = await get_redis()
+    payload = {
+        "target_user_ids": [user_id],
+        "payload": {"type": "ACCOUNT_LOCKED"}
+    }
+    await redis.publish("chat_updates", json.dumps(payload))

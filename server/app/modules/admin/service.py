@@ -9,6 +9,7 @@ from app.modules.admin.schemas import (
     AuditLogResponse, PaginatedAuditLogResponse,
     UpdateUserRoleRequest
 )
+from app.modules.messaging.ws_manager import notify_user_locked
 
 class AdminService:
     def __init__(self, repo: AdminRepository):
@@ -46,6 +47,9 @@ class AdminService:
         user = await self.repo.lock_user(user_id, admin_id, reason)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+            
+        # Push notification to kick user immediately
+        await notify_user_locked(user_id)
         
         # Reload to get role info
         user = await self.repo.db.user.find_unique(where={"id": user_id}, include={"roleRef": True})
@@ -119,6 +123,7 @@ class AdminService:
             
             if user_to_lock:
                 await self.repo.lock_user(user_to_lock, admin_id, f"Vi phạm từ báo cáo {report_id}")
+                await notify_user_locked(user_to_lock)
                 target_name = "Tài khoản (Đã khóa)"
         
         return AdminReportResponse(

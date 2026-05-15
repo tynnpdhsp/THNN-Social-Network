@@ -85,6 +85,14 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(
         return
         
     user_id = payload["sub"]
+    
+    # Verify account is not locked
+    db = get_db()
+    user = await db.user.find_unique(where={"id": user_id})
+    if not user or user.isLocked:
+        await websocket.close(code=4003, reason="Account locked")
+        return
+        
     await manager.connect(user_id, websocket)
     try:
         while True:
