@@ -256,11 +256,19 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-soft)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = activeConv?.id === c.id ? 'var(--surface-card)' : ''; e.currentTarget.style.transform = 'translateX(0)'; }}
                 >
-                  <div style={s.convAvatar}>{name?.[0]?.toUpperCase() || '?'}</div>
+                  {c.type === 'direct' && c.other_member?.avatar_url ? (
+                    <img 
+                      src={resolveImageUrl(c.other_member.avatar_url)} 
+                      alt="" 
+                      style={{ ...s.convAvatar, objectFit: 'cover', border: 'none' }} 
+                    />
+                  ) : (
+                    <div style={s.convAvatar}>{name?.[0]?.toUpperCase() || '?'}</div>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontWeight: 700, fontSize: 14 }}>{name}</p>
                     <p style={{ fontSize: 12, color: 'var(--ash)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {lastMsg?.content || 'Chưa có tin nhắn'}
+                      {lastMsg?.content || (lastMsg?.attachments?.length ? '[Hình ảnh]' : 'Chưa có tin nhắn')}
                     </p>
                   </div>
                   {isUnread && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, animation: 'pulse 2s infinite' }} />}
@@ -307,14 +315,24 @@ const Messaging = ({ onViewProfile, preselectedUser }) => {
                   <div key={m.id || i} style={{
                     display: 'flex',
                     justifyContent: isMe ? 'flex-end' : 'flex-start',
-                    marginBottom: 8,
+                    alignItems: 'flex-end',
+                    gap: 8,
+                    marginBottom: 12,
                     animation: `${isMe ? 'slideInRight' : 'slideInLeft'} 0.3s cubic-bezier(0.22, 1, 0.36, 1)`,
                   }}>
+                    {!isMe && (
+                      <img 
+                        src={activeConv.type === 'direct' ? (resolveImageUrl(activeConv.other_member?.avatar_url) || getDefaultAvatar(activeConv.other_member?.full_name)) : getDefaultAvatar('?')} 
+                        alt="" 
+                        style={{ width: 28, height: 28, borderRadius: '50%', marginBottom: 4, flexShrink: 0, cursor: 'pointer' }}
+                        onClick={() => onViewProfile?.(senderId)}
+                      />
+                    )}
                     <div style={{
                       ...s.msgBubble,
                       background: isMe ? 'var(--primary)' : 'white',
                       color: isMe ? 'white' : 'var(--body)',
-                      borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                      borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                       boxShadow: isMe ? '0 2px 12px rgba(230,0,35,0.15)' : '0 1px 4px rgba(0,0,0,0.06)',
                     }}>
                       <p style={{ fontSize: 14, lineHeight: 1.5 }}>{m.content}</p>
