@@ -125,3 +125,24 @@ async def set_user_friend_ids_cache(user_id: str, friend_ids: List[str]):
 async def invalidate_user_friend_cache(user_id: str):
     r = await get_redis()
     await r.delete(f"social:friends:{user_id}")
+
+# --- Online Users Cache ---
+
+async def add_online_user(user_id: str):
+    r = await get_redis()
+    key = "social:online_users"
+    await r.sadd(key, user_id)
+    await r.expire(key, 3600)
+
+async def remove_online_user(user_id: str):
+    r = await get_redis()
+    key = "social:online_users"
+    await r.srem(key, user_id)
+
+async def get_online_users() -> List[str]:
+    r = await get_redis()
+    key = "social:online_users"
+    if not await r.exists(key):
+        return []
+    users = await r.smembers(key)
+    return list(users)
