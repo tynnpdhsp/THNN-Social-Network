@@ -7,6 +7,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 're
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
+import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import {
   getPlaceCategories,
   getNearbyPlaces,
@@ -308,7 +309,7 @@ const Map = () => {
           {selectedLocation ? (
             <div className="card" style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
               <div style={{ position: 'relative' }}>
-                <img src={selectedLocation.images?.[0]?.image_url || 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600'} style={{ width: '100%', height: 180, objectFit: 'cover' }} />
+                <img src={resolveImageUrl(selectedLocation.images?.[0]?.image_url) || 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&q=80&w=600'} style={{ width: '100%', height: 180, objectFit: 'cover' }} />
                 <button
                   onClick={handleToggleBookmark}
                   style={{
@@ -363,8 +364,12 @@ const Map = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {reviews.length > 0 ? reviews.map(rev => (
                     <div key={rev.id} style={{ display: 'flex', gap: 12 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        {rev.user_info?.avatar_url ? <img src={rev.user_info.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={16} color="var(--mute)" />}
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                        <img 
+                          src={resolveImageUrl(rev.user_info?.avatar_url) || getDefaultAvatar(rev.user_info?.full_name)} 
+                          alt="" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
                       </div>
                       <div>
                         <p style={{ fontSize: 13, fontWeight: 700 }}>{rev.user_info?.full_name || 'Người dùng'}</p>
