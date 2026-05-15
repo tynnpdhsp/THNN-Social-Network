@@ -45,7 +45,11 @@ const StudyDocs = () => {
 
   // Close menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => setActiveMenuId(null);
+    const handleClickOutside = () => {
+      setActiveMenuId(null);
+      setIsSortOpen(false);
+      setIsFilterOpen(false);
+    };
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
@@ -146,7 +150,7 @@ const StudyDocs = () => {
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ position: 'relative' }}>
                   <button 
-                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    onClick={(e) => { e.stopPropagation(); setIsSortOpen(!isSortOpen); setIsFilterOpen(false); }}
                     className="btn-secondary" 
                     style={{ 
                       display: 'flex', alignItems: 'center', gap: 8, 
@@ -159,8 +163,10 @@ const StudyDocs = () => {
                   </button>
                   
                   {isSortOpen && (
-                    <div style={{ 
-                      position: 'absolute', top: '120%', right: 0, width: '100%', 
+                    <div 
+                      onClick={e => e.stopPropagation()}
+                      style={{ 
+                      position: 'absolute', top: '120%', left: 0, width: '100%', 
                       background: 'white', borderRadius: 'var(--rounded-md)', 
                       boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
                       overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
@@ -187,7 +193,7 @@ const StudyDocs = () => {
                 
                 <div style={{ position: 'relative' }}>
                   <button 
-                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    onClick={(e) => { e.stopPropagation(); setIsFilterOpen(!isFilterOpen); setIsSortOpen(false); }}
                     className="btn-secondary" 
                     style={{ 
                       display: 'flex', gap: 8, alignItems: 'center', 
@@ -199,8 +205,10 @@ const StudyDocs = () => {
                   </button>
 
                   {isFilterOpen && (
-                    <div style={{ 
-                      position: 'absolute', top: '120%', right: 0, width: 220, 
+                    <div 
+                      onClick={e => e.stopPropagation()}
+                      style={{ 
+                      position: 'absolute', top: '120%', left: 0, width: 220, 
                       background: 'white', borderRadius: 'var(--rounded-md)', 
                       boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 500,
                       overflow: 'hidden', padding: '8px', border: '1px solid var(--hairline)'
