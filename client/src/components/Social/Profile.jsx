@@ -405,6 +405,7 @@ const Profile = ({ targetUserId, onStartChat }) => {
                     }}>
                       {images.map((img, i) => {
                         const multi = images.length > 1;
+                        const isVideo = img.media_type === 'video';
                         return (
                           <div
                             key={i}
@@ -417,22 +418,36 @@ const Profile = ({ targetUserId, onStartChat }) => {
                               maxHeight: multi ? 280 : 'none',
                             }}
                           >
-                            <img
-                              src={resolveImageUrl(img.image_url)}
-                              alt=""
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: multi ? 240 : 480,
-                                width: 'auto',
-                                height: 'auto',
-                                objectFit: 'contain',
-                                cursor: 'pointer',
-                                display: 'block',
-                                transition: 'opacity 0.2s ease',
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                            />
+                            {isVideo ? (
+                              <video
+                                src={resolveImageUrl(img.image_url)}
+                                controls
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: multi ? 240 : 480,
+                                  width: '100%',
+                                  height: 'auto',
+                                  borderRadius: multi ? 0 : 8,
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src={resolveImageUrl(img.image_url)}
+                                alt=""
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: multi ? 240 : 480,
+                                  width: 'auto',
+                                  height: 'auto',
+                                  objectFit: 'contain',
+                                  cursor: 'pointer',
+                                  display: 'block',
+                                  transition: 'opacity 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                              />
+                            )}
                           </div>
                         );
                       })}

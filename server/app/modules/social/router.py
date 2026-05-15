@@ -218,17 +218,24 @@ async def upload_media(
     user_id: str = Depends(require_active_user),
     svc: SocialService = Depends(get_social_service),
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise BadRequestException("Tập tin phải là hình ảnh", "INVALID_FILE_TYPE")
-
+    is_video = False
+    if file.content_type:
+        if file.content_type.startswith("video/"):
+            is_video = True
+        elif not file.content_type.startswith("image/"):
+            raise BadRequestException("Tập tin phải là hình ảnh hoặc video", "INVALID_FILE_TYPE")
+    
     content = await file.read()
-    # Tạm dùng chung limit với avatar
-    max_bytes = settings.MAX_AVATAR_SIZE_MB * 1024 * 1024
+    max_bytes = settings.MAX_POST_MEDIA_SIZE_MB * 1024 * 1024
     if len(content) > max_bytes:
         raise BadRequestException(
-            f"Ảnh bài đăng phải nhỏ hơn {settings.MAX_AVATAR_SIZE_MB}MB", "FILE_TOO_LARGE"
+            f"Tập tin phải nhỏ hơn {settings.MAX_POST_MEDIA_SIZE_MB}MB", "FILE_TOO_LARGE"
         )
 
-    url = await svc.upload_post_image(user_id, content, file.filename or "post_image.jpg")
-    return {"image_url": url}
+    url = await svc.upload_post_image(user_id, content, file.filename or "media_file")
+    return {
+        "image_url": url, # Keep for compatibility
+        "media_url": url,
+        "media_type": "video" if is_video else "image"
+    }
 

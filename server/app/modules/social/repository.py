@@ -109,8 +109,9 @@ class SocialRepository:
             data=[
                 {
                     "postId": post_id,
-                    "imageUrl": img["image_url"],
-                    "displayOrder": img.get("display_order", 0)
+                    "imageUrl": img.get("imageUrl") or img.get("image_url"),
+                    "mediaType": img.get("mediaType") or img.get("media_type") or "image",
+                    "displayOrder": img.get("displayOrder") or img.get("display_order") or 0
                 }
                 for img in images
             ]

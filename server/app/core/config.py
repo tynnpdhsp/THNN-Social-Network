@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     # Upload
     MAX_AVATAR_SIZE_MB: int = 5
     MAX_COVER_SIZE_MB: int = 10
+    MAX_POST_MEDIA_SIZE_MB: int = 50
     MAX_BIO_LENGTH: int = 500
 
     VNPAY_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"

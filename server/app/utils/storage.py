@@ -154,6 +154,10 @@ def _guess_content_type(ext: str) -> str:
         "pdf": "application/pdf",
         "doc": "application/msword",
         "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "mp4": "video/mp4",
+        "mov": "video/quicktime",
+        "avi": "video/x-msvideo",
+        "webm": "video/webm",
     }
     return types.get(ext.lower(), "application/octet-stream")
 

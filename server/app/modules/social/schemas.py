@@ -48,11 +48,13 @@ class CommentResponse(BaseModel):
 # --- Posts ---
 class PostImageCreate(BaseModel):
     image_url: str
+    media_type: str = "image" # 'image' | 'video'
     display_order: int = 0
 
 class PostImageResponse(BaseModel):
     id: str
     image_url: str
+    media_type: str
     display_order: int
 
 class PostCreateRequest(BaseModel):

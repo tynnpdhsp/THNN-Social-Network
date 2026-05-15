@@ -48,20 +48,30 @@ const Board = () => {
   useEffect(() => { loadPosts(); }, [loadPosts]);
 
   const handleUploadImages = async (e) => {
-    for (let f of e.target.files) {
+    const files = e.target.files;
+    const MAX_SIZE = 50 * 1024 * 1024;
+
+    for (let f of files) {
+      if (f.size > MAX_SIZE) {
+        toast.error(`File "${f.name}" quá lớn (tối đa 50MB)`);
+        continue;
+      }
+
       const fd = new FormData();
       fd.append('file', f);
       try {
         const res = await apiFetch('/social/media/upload', { method: 'POST', body: fd });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          toast.error(`Tải ảnh thất bại: ${err.detail || res.statusText}`);
+          toast.error(`Tải lên thất bại: ${err.detail || res.statusText}`);
           continue;
         }
         const data = await res.json();
-        if (data.image_url) setUploadedImages(prev => [...prev, data.image_url]);
+        if (data.media_url) {
+          setUploadedImages(prev => [...prev, { url: data.media_url, type: data.media_type }]);
+        }
       } catch (err) {
-        toast.error('Không thể tải ảnh. Kiểm tra kết nối server/MinIO.');
+        toast.error('Không thể tải file. Kiểm tra kết nối server/MinIO.');
         console.error('Upload error:', err);
       }
     }
@@ -77,7 +87,11 @@ const Board = () => {
         body: JSON.stringify({
           content: newContent,
           board_tag_id: selectedTagId,
-          images: uploadedImages.map((u, i) => ({ image_url: u, display_order: i })),
+          images: uploadedImages.map((u, i) => ({ 
+            image_url: u.url, 
+            media_type: u.type,
+            display_order: i 
+          })),
         }),
       });
       setNewContent('');
@@ -161,9 +175,15 @@ const Board = () => {
 
         {uploadedImages.length > 0 && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            {uploadedImages.map((img, i) => (
+            {uploadedImages.map((media, i) => (
               <div key={i} style={{ position: 'relative', animation: 'popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1)' }}>
-                <img src={resolveImageUrl(img)} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover' }} />
+                {media.type === 'video' ? (
+                  <div style={{ width: 64, height: 64, borderRadius: 10, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    <video src={resolveImageUrl(media.url)} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+                  </div>
+                ) : (
+                  <img src={resolveImageUrl(media.url)} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover' }} />
+                )}
                 <button onClick={() => setUploadedImages(prev => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>
               </div>
             ))}
@@ -173,8 +193,8 @@ const Board = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--mute)', fontSize: 13, fontWeight: 600 }}>
-              <Image size={16} /> Thêm ảnh
-              <input type="file" multiple accept="image/*" hidden onChange={handleUploadImages} />
+              <Image size={16} /> Ảnh/Video
+              <input type="file" multiple accept="image/*,video/*" hidden onChange={handleUploadImages} />
             </label>
           </div>
           <button className="btn-primary" style={{ padding: '10px 28px', fontSize: 14 }} onClick={handleCreatePost} disabled={posting}>
@@ -241,32 +261,49 @@ const Board = () => {
 
                 {p.images?.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(p.images.length, 3)}, 1fr)`, gap: 4, borderRadius: 12, overflow: 'hidden', marginBottom: 8 }}>
-                    {p.images.map((img, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: 'var(--surface-soft)',
-                          minHeight: 180,
-                          maxHeight: 260,
-                        }}
-                      >
-                        <img
-                          src={resolveImageUrl(img.image_url)}
-                          alt=""
+                    {p.images.map((img, i) => {
+                      const isVideo = img.media_type === 'video';
+                      return (
+                        <div
+                          key={i}
                           style={{
-                            maxWidth: '100%',
-                            maxHeight: 220,
-                            width: 'auto',
-                            height: 'auto',
-                            objectFit: 'contain',
-                            display: 'block',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'var(--surface-soft)',
+                            minHeight: 180,
+                            maxHeight: 260,
                           }}
-                        />
-                      </div>
-                    ))}
+                        >
+                          {isVideo ? (
+                            <video
+                              src={resolveImageUrl(img.image_url)}
+                              controls
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: 220,
+                                width: '100%',
+                                height: 'auto',
+                                borderRadius: 8,
+                              }}
+                            />
+                          ) : (
+                            <img
+                              src={resolveImageUrl(img.image_url)}
+                              alt=""
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: 220,
+                                width: 'auto',
+                                height: 'auto',
+                                objectFit: 'contain',
+                                display: 'block',
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
