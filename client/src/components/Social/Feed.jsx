@@ -140,9 +140,18 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
       icon: 'delete',
     });
     if (!ok) return;
-    await apiFetch(`/social/posts/${postId}`, { method: 'DELETE' });
-    toast.success('Đã xóa bài viết');
-    loadFeed();
+    try {
+      const res = await apiFetch(`/social/posts/${postId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Đã xóa bài viết');
+        loadFeed();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(`Không thể xóa bài viết: ${err.detail || 'Lỗi không xác định'}`);
+      }
+    } catch (err) {
+      toast.error('Lỗi kết nối khi xóa bài viết');
+    }
   };
 
   const handleUpdatePost = async () => {

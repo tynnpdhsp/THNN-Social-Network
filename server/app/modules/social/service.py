@@ -104,6 +104,7 @@ class SocialService:
             "userId": target_user_id,
             "postType": "feed",
             "visibility": {"in": allowed_visibility},
+            "deletedAt": None,
             "NOT": {"isHidden": True},
         }
         
