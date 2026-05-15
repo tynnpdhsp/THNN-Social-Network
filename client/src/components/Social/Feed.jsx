@@ -347,7 +347,7 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
       )}
 
       {/* Edit Modal */}
-      <Modal isOpen={!!editPost} onClose={() => setEditPost(null)} title="Chỉnh sửa bài viết" width={500}>
+      <Modal isOpen={!!editPost} onClose={() => setEditPost(null)} title="Chỉnh sửa bài viết" width={500} overflow="visible">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <textarea
             className="input-field"
@@ -477,7 +477,7 @@ const Feed = ({ onViewProfile, focusPostId, onPostFocused }) => {
       </Modal>
 
       {/* Report Modal */}
-      <Modal isOpen={!!reportTarget} onClose={() => setReportTarget(null)} title="Báo cáo nội dung" width={420}>
+      <Modal isOpen={!!reportTarget} onClose={() => setReportTarget(null)} title="Báo cáo nội dung" width={420} overflow="visible">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>Lý do</label>
