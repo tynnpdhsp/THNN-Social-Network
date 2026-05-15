@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Camera, Edit3, Heart, MessageCircle, Image as ImageIcon, Globe, Users, Lock, Check } from 'lucide-react';
+import { Camera, Edit3, Heart, MessageCircle, Image as ImageIcon, Globe, Users, Lock, Check, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiFetch, resolveImageUrl, getDefaultAvatar } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../Common/ConfirmDialog';
+import Modal from '../Common/Modal';
 
 const Profile = ({ targetUserId, onStartChat }) => {
   const { user: currentUser, refreshProfile } = useAuth();
@@ -17,6 +18,13 @@ const Profile = ({ targetUserId, onStartChat }) => {
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [friendCount, setFriendCount] = useState(0);
+
+  // Comment modal
+  const [commentPostId, setCommentPostId] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [replyToId, setReplyToId] = useState(null);
+  const [replyToName, setReplyToName] = useState('');
 
   const isOwnProfile = !targetUserId || targetUserId === currentUser?.id;
   const userId = isOwnProfile ? currentUser?.id : targetUserId;
@@ -78,7 +86,37 @@ const Profile = ({ targetUserId, onStartChat }) => {
     try {
       await apiFetch(`/social/posts/${postId}/like`, { method: 'POST' });
       loadPosts();
-    } catch (err) { console.error('Error loading friend count:', err); }
+    } catch (err) { console.error('Error liking post:', err); }
+  };
+
+  const openComments = async (postId) => {
+    setCommentPostId(postId);
+    setReplyToId(null);
+    setReplyToName('');
+    setCommentText('');
+    try {
+      const res = await apiFetch(`/social/posts/${postId}/comments`);
+      if (res.ok) {
+        setComments(await res.json());
+      }
+    } catch { setComments([]); }
+  };
+
+  const sendComment = async () => {
+    if (!commentText.trim()) return;
+    try {
+      const res = await apiFetch(`/social/posts/${commentPostId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content: commentText, parent_comment_id: replyToId }),
+      });
+      if (res.ok) {
+        setCommentText('');
+        setReplyToId(null);
+        setReplyToName('');
+        openComments(commentPostId);
+        loadPosts();
+      }
+    } catch (err) { console.error('Error sending comment:', err); }
   };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><div style={{ width: 32, height: 32, border: '3px solid var(--hairline)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /></div>;
@@ -416,10 +454,18 @@ const Profile = ({ targetUserId, onStartChat }) => {
                       <Heart size={16} fill={p.is_liked ? 'var(--primary)' : 'none'} />
                       {p.like_count || 0}
                     </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--mute)', fontSize: 13, fontWeight: 700 }}>
+                    <button
+                      onClick={() => openComments(p.id)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        color: 'var(--mute)', fontWeight: 700, fontSize: 13,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
                       <MessageCircle size={16} />
                       {p.comment_count || 0}
-                    </div>
+                    </button>
                   </div>
                 </div>
               );
@@ -427,6 +473,67 @@ const Profile = ({ targetUserId, onStartChat }) => {
           </div>
         )}
       </div>
+      <Modal isOpen={!!commentPostId} onClose={() => setCommentPostId(null)} title="Bình luận" width={720}>
+        <div style={{ maxHeight: 400, overflowY: 'auto', marginBottom: 16 }}>
+          {comments.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--ash)', padding: 32, fontSize: 13 }}>Chưa có bình luận</p>
+          ) : (
+            comments.map(c => (
+              <div key={c.id} style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <img src={resolveImageUrl(c.user_info?.avatar_url) || getDefaultAvatar(c.user_info?.full_name)} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ background: 'var(--surface-card)', padding: '10px 14px', borderRadius: 16 }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginBottom: 2 }}>{c.user_info?.full_name}</p>
+                      <p style={{ fontSize: 14, color: 'var(--body)' }}>{c.content}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 16, marginTop: 4, paddingLeft: 8 }}>
+                      <button
+                        onClick={() => { setReplyToId(c.id); setReplyToName(c.user_info?.full_name); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--mute)' }}
+                      >TRẢ LỜI</button>
+                      <span style={{ fontSize: 11, color: 'var(--ash)' }}>{new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+
+                    {/* Replies */}
+                    {(c.replies || []).map((r, ri) => (
+                      <div key={ri} style={{ display: 'flex', gap: 8, marginTop: 10, marginLeft: 16, paddingLeft: 12, borderLeft: '2px solid var(--hairline)' }}>
+                        <img src={resolveImageUrl(r.user_info?.avatar_url) || getDefaultAvatar(r.user_info?.full_name)} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
+                        <div style={{ background: 'var(--surface-soft)', padding: '8px 12px', borderRadius: 12, flex: 1 }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--focus-outer)', marginBottom: 1 }}>{r.user_info?.full_name}</p>
+                          <p style={{ fontSize: 13, color: 'var(--body)' }}>{r.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {replyToName && (
+          <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, marginBottom: 8 }}>
+            Trả lời {replyToName}
+            <button onClick={() => { setReplyToId(null); setReplyToName(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', marginLeft: 8, fontSize: 11 }}>Hủy</button>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            id="comment-input"
+            type="text"
+            placeholder={replyToName ? `Trả lời ${replyToName}...` : 'Viết bình luận...'}
+            className="input-field"
+            style={{ flex: 1, height: 44 }}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendComment()}
+          />
+          <button className="btn-primary" style={{ padding: '0 20px' }} onClick={sendComment}>
+            <Send size={16} />
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };
