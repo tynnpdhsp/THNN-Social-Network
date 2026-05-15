@@ -36,12 +36,13 @@ class TestConnectionManagerConnectDisconnect:
 
         assert len(mgr.active_connections["user-1"]) == 2
 
-    def test_disconnect_removes_socket_and_prunes_empty_user(self):
+    @pytest.mark.asyncio
+    async def test_disconnect_removes_socket_and_prunes_empty_user(self):
         mgr = ws_manager.ConnectionManager()
         ws = MagicMock()
         mgr.active_connections["user-1"] = {ws}
 
-        mgr.disconnect("user-1", ws)
+        await mgr.disconnect("user-1", ws)
 
         assert "user-1" not in mgr.active_connections
 
@@ -94,13 +95,17 @@ class TestStartPubsub:
         mock_redis.pubsub = lambda: _FakePubSub(wire, block=block)
 
         task = asyncio.create_task(mgr.start_pubsub())
+        sent: list = []
         for _ in range(200):
             if ws.send_json.await_count:
-                break
+                sent = [call.args[0] for call in ws.send_json.await_args_list]
+                if payload in sent:
+                    break
             await asyncio.sleep(0.01)
 
-        ws.send_json.assert_awaited()
-        assert ws.send_json.await_args[0][0] == payload
+        assert payload in sent, (
+            f"pubsub payload not delivered; got: {sent}"
+        )
 
         task.cancel()
         block.set()

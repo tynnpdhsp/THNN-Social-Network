@@ -8,7 +8,7 @@ import pytest
 
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.modules.social.schemas import PostCreateRequest, PostImageCreate, PostUpdateRequest
-from tests.unit.modules.social.conftest import make_fake_post
+from tests.unit.modules.social.conftest import make_fake_post, make_fake_post_image
 @pytest.mark.asyncio
 class TestCreatePost:
     async def test_creates_feed_pushes_newsfeed_and_counters(
@@ -32,7 +32,10 @@ class TestCreatePost:
         self, social_service, mock_social_repo, patch_get_redis
     ):
         p1 = make_fake_post(id="p-img")
-        p2 = make_fake_post(id="p-img", postImages=[MagicMock(id="i1", imageUrl="/x.jpg", displayOrder=0)])
+        p2 = make_fake_post(
+            id="p-img",
+            postImages=[make_fake_post_image(img_id="i1", url="/x.jpg", order=0)],
+        )
         mock_social_repo.create_post = AsyncMock(return_value=p1)
         mock_social_repo.get_post_by_id = AsyncMock(side_effect=[p2])
         mock_social_repo.create_post_images = AsyncMock()

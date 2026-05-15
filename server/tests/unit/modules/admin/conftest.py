@@ -9,6 +9,12 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def _admin_unit_redis(patch_get_redis):
+    """Admin lock/report flows call ``notify_user_locked`` (Redis pub/sub)."""
+    yield patch_get_redis
+
+
+@pytest.fixture(autouse=True)
 def fresh_admin_repo_methods(mock_admin_repo):
     for name in (
         "get_overview_stats",
@@ -43,6 +49,7 @@ def make_admin_user(
     u.isLocked = locked
     u.createdAt = datetime(2025, 1, 1, tzinfo=timezone.utc)
     u.lastLoginAt = last_login
+    u.avatarUrl = None
     rr = MagicMock()
     rr.role = role_name
     u.roleRef = rr

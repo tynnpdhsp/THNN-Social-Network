@@ -10,6 +10,12 @@ import pytest
 from app.modules.account.repository import AccountRepository
 
 
+@pytest.fixture(autouse=True)
+def _messaging_unit_redis(patch_get_redis):
+    """``ConnectionManager`` tracks online users and pub/sub via Redis."""
+    yield patch_get_redis
+
+
 @pytest.fixture()
 def patch_messaging_embed(mock_messaging_repo):
     """Route ``MessagingService._get_user_embed`` Prisma access through ``mock_messaging_repo.db``."""
