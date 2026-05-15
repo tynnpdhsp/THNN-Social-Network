@@ -7,6 +7,7 @@ import DeleteConfirmModal from './DeleteConfirmModal';
 import CartDrawer from './CartDrawer';
 import * as shopService from '../../services/shopService';
 import { resolveImageUrl } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 // Mảng các category icon có thể bỏ nếu ta dùng trực tiếp từ backend
 const hardcodedCategories = [
@@ -19,6 +20,7 @@ const hardcodedCategories = [
 
 
 const Shop = () => {
+  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -465,26 +467,30 @@ const Shop = () => {
                   onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
                   onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white' }} onClick={(e) => { e.stopPropagation(); handleEditClick(product); }}><Edit2 size={16} /></button>
-                      <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white', color: 'var(--primary)' }} onClick={(e) => { e.stopPropagation(); handleDeleteClick(product); }}><Trash2 size={16} /></button>
-                    </div>
-                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                       <button 
-                         className="btn-secondary" 
-                         style={{ width: 40, height: 40, padding: 0, borderRadius: '50%', background: 'white' }}
-                         onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
-                       >
-                         <ShoppingBag size={18} color="var(--primary)" />
-                       </button>
-                       <button 
-                        className="btn-primary" 
-                        style={{ padding: '8px 16px', fontSize: 14 }}
-                        onClick={(e) => { e.stopPropagation(); buyNow(product); }}
-                       >
-                         Mua ngay
-                       </button>
-                    </div>
+                    {(user?.id === product.seller_id || user?.role === 'admin') && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white' }} onClick={(e) => { e.stopPropagation(); handleEditClick(product); }}><Edit2 size={16} /></button>
+                        <button className="btn-secondary" style={{ width: 36, height: 36, padding: 0, borderRadius: '50%', background: 'white', color: 'var(--primary)' }} onClick={(e) => { e.stopPropagation(); handleDeleteClick(product); }}><Trash2 size={16} /></button>
+                      </div>
+                    )}
+                    {user?.id !== product.seller_id && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <button 
+                          className="btn-secondary" 
+                          style={{ width: 40, height: 40, padding: 0, borderRadius: '50%', background: 'white' }}
+                          onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
+                        >
+                          <ShoppingBag size={18} color="var(--primary)" />
+                        </button>
+                        <button 
+                         className="btn-primary" 
+                         style={{ padding: '8px 16px', fontSize: 14 }}
+                         onClick={(e) => { e.stopPropagation(); buyNow(product); }}
+                        >
+                          Mua ngay
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{ padding: '12px 4px' }}>

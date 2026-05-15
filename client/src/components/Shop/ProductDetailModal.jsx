@@ -3,8 +3,10 @@ import { X, Star, ShoppingCart, MessageSquare, Send, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as shopService from '../../services/shopService';
 import { resolveImageUrl, getDefaultAvatar } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart }) => {
+  const { user } = useAuth();
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [reviews, setReviews] = useState([]);
@@ -145,22 +147,24 @@ const ProductDetailModal = ({ isOpen, onClose, product, onBuyNow, onAddToCart })
               <p className="body-md" style={{ color: 'var(--body)', opacity: 0.8 }}>{product.description}</p>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
-              <button 
-                className="btn-primary" 
-                style={{ flex: 1, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                onClick={() => onBuyNow(product)}
-              >
-                Mua ngay
-              </button>
-              <button 
-                className="btn-secondary" 
-                style={{ width: 56, height: 56, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                onClick={() => onAddToCart(product)}
-              >
-                <ShoppingCart size={24} color="var(--primary)" />
-              </button>
-            </div>
+            {user?.id !== product.seller_id && (
+              <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
+                <button 
+                  className="btn-primary" 
+                  style={{ flex: 1, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  onClick={() => onBuyNow(product)}
+                >
+                  Mua ngay
+                </button>
+                <button 
+                  className="btn-secondary" 
+                  style={{ width: 56, height: 56, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => onAddToCart(product)}
+                >
+                  <ShoppingCart size={24} color="var(--primary)" />
+                </button>
+              </div>
+            )}
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--hairline)', marginBottom: 32 }} />
 
