@@ -64,6 +64,7 @@ class ResolveReportRequest(BaseModel):
 class AuditLogResponse(BaseModel):
     id: str
     user_id: Optional[str] = None
+    admin_name: Optional[str] = "Hệ thống"
     action: str
     severity: str
     created_at: datetime
