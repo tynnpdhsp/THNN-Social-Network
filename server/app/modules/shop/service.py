@@ -320,7 +320,7 @@ class ShopService:
         if not order:
             raise NotFoundException("Order not found", "ORDER_NOT_FOUND")
 
-        now = datetime.now()
+        now = datetime.now() + timedelta(hours=7)
         create_date = now.strftime("%Y%m%d%H%M%S")
         expire_date = (now + timedelta(minutes=15)).strftime("%Y%m%d%H%M%S") # hết hạn sau 15 phút
         amount = int(order.amount * 100)
