@@ -205,7 +205,8 @@ const Map = () => {
       const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
       setLocations(updatedPlace.data || []);
     } catch (error) {
-      toast.error('Lỗi khi đăng nhận xét');
+      console.log(error)
+      toast.error(error?.message ?? 'Lỗi khi đăng nhận xét');
     }
   };
 
