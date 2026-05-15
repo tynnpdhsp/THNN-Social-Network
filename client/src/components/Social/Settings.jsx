@@ -3,7 +3,7 @@ import { Shield, Bell, Lock, Save, Check, X, ChevronDown } from 'lucide-react';
 import { apiFetch } from '../../config/api';
 
 const Settings = () => {
-  const [privacy, setPrivacy] = useState({ whoCanSeePosts: 'everyone', whoCanMessage: 'everyone', whoCanFriendReq: 'everyone' });
+  const [privacy, setPrivacy] = useState({ who_can_see_posts: 'everyone', who_can_message: 'everyone', who_can_friend_req: 'everyone' });
   const [openDropdown, setOpenDropdown] = useState(null);
   const [notifSettings, setNotifSettings] = useState({});
   const [blockedUsers, setBlockedUsers] = useState([]);
@@ -62,9 +62,9 @@ const Settings = () => {
           <h3 style={t}><Shield size={18} color="var(--primary)" /> Quyền riêng tư</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[
-              { key: 'whoCanSeePosts', label: 'Ai xem bài viết?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
-              { key: 'whoCanMessage', label: 'Ai nhắn tin?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
-              { key: 'whoCanFriendReq', label: 'Ai kết bạn?', opts: [['everyone','Mọi người'],['friends_of_friends','Bạn của bạn bè'],['no_one','Không ai']] },
+              { key: 'who_can_see_posts', label: 'Ai xem bài viết?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
+              { key: 'who_can_message', label: 'Ai nhắn tin?', opts: [['everyone','Mọi người'],['friends','Bạn bè'],['only_me','Chỉ mình tôi']] },
+              { key: 'who_can_friend_req', label: 'Ai kết bạn?', opts: [['everyone','Mọi người'],['friends_of_friends','Bạn của bạn bè'],['no_one','Không ai']] },
             ].map(f => {
               const selectedLabel = f.opts.find(o => o[0] === privacy[f.key])?.[1] || '';
               const isOpen = openDropdown === f.key;
@@ -123,7 +123,7 @@ const Settings = () => {
         <div style={c}>
           <h3 style={t}><Bell size={18} color="var(--focus-outer)" /> Thông báo</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[['notifyLike','Thích'],['notifyComment','Bình luận'],['notifyReply','Trả lời'],['notifyFriendReq','Kết bạn'],['notifyMessage','Tin nhắn'],['notifySchedule','Lịch học']].map(([k,l]) => (
+            {[['notify_like','Thích'],['notify_comment','Bình luận'],['notify_reply','Trả lời'],['notify_friend_req','Kết bạn'],['notify_message','Tin nhắn'],['notify_schedule','Lịch học']].map(([k,l]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{l}</span>
                 <button onClick={() => toggle(k)} style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: notifSettings[k] ? 'var(--primary)' : 'var(--hairline)', position: 'relative', padding: 2, transition: 'background 0.2s' }}>
