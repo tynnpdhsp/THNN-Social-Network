@@ -4,21 +4,48 @@ import { toast } from 'react-hot-toast';
 import Modal from '../Common/Modal';
 import * as scheduleService from '../../services/scheduleService';
 
-const timeSlots = Array.from({ length: 16 }, (_, i) => {
-  const startTotal = 390 + i * 50; // 6:30 is 390 mins from 00:00
-  const endTotal = startTotal + 50;
+const timeSlots = (() => {
+  const slots = [];
+  let currentStart = 390; // 06:30 is 390 mins from 00:00
   const format = (total) => {
     const h = Math.floor(total / 60);
     const m = total % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   };
-  return {
-    label: `Tiết ${i + 1}`,
-    range: `${format(startTotal)} - ${format(endTotal)}`,
-    start: format(startTotal),
-    end: format(endTotal)
-  };
-});
+
+  for (let i = 0; i < 12; i++) {
+
+    const blockIndex = Math.floor(i / 3);
+    const indexInBlock = i % 3;
+
+    if (i > 0 && indexInBlock === 0) {
+      // New block starts.
+      if (blockIndex % 2 === 1) {
+        // Break after 1st block of a session (1-3, 7-9, 13-15): 10 mins
+        currentStart += 10;
+      } else {
+        // Break after 2nd block of a session (4-6, 10-12): 50 mins (Lunch/Dinner)
+        currentStart += 50;
+      }
+    }
+
+    const start = currentStart;
+    const end = start + 50;
+
+    slots.push({
+      label: `Tiết ${i + 1}`,
+      range: `${format(start)} - ${format(end)}`,
+      start: format(start),
+      end: format(end),
+      startTotal: start,
+      endTotal: end
+    });
+
+    currentStart = end;
+  }
+  return slots;
+})();
+
 const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 
 const initialDeadlines = [
@@ -81,9 +108,30 @@ const Timetable = () => {
     if (!timeStr) return 0;
     const [h, m] = timeStr.split(':').map(Number);
     const totalMins = h * 60 + m;
-    // Offset from 6:30 (390 mins). 80px per 50-min period.
-    return (totalMins - 390) * (80 / 50);
+
+    // Find the slot or gap
+    for (let i = 0; i < timeSlots.length; i++) {
+      const slot = timeSlots[i];
+      if (totalMins >= slot.startTotal && totalMins <= slot.endTotal) {
+        // Inside a slot: Base offset of slot + interpolation within slot
+        return i * 80 + (totalMins - slot.startTotal) * (80 / 50);
+      }
+      if (i < timeSlots.length - 1) {
+        const nextSlot = timeSlots[i + 1];
+        if (totalMins > slot.endTotal && totalMins < nextSlot.startTotal) {
+          // Inside a break: Snap to the beginning of next slot since we don't render gap space
+          return (i + 1) * 80;
+        }
+      }
+    }
+
+    // Outside range
+    if (totalMins < timeSlots[0].startTotal) return 0;
+    if (totalMins > timeSlots[timeSlots.length - 1].endTotal) return timeSlots.length * 80;
+
+    return 0;
   };
+
 
   const gridScrollRef = React.useRef(null);
 
@@ -441,7 +489,8 @@ const Timetable = () => {
 
         <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'white', borderRadius: 'var(--rounded-md)', border: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 250px)' }}>
           <div ref={gridScrollRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', position: 'relative' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, minmax(90px, 1fr))', position: 'relative', minHeight: 16 * 80, minWidth: 710 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '80px repeat(7, minmax(90px, 1fr))', position: 'relative', minHeight: timeSlots.length * 80, minWidth: 710 }}>
+
               {/* Sticky Headers */}
               <div style={{
                 position: 'sticky', top: 0, left: 0, zIndex: 50, background: 'var(--surface-soft)',
@@ -464,7 +513,8 @@ const Timetable = () => {
               ))}
 
               {/* Time Column */}
-              <div style={{ display: 'flex', flexDirection: 'column', gridRow: '2 / span 16' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gridRow: `2 / span ${timeSlots.length}` }}>
+
                 {timeSlots.map(slot => (
                   <div key={slot.label} style={{
                     height: 80, padding: '4px 8px', borderBottom: '1px solid var(--hairline)',
@@ -480,7 +530,8 @@ const Timetable = () => {
               </div>
 
               {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} style={{ position: 'relative', borderRight: '1px solid var(--hairline)', gridRow: '2 / span 16', gridColumn: i + 2 }}>
+                <div key={i} style={{ position: 'relative', borderRight: '1px solid var(--hairline)', gridRow: `2 / span ${timeSlots.length}`, gridColumn: i + 2 }}>
+
                   {timeSlots.map(slot => (
                     <div
                       key={slot.label}
@@ -499,7 +550,11 @@ const Timetable = () => {
                     const currentHour = now.getHours();
                     const currentMin = now.getMinutes();
                     const totalNow = currentHour * 60 + currentMin;
-                    if (totalNow >= 390 && totalNow < 1200) {
+                    const startTotal = timeSlots[0].startTotal;
+                    const endTotal = timeSlots[timeSlots.length - 1].endTotal;
+                    if (totalNow >= startTotal && totalNow < endTotal) {
+
+
                       const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
                       const top = getTimeOffset(timeStr);
                       return (
@@ -907,7 +962,10 @@ const Timetable = () => {
                     padding: '0 16px', height: 44, width: '100%', cursor: 'pointer', textAlign: 'left'
                   }}
                 >
-                  <span>{`Tiết ${parseInt(newEntry.start_time.split(':')[0]) - 6}`}</span>
+                  <span>{(() => {
+                    const slot = timeSlots.find(s => s.start === newEntry.start_time.substring(0, 5));
+                    return slot ? slot.label : 'Chọn tiết';
+                  })()}</span>
                   <ChevronDown size={18} style={{ transform: isStartTimeOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0, color: 'var(--ash)' }} />
                 </button>
                 {isStartTimeOpen && (
@@ -919,20 +977,21 @@ const Timetable = () => {
                       marginTop: 4, padding: '4px 0', boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
                       animation: 'scaleIn 0.15s ease'
                     }}>
-                      {Array.from({ length: 16 }).map((_, i) => {
-                        const periodNum = i + 1;
-                        const isSelected = parseInt(newEntry.start_time.split(':')[0]) - 6 === periodNum;
+                      {timeSlots.map((slot, i) => {
+                        const isSelected = newEntry.start_time.substring(0, 5) === slot.start;
                         return (
                           <div
                             key={i}
                             onClick={() => {
-                              const h = i + 7;
-                              const startTime = `${h.toString().padStart(2, '0')}:00`;
-                              const [currEndH] = newEntry.end_time.split(':').map(Number);
+                              const startTime = slot.start;
+                              const [startH, startM] = startTime.split(':').map(Number);
+                              const [currEndH, currEndM] = newEntry.end_time.split(':').map(Number);
+                              
                               let endTime = newEntry.end_time;
-                              if (currEndH <= h) {
-                                endTime = `${(h + 1).toString().padStart(2, '0')}:00`;
+                              if (currEndH * 60 + currEndM <= startH * 60 + startM) {
+                                endTime = slot.end;
                               }
+                              
                               setNewEntry({ ...newEntry, start_time: startTime, end_time: endTime });
                               setIsStartTimeOpen(false);
                             }}
@@ -946,11 +1005,12 @@ const Timetable = () => {
                             onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
                             onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'var(--surface-soft)' : 'transparent'}
                           >
-                            Tiết {periodNum}
+                            {slot.label} ({slot.start})
                           </div>
                         );
                       })}
                     </div>
+
                   </>
                 )}
               </div>
@@ -973,7 +1033,10 @@ const Timetable = () => {
                     padding: '0 16px', height: 44, width: '100%', cursor: 'pointer', textAlign: 'left'
                   }}
                 >
-                  <span>{`Tiết ${parseInt(newEntry.end_time.split(':')[0]) - 7}`}</span>
+                  <span>{(() => {
+                    const slot = timeSlots.find(s => s.end === newEntry.end_time.substring(0, 5));
+                    return slot ? slot.label : 'Chọn tiết';
+                  })()}</span>
                   <ChevronDown size={18} style={{ transform: isEndTimeOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0, color: 'var(--ash)' }} />
                 </button>
                 {isEndTimeOpen && (
@@ -985,17 +1048,17 @@ const Timetable = () => {
                       marginTop: 4, padding: '4px 0', boxShadow: '0 12px 32px rgba(0,0,0,0.15)', zIndex: 1000,
                       animation: 'scaleIn 0.15s ease'
                     }}>
-                      {Array.from({ length: 16 }).map((_, i) => {
-                        const endPeriod = i + 1;
-                        const startPeriod = parseInt(newEntry.start_time.split(':')[0]) - 6;
-                        if (endPeriod < startPeriod) return null;
-                        const endH = i + 8;
-                        const isSelected = parseInt(newEntry.end_time.split(':')[0]) - 7 === endPeriod;
+                      {timeSlots.map((slot, i) => {
+                        const [startH, startM] = newEntry.start_time.split(':').map(Number);
+                        const startTotal = startH * 60 + startM;
+                        if (slot.endTotal <= startTotal) return null;
+
+                        const isSelected = newEntry.end_time.substring(0, 5) === slot.end;
                         return (
                           <div
                             key={i}
                             onClick={() => {
-                              setNewEntry({ ...newEntry, end_time: `${endH.toString().padStart(2, '0')}:00` });
+                              setNewEntry({ ...newEntry, end_time: slot.end });
                               setIsEndTimeOpen(false);
                             }}
                             style={{
@@ -1008,11 +1071,12 @@ const Timetable = () => {
                             onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
                             onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'var(--surface-soft)' : 'transparent'}
                           >
-                            Tiết {endPeriod}
+                            {slot.label} ({slot.end})
                           </div>
                         );
                       })}
                     </div>
+
                   </>
                 )}
               </div>
