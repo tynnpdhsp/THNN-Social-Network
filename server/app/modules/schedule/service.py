@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.modules.notification.service import NotificationService
@@ -11,6 +12,8 @@ from app.modules.schedule.schema import (
 from app.modules.schedule.tasks import send_note_reminder
 from app.core.exceptions import NotFoundException, ForbiddenException
 from prisma.models import Schedule, ScheduleEntry, CourseSection, StudyNote # type: ignore
+
+logger = logging.getLogger(__name__)
 
 class ScheduleService:
     def __init__(self, repo: ScheduleRepository, notification_svc: NotificationService = None, scheduler: AsyncIOScheduler = None):
@@ -445,6 +448,16 @@ class ScheduleService:
             raise ForbiddenException("Access denied", "ACCESS_DENIED")
         
         deleted_note = await self.repo.delete_study_note(note_id)
+        
+        # Remove scheduled reminder job if any
+        if self.scheduler:
+            job_id = f"note_reminder_{note_id}"
+            try:
+                if self.scheduler.get_job(job_id):
+                    self.scheduler.remove_job(job_id)
+            except Exception as e:
+                logger.error(f"Error removing scheduler job {job_id}: {e}")
+                
         return self._map_study_note_to_response(deleted_note)
     
     async def get_upcoming_notes(self, user_id: str, days: int = 7) -> list[StudyNoteResponse]:

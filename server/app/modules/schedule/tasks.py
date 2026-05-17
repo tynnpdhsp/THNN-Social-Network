@@ -8,6 +8,12 @@ async def send_note_reminder(user_id: str, note_id: str, title: str, notificatio
     Background task to send a notification reminder for a study note.
     """
     try:
+        if repo:
+            note = await repo.get_study_note_by_id(note_id)
+            if not note:
+                logger.info(f"Note {note_id} was deleted or does not exist. Skipping reminder.")
+                return
+
         logger.info(f"Sending reminder for note {note_id} to user {user_id}")
         await notification_svc.create_notification(CreateNotificationRequest(
             user_id=user_id,

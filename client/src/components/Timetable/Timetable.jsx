@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Plus, Check, Save, AlertCircle, Trash2, Loader2, ChevronDown, Info, Calendar, Upload, AlertTriangle, X } from 'lucide-react';
+import { Clock, Plus, Check, Save, AlertCircle, Trash2, Loader2, ChevronDown, Info, Calendar, Upload, AlertTriangle, X, Pencil } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Modal from '../Common/Modal';
 import * as scheduleService from '../../services/scheduleService';
@@ -67,7 +67,7 @@ const initialSchedules = {
   ]
 };
 
-const Timetable = () => {
+const Timetable = ({ focusNoteId, onNoteFocused }) => {
   const [activeScheduleId, setActiveScheduleId] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [currentEntries, setCurrentEntries] = useState([]);
@@ -84,6 +84,7 @@ const Timetable = () => {
   const [newScheduleName, setNewScheduleName] = useState('');
   const [newEntry, setNewEntry] = useState({ title: '', room: '', day_of_week: 1, start_time: '07:00', end_time: '08:00', entry_type: 'custom' });
   const [editingEntry, setEditingEntry] = useState(null);
+  const [editingDeadline, setEditingDeadline] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isReminderOpen, setIsReminderOpen] = useState(false);
   const [isDayOpen, setIsDayOpen] = useState(false);
@@ -91,7 +92,16 @@ const Timetable = () => {
   const [isEndTimeOpen, setIsEndTimeOpen] = useState(false);
   const [isDeadlineTimeOpen, setIsDeadlineTimeOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  const [confirmModal, setConfirmModal] = useState({ 
+    isOpen: false, 
+    title: '', 
+    message: '', 
+    confirmText: 'Xác nhận xóa', 
+    cancelText: 'Hủy', 
+    variant: 'danger', 
+    onConfirm: null, 
+    onCancel: null 
+  });
   const dateInputRef = React.useRef(null);
   const startTimeInputRef = React.useRef(null);
   const endTimeInputRef = React.useRef(null);
@@ -103,6 +113,39 @@ const Timetable = () => {
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (focusNoteId && deadlines.length > 0) {
+      const deadline = deadlines.find(d => String(d.id) === String(focusNoteId));
+      if (deadline) {
+        setConfirmModal({
+          isOpen: true,
+          title: 'Nhắc nhở học tập',
+          message: `Sự kiện: "${deadline.title}"${deadline.description ? ` - ${deadline.description}` : ''}. Bạn có muốn hoàn thành và xóa ghi chú này không?`,
+          confirmText: 'Đồng ý',
+          cancelText: 'Đóng',
+          variant: 'primary',
+          onConfirm: async () => {
+            try {
+              await scheduleService.deleteStudyNote(deadline.id);
+              setDeadlines(prev => prev.filter(d => d.id !== deadline.id));
+              toast.success('Đã hoàn thành và xóa ghi chú!');
+            } catch (error) {
+              console.error('Error deleting deadline:', error);
+              toast.error('Lỗi khi xóa ghi chú');
+            } finally {
+              onNoteFocused?.();
+            }
+          },
+          onCancel: () => {
+            onNoteFocused?.();
+          }
+        });
+      } else {
+        onNoteFocused?.();
+      }
+    }
+  }, [focusNoteId, deadlines, onNoteFocused]);
 
   const getTimeOffset = (timeStr) => {
     if (!timeStr) return 0;
@@ -346,20 +389,66 @@ const Timetable = () => {
     }
   };
 
+  const handleEditDeadline = (d) => {
+    setEditingDeadline(d);
+    
+    // Parse due_at to local date and time strings
+    const dateObj = new Date(d.due_at);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const mins = String(dateObj.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${mins}`;
+
+    setNewDeadline({
+      title: d.title,
+      subject: d.subject || '',
+      date: dateStr,
+      time: timeStr,
+      description: d.description || '',
+      remind_before_minutes: String(d.remind_before_minutes || '30')
+    });
+    setShowDeadlineModal(true);
+  };
+
   const handleAddDeadline = async () => {
     if (newDeadline.title && newDeadline.date && newDeadline.time) {
       try {
         const dueAt = `${newDeadline.date}T${newDeadline.time}:00`;
-        const created = await scheduleService.createStudyNote({
-          ...newDeadline,
-          due_at: new Date(dueAt).toISOString(),
+        const dueAtDate = new Date(dueAt);
+        const now = new Date();
+
+        if (dueAtDate < now) {
+          toast.error('Thời gian ghi chú phải từ thời điểm hiện tại trở đi!');
+          return;
+        }
+
+        const payload = {
+          title: newDeadline.title,
+          subject: newDeadline.subject,
+          description: newDeadline.description,
+          due_at: dueAtDate.toISOString(),
           remind_before_minutes: parseInt(newDeadline.remind_before_minutes)
-        });
-        setDeadlines([created, ...deadlines]);
+        };
+
+        if (editingDeadline) {
+          const updated = await scheduleService.updateStudyNote(editingDeadline.id, payload);
+          setDeadlines(deadlines.map(d => d.id === editingDeadline.id ? updated : d));
+          toast.success('Đã cập nhật ghi chú');
+        } else {
+          const created = await scheduleService.createStudyNote(payload);
+          setDeadlines([created, ...deadlines]);
+          toast.success('Đã thêm ghi chú mới');
+        }
         setShowDeadlineModal(false);
+        setEditingDeadline(null);
         setNewDeadline({ title: '', subject: '', date: '', time: '08:00', description: '', remind_before_minutes: '30' });
       } catch (error) {
-        console.error('Error adding deadline:', error);
+        console.error('Error saving deadline:', error);
+        toast.error('Lỗi khi lưu ghi chú');
       }
     }
   };
@@ -619,7 +708,11 @@ const Timetable = () => {
           <button
             className="btn-primary"
             style={{ width: 36, height: 36, padding: 0, borderRadius: '50%' }}
-            onClick={() => setShowDeadlineModal(true)}
+            onClick={() => {
+              setEditingDeadline(null);
+              setNewDeadline({ title: '', subject: '', date: '', time: '08:00', description: '', remind_before_minutes: '30' });
+              setShowDeadlineModal(true);
+            }}
           >
             <Plus size={20} />
           </button>
@@ -636,16 +729,28 @@ const Timetable = () => {
               padding: 16, background: 'white', borderRadius: 'var(--rounded-md)',
               border: '1px solid var(--hairline)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
                 <span className="caption-sm" style={{ fontWeight: 700, color: 'var(--primary)' }}>{d.subject || 'Ghi chú'}</span>
-                <button
-                  onClick={() => handleDeleteDeadline(d.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', transition: 'color 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ash)'}
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => handleEditDeadline(d)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', transition: 'color 0.2s', padding: 2 }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ash)'}
+                    title="Chỉnh sửa"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteDeadline(d.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ash)', transition: 'color 0.2s', padding: 2 }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--ash)'}
+                    title="Xóa"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
               <h4 className="body-strong" style={{ marginBottom: 4 }}>{d.title}</h4>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--mute)' }}>
@@ -656,7 +761,15 @@ const Timetable = () => {
         </div>
       </div>
 
-      <Modal isOpen={showDeadlineModal} onClose={() => setShowDeadlineModal(false)} title="Thêm ghi chú mới" width={480}>
+      <Modal 
+        isOpen={showDeadlineModal} 
+        onClose={() => {
+          setShowDeadlineModal(false);
+          setEditingDeadline(null);
+        }} 
+        title={editingDeadline ? "Chỉnh sửa ghi chú" : "Thêm ghi chú mới"} 
+        width={480}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div>
             <label style={{ display: 'block', fontSize: 14, fontWeight: 700, marginBottom: 8, color: 'var(--mute)' }}>Tiêu đề sự kiện</label>
@@ -832,8 +945,23 @@ const Timetable = () => {
           </div>
 
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-            <button className="btn-secondary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={() => setShowDeadlineModal(false)}>Hủy</button>
-            <button className="btn-primary" style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} onClick={handleAddDeadline}>Lưu lại</button>
+            <button 
+              className="btn-secondary" 
+              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} 
+              onClick={() => {
+                setShowDeadlineModal(false);
+                setEditingDeadline(null);
+              }}
+            >
+              Hủy
+            </button>
+            <button 
+              className="btn-primary" 
+              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 48 }} 
+              onClick={handleAddDeadline}
+            >
+              {editingDeadline ? "Cập nhật" : "Lưu lại"}
+            </button>
           </div>
         </div>
       </Modal>
@@ -1156,17 +1284,26 @@ const Timetable = () => {
 
       <Modal
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onClose={() => {
+          confirmModal.onCancel?.();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }}
         width={400}
       >
         <div style={{ textAlign: 'center' }}>
           <div style={{
-            width: 80, height: 80, borderRadius: '50%', background: '#fff1f0',
+            width: 80, height: 80, borderRadius: '50%', 
+            background: confirmModal.variant === 'danger' ? '#fff1f0' : 'var(--surface-soft)',
             display: 'flex', justifyContent: 'center', alignItems: 'center',
-            margin: '0 auto 24px', color: '#ff4d4f',
-            boxShadow: '0 0 0 8px #fff1f033'
+            margin: '0 auto 24px', 
+            color: confirmModal.variant === 'danger' ? '#ff4d4f' : 'var(--primary)',
+            boxShadow: confirmModal.variant === 'danger' ? '0 0 0 8px #fff1f033' : '0 0 0 8px var(--surface-soft)'
           }}>
-            <AlertTriangle size={40} strokeWidth={2.5} />
+            {confirmModal.variant === 'danger' ? (
+              <AlertTriangle size={40} strokeWidth={2.5} />
+            ) : (
+              <Calendar size={40} strokeWidth={2.5} />
+            )}
           </div>
 
           <h2 className="heading-lg" style={{ marginBottom: 12, fontWeight: 800 }}>{confirmModal.title}</h2>
@@ -1178,19 +1315,29 @@ const Timetable = () => {
             <button
               className="btn-secondary"
               style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, fontWeight: 700 }}
-              onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+              onClick={() => {
+                confirmModal.onCancel?.();
+                setConfirmModal({ ...confirmModal, isOpen: false });
+              }}
             >
-              Hủy
+              {confirmModal.cancelText || 'Hủy'}
             </button>
             <button
               className="btn-primary"
-              style={{ flex: 1, borderRadius: 'var(--rounded-full)', height: 52, background: '#ff4d4f', borderColor: '#ff4d4f', fontWeight: 700 }}
+              style={{ 
+                flex: 1, 
+                borderRadius: 'var(--rounded-full)', 
+                height: 52, 
+                background: confirmModal.variant === 'danger' ? '#ff4d4f' : 'var(--primary)', 
+                borderColor: confirmModal.variant === 'danger' ? '#ff4d4f' : 'var(--primary)', 
+                fontWeight: 700 
+              }}
               onClick={() => {
                 confirmModal.onConfirm();
                 setConfirmModal({ ...confirmModal, isOpen: false });
               }}
             >
-              Xác nhận xóa
+              {confirmModal.confirmText || 'Xác nhận'}
             </button>
           </div>
         </div>

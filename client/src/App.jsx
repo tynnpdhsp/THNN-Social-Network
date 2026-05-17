@@ -27,6 +27,7 @@ function App() {
   const [viewingUserId, setViewingUserId] = useState(null);
   const [chatTarget, setChatTarget] = useState(null);
   const [focusPostId, setFocusPostId] = useState(null);
+  const [focusNoteId, setFocusNoteId] = useState(null);
 
   const updateUrlHash = (tab) => {
     if (tab === 'feed') {
@@ -80,6 +81,7 @@ function App() {
     if (tab === 'profile') setViewingUserId(null);
     if (tab !== 'messaging') setChatTarget(null);
     if (tab !== 'feed') setFocusPostId(null);
+    if (tab !== 'timetable') setFocusNoteId(null);
     setActiveTab(tab);
     updateUrlHash(tab);
   };
@@ -103,12 +105,12 @@ function App() {
       case 'profile': return <Profile targetUserId={viewingUserId} onStartChat={onStartChat} />;
       case 'friends': return <Friends onViewProfile={onViewProfile} onStartChat={onStartChat} />;
       case 'messaging': return <Messaging onViewProfile={onViewProfile} preselectedUser={chatTarget} />;
-      case 'notifications': return <Notifications onViewProfile={onViewProfile} onNavigate={(tab, ctx) => { if (ctx?.scrollToPost) setFocusPostId(ctx.scrollToPost); handleSetTab(tab); }} />;
+      case 'notifications': return <Notifications onViewProfile={onViewProfile} onNavigate={(tab, ctx) => { if (ctx?.scrollToPost) setFocusPostId(ctx.scrollToPost); if (ctx?.noteId) setFocusNoteId(ctx.noteId); handleSetTab(tab); }} />;
       case 'settings': return <Settings />;
       case 'admin': return <AdminPanel onViewProfile={onViewProfile} />;
       case 'shop': return <Shop />;
       case 'docs': return <StudyDocs />;
-      case 'timetable': return <Timetable />;
+      case 'timetable': return <Timetable focusNoteId={focusNoteId} onNoteFocused={() => setFocusNoteId(null)} />;
       case 'map': return <Map />;
       default: return <Feed onViewProfile={onViewProfile} />;
     }

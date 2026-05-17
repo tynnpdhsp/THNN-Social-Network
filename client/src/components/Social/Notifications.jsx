@@ -26,6 +26,7 @@ const Notifications = ({ onViewProfile, onNavigate }) => {
   const markAsRead = async (id) => {
     try {
       await apiFetch('/notifications/read', { method: 'PUT', body: JSON.stringify({ notification_ids: [id] }) });
+      window.dispatchEvent(new Event('refreshNotifs'));
     } catch (err) { console.error('Error loading notifications:', err); }
   };
 
@@ -72,8 +73,13 @@ const Notifications = ({ onViewProfile, onNavigate }) => {
   };
 
   const handleNotifClick = async (n) => {
-    // Đánh dấu đã đọc
-    if (!n.is_read) {
+    // Nếu là thông báo nhắc nhở ghi chú, xóa luôn khi click để không bị lưu lại chật danh sách
+    if (n.type === 'study_note_reminder') {
+      try {
+        await apiFetch(`/notifications/${n.id}`, { method: 'DELETE' });
+        window.dispatchEvent(new Event('refreshNotifs'));
+      } catch (err) { console.error('Error deleting reminder notification:', err); }
+    } else if (!n.is_read) {
       await markAsRead(n.id);
       loadNotifs(); // Cập nhật lại danh sách và số lượng chưa đọc
     }
@@ -92,6 +98,10 @@ const Notifications = ({ onViewProfile, onNavigate }) => {
         // Friend request → xem profile người gửi
         onViewProfile?.(refId);
         break;
+      case 'study_note':
+        // Study note reminder -> đi đến thời khóa biểu
+        onNavigate?.('timetable', { noteId: refId });
+        break;
       default:
         break;
     }
@@ -103,7 +113,9 @@ const Notifications = ({ onViewProfile, onNavigate }) => {
       case 'comment': return <MessageCircle size={14} color="var(--focus-outer)" />;
       case 'reply': return <MessageCircle size={14} color="#8b5cf6" />;
       case 'friend_request': return <UserPlus size={14} color="#16a34a" />;
-      case 'schedule': return <Calendar size={14} color="#8b5cf6" />;
+      case 'schedule':
+      case 'study_note_reminder':
+        return <Calendar size={14} color="#8b5cf6" />;
       case 'system': return <AlertCircle size={14} color="#f59e0b" />;
       default: return <Bell size={14} color="var(--ash)" />;
     }
@@ -116,6 +128,7 @@ const Notifications = ({ onViewProfile, onNavigate }) => {
       case 'reply': return 'Phản hồi';
       case 'friend_request': return 'Kết bạn';
       case 'schedule': return 'Lịch trình';
+      case 'study_note_reminder': return 'Nhắc nhở';
       case 'system': return 'Hệ thống';
       default: return type?.replace('_', ' ') || 'Khác';
     }

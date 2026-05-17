@@ -171,6 +171,20 @@ export const deleteStudyNote = async (id) => {
   }
 };
 
+export const updateStudyNote = async (id, data) => {
+  try {
+    const response = await apiFetch(`/schedules/notes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update study note');
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating study note:', error);
+    throw error;
+  }
+};
+
 export const importCourseSections = async (data) => {
   try {
     const response = await apiFetch('/schedules/course-sections', {
