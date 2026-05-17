@@ -7,8 +7,10 @@ import Modal from '../Common/Modal';
 import * as documentService from '../../services/documentService';
 import toast from 'react-hot-toast';
 import { resolveImageUrl } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 const StudyDocs = () => {
+  const { user } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [categories, setCategories] = useState([{ id: 'all', name: 'Tất cả' }]);
   const [loading, setLoading] = useState(true);
@@ -394,14 +396,16 @@ const StudyDocs = () => {
                                 >
                                   <AlertTriangle size={14} /> Báo cáo vi phạm
                                 </div>
-                                <div 
-                                  onClick={(e) => handleDeleteClick(doc, e)}
-                                  style={{ padding: '10px 12px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', color: '#ff4d4f' }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                  <Download size={14} style={{ transform: 'rotate(180deg)' }} /> Xoá tài liệu
-                                </div>
+                                {(user?.id === doc.user_info?.id || user?.role === 'admin') && (
+                                  <div 
+                                    onClick={(e) => handleDeleteClick(doc, e)}
+                                    style={{ padding: '10px 12px', borderRadius: 'var(--rounded-sm)', cursor: 'pointer', fontSize: 14, display: 'flex', gap: 8, alignItems: 'center', color: '#ff4d4f' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-soft)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    <Download size={14} style={{ transform: 'rotate(180deg)' }} /> Xoá tài liệu
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
