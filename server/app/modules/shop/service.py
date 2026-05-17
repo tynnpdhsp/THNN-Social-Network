@@ -186,9 +186,14 @@ class ShopService:
         if not item:
             raise NotFoundException("Item not found", "ITEM_NOT_FOUND")
         
-        # Check ownership (only owner can delete)
+        # Check ownership (only owner or admin can delete)
         if item.sellerId != user_id:
-            raise ForbiddenException("Access denied", "ACCESS_DENIED")
+            user = await self.repo.db.user.find_unique(
+                where={"id": user_id},
+                include={"roleRef": True}
+            )
+            if not user or not user.roleRef or user.roleRef.role != "admin":
+                raise ForbiddenException("Access denied", "ACCESS_DENIED")
         
         try:
             # Delete item from database (soft delete)
