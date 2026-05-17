@@ -194,6 +194,9 @@ class AdminService:
         )
 
     async def update_user_role(self, user_id: str, new_role_name: str, admin_id: str = None, request_info: dict = None) -> AdminUserResponse:
+        if admin_id and user_id == admin_id:
+            raise HTTPException(status_code=400, detail="Bạn không thể tự hạ vai trò của chính mình!")
+
         role = await self.repo.db.role.find_first(where={"role": new_role_name})
         if not role:
             raise HTTPException(status_code=404, detail="Role not found")
@@ -202,6 +205,11 @@ class AdminService:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
             
+        # Tải lại dữ liệu kèm roleRef
+        updated = await self.repo.db.user.find_unique(where={"id": user_id}, include={"roleRef": True})
+        if not updated:
+            raise HTTPException(status_code=404, detail="User not found")
+
         # Audit Log
         if request_info:
             await self.repo.create_audit_log(
@@ -215,9 +223,6 @@ class AdminService:
                     "new_role": new_role_name
                 }
             )
-
-        # Tải lại dữ liệu kèm roleRef
-        updated = await self.repo.db.user.find_unique(where={"id": user_id}, include={"roleRef": True})
             
         return AdminUserResponse(
             id=updated.id,
