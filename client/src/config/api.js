@@ -85,7 +85,7 @@ export async function apiFetch(path, options = {}) {
   });
 
   // Handle 401 Unauthorized — token expired
-  if (res.status === 401) {
+  if (res.status === 401 && path !== '/account/login') {
     localStorage.removeItem('token');
     window.location.reload();
     throw new Error('Phiên đăng nhập đã hết hạn');
