@@ -138,6 +138,12 @@ const AuthPage = () => {
       setError('Mật khẩu xác nhận không khớp');
       return;
     }
+    const onlyDigits = /^\d+$/.test(password);
+    const onlyLetters = /^[a-zA-Z]+$/.test(password);
+    if (onlyDigits || onlyLetters) {
+      setError('Mật khẩu quá yếu! Mật khẩu phải chứa cả chữ và số.');
+      return;
+    }
     setLoading(true);
     try {
       const result = await register({
@@ -243,6 +249,12 @@ const AuthPage = () => {
     clearMessages();
     if (newPassword.length < 8) {
       setError('Mật khẩu phải có tối thiểu 8 ký tự');
+      return;
+    }
+    const onlyDigits = /^\d+$/.test(newPassword);
+    const onlyLetters = /^[a-zA-Z]+$/.test(newPassword);
+    if (onlyDigits || onlyLetters) {
+      setError('Mật khẩu quá yếu! Mật khẩu phải chứa cả chữ và số.');
       return;
     }
     setLoading(true);
@@ -447,6 +459,17 @@ const AuthPage = () => {
               value={password} onChange={setPassword} minLength={8}>
               <PasswordToggle showPassword={showPassword} setShowPassword={setShowPassword} />
             </InputField>
+            {password && (/^\d+$/.test(password) || /^[a-zA-Z]+$/.test(password)) && (
+              <p style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--primary)',
+                marginTop: -8,
+                marginBottom: 12
+              }}>
+                Mật khẩu yếu! Nên kết hợp cả chữ và số.
+              </p>
+            )}
             <InputField id="reg-confirm" icon={Lock} label="Xác nhận mật khẩu"
               type={showPassword ? 'text' : 'password'} placeholder="Nhập lại mật khẩu"
               value={confirmPassword} onChange={setConfirmPassword} minLength={8} />
@@ -499,6 +522,17 @@ const AuthPage = () => {
               value={newPassword} onChange={setNewPassword} minLength={8}>
               <PasswordToggle showPassword={showPassword} setShowPassword={setShowPassword} />
             </InputField>
+            {newPassword && (/^\d+$/.test(newPassword) || /^[a-zA-Z]+$/.test(newPassword)) && (
+              <p style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--primary)',
+                marginTop: -8,
+                marginBottom: 12
+              }}>
+                Mật khẩu yếu! Nên kết hợp cả chữ và số.
+              </p>
+            )}
             <SubmitBtn text="Đặt lại mật khẩu" loading={loading} />
           </form>
         )}

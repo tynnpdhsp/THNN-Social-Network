@@ -53,6 +53,18 @@ const Settings = () => {
       setIsPwError(true);
       return;
     }
+    if (newPw.length < 8) {
+      setPwMsg('Mật khẩu phải có tối thiểu 8 ký tự');
+      setIsPwError(true);
+      return;
+    }
+    const onlyDigits = /^\d+$/.test(newPw);
+    const onlyLetters = /^[a-zA-Z]+$/.test(newPw);
+    if (onlyDigits || onlyLetters) {
+      setPwMsg('Mật khẩu quá yếu! Mật khẩu phải chứa cả chữ và số.');
+      setIsPwError(true);
+      return;
+    }
     setPwMsg('');
     setIsPwError(false);
     
@@ -159,6 +171,17 @@ const Settings = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <input type="password" className="input-field" placeholder="Mật khẩu hiện tại" value={oldPw} onChange={e => setOldPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
             <input type="password" className="input-field" placeholder="Mật khẩu mới" value={newPw} onChange={e => setNewPw(e.target.value)} style={{ height: 44, background: '#ffffff', border: '1px solid var(--hairline)', borderRadius: '16px', padding: '0 16px' }} />
+            {newPw && (/^\d+$/.test(newPw) || /^[a-zA-Z]+$/.test(newPw)) && (
+              <p style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--primary)',
+                marginTop: -4,
+                marginBottom: 4
+              }}>
+                Mật khẩu yếu! Nên kết hợp cả chữ và số.
+              </p>
+            )}
             {pwMsg && <p style={{ fontSize: 13, fontWeight: 600, color: isPwError ? 'var(--primary)' : '#16a34a' }}>{pwMsg}</p>}
             <button className="btn-primary" style={{ width: '100%', height: 44 }} onClick={changePw}>Đổi mật khẩu</button>
           </div>
