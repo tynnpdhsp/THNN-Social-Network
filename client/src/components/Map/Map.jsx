@@ -18,7 +18,8 @@ import {
   checkPlaceBookmark,
   uploadPlaceImages,
   deletePlace,
-  getCurrentUser
+  getCurrentUser,
+  getBookmarkedPlaces
 } from '../../services/placeService';
 import { toast } from 'react-hot-toast';
 
@@ -78,6 +79,54 @@ const Map = () => {
     [10.7900, 106.7100]  // Northeast boundary limit around District 1/3/10
   ];
 
+  const loadNearbyPlaces = async () => {
+    try {
+      setLoading(true);
+      const placesData = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
+      setLocations(placesData.data || []);
+    } catch (error) {
+      toast.error('Không thể tải dữ liệu bản đồ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSavedPlaces = async () => {
+    try {
+      setLoading(true);
+      const res = await getBookmarkedPlaces();
+      setLocations(res.items || []);
+    } catch (error) {
+      toast.error('Không thể tải danh sách địa điểm đã lưu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCategoryClick = async (catId) => {
+    if (catId === 'saved') {
+      setActiveCategoryId('saved');
+      setSelectedLocation(null); // Close sidebar when switching to saved
+      await loadSavedPlaces();
+    } else {
+      if (activeCategoryId === 'saved') {
+        try {
+          setLoading(true);
+          const placesData = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
+          setLocations(placesData.data || []);
+          setActiveCategoryId(catId);
+          setSelectedLocation(null);
+        } catch (error) {
+          toast.error('Không thể tải dữ liệu bản đồ');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setActiveCategoryId(catId);
+      }
+    }
+  };
+
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
@@ -85,9 +134,7 @@ const Map = () => {
         setLoading(true);
         const cats = await getPlaceCategories();
         setCategories(cats);
-
-        const placesData = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
-        setLocations(placesData.data || []);
+        await loadNearbyPlaces();
       } catch (error) {
         toast.error('Không thể tải dữ liệu bản đồ');
       } finally {
@@ -136,7 +183,7 @@ const Map = () => {
   const filteredLocations = locations.filter(loc => {
     const name = loc.name || '';
     const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = activeCategoryId === 'all' || loc.category?.id === activeCategoryId;
+    const matchesType = activeCategoryId === 'all' || activeCategoryId === 'saved' || loc.category?.id === activeCategoryId;
     return matchesSearch && matchesType;
   });
 
@@ -150,8 +197,11 @@ const Map = () => {
       }
 
       // Refresh list to show new place
-      const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
-      setLocations(updatedPlace.data || []);
+      if (activeCategoryId === 'saved') {
+        await loadSavedPlaces();
+      } else {
+        await loadNearbyPlaces();
+      }
 
       toast.success('Đã thêm địa điểm mới!');
     } catch (error) {
@@ -174,8 +224,11 @@ const Map = () => {
       setSelectedLocation(null);
 
       // Refresh map
-      const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
-      setLocations(updatedPlace.data || []);
+      if (activeCategoryId === 'saved') {
+        await loadSavedPlaces();
+      } else {
+        await loadNearbyPlaces();
+      }
     } catch (error) {
       toast.error('Lỗi khi xóa địa điểm');
       setShowDeleteConfirm(false);
@@ -186,8 +239,15 @@ const Map = () => {
     if (!selectedLocation) return;
     try {
       await togglePlaceBookmark(selectedLocation.id);
-      setIsBookmarked(!isBookmarked);
-      toast.success(isBookmarked ? 'Đã bỏ lưu' : 'Đã lưu địa điểm');
+      const newBookmarkState = !isBookmarked;
+      setIsBookmarked(newBookmarkState);
+      toast.success(newBookmarkState ? 'Đã lưu địa điểm' : 'Đã bỏ lưu');
+      
+      // If we are showing only saved places, un-bookmarking a place should immediately remove it!
+      if (activeCategoryId === 'saved') {
+        await loadSavedPlaces();
+        setSelectedLocation(null);
+      }
     } catch (error) {
       toast.error('Lỗi khi xử lý lưu');
     }
@@ -202,8 +262,12 @@ const Map = () => {
       toast.success('Đã đăng nhận xét');
 
       // Refresh place data to update rating
-      const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
-      setLocations(updatedPlace.data || []);
+      if (activeCategoryId === 'saved') {
+        await loadSavedPlaces();
+      } else {
+        const updatedPlace = await getNearbyPlaces({ lat: defaultCenter[0], lng: defaultCenter[1], radius: 50 });
+        setLocations(updatedPlace.data || []);
+      }
     } catch (error) {
       console.log(error)
       toast.error(error?.message ?? 'Lỗi khi đăng nhận xét');
@@ -241,7 +305,7 @@ const Map = () => {
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>
         <button
-          onClick={() => setActiveCategoryId('all')}
+          onClick={() => handleCategoryClick('all')}
           style={{
             padding: '8px 20px', borderRadius: 'var(--rounded-full)', border: '1px solid var(--hairline)',
             background: activeCategoryId === 'all' ? 'var(--ink)' : 'white',
@@ -254,7 +318,7 @@ const Map = () => {
         {categories.map(cat => (
           <button
             key={cat.id}
-            onClick={() => setActiveCategoryId(cat.id)}
+            onClick={() => handleCategoryClick(cat.id)}
             style={{
               padding: '8px 20px', borderRadius: 'var(--rounded-full)', border: '1px solid var(--hairline)',
               background: activeCategoryId === cat.id ? 'var(--ink)' : 'white',
@@ -265,6 +329,20 @@ const Map = () => {
             {cat.name}
           </button>
         ))}
+        <button
+          onClick={() => handleCategoryClick('saved')}
+          style={{
+            padding: '8px 20px', borderRadius: 'var(--rounded-full)', border: '1px solid var(--hairline)',
+            background: activeCategoryId === 'saved' ? 'var(--primary)' : 'white',
+            color: activeCategoryId === 'saved' ? 'white' : 'var(--body)',
+            fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', gap: 6,
+            marginLeft: 'auto'
+          }}
+        >
+          <Bookmark size={14} fill={activeCategoryId === 'saved' ? 'white' : 'none'} color={activeCategoryId === 'saved' ? 'white' : 'var(--primary)'} />
+          Địa điểm đã lưu
+        </button>
       </div>
 
       <div className="map-split-container" style={{ flex: 1, display: 'flex', gap: 24, height: '100%', overflow: 'hidden' }}>
@@ -439,6 +517,7 @@ const Map = () => {
         isOpen={showInfoModal}
         onClose={() => setShowInfoModal(false)}
         location={selectedLocation}
+        reviews={reviews}
       />
 
       <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Xóa địa điểm" width={400}>

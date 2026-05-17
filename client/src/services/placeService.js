@@ -139,6 +139,19 @@ export const checkPlaceBookmark = async (placeId) => {
   }
 };
 
+// Lấy danh sách địa điểm đã lưu
+export const getBookmarkedPlaces = async (params = {}) => {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const response = await apiFetch(`/place/bookmarks/my${query ? `?${query}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch bookmarked places');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching bookmarked places:', error);
+    throw error;
+  }
+};
+
 // Tải lên hình ảnh cho địa điểm
 export const uploadPlaceImages = async (placeId, files) => {
   try {

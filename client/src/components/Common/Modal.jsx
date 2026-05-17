@@ -71,30 +71,32 @@ const Modal = ({ isOpen, onClose, title, children, width = 450, overflow = 'auto
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          marginBottom: 24,
-        }}>
-          {title && <h2 className="heading-lg">{title}</h2>}
-          {showClose && (
-            <button
-              onClick={handleClose}
-              style={{
-                position: title ? 'static' : 'absolute',
-                top: title ? 'auto' : 20,
-                right: title ? 'auto' : 20,
-                background: 'none', border: 'none', cursor: 'pointer',
-                padding: 6, borderRadius: '50%',
-                transition: 'background 0.2s, transform 0.2s',
-                zIndex: 10,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
-            >
-              <X size={24} color="var(--mute)" />
-            </button>
-          )}
-        </div>
+        {(title || showClose) && (
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 24,
+          }}>
+            {title && <h2 className="heading-lg">{title}</h2>}
+            {showClose && (
+              <button
+                onClick={handleClose}
+                style={{
+                  position: title ? 'static' : 'absolute',
+                  top: title ? 'auto' : 20,
+                  right: title ? 'auto' : 20,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: 6, borderRadius: '50%',
+                  transition: 'background 0.2s, transform 0.2s',
+                  zIndex: 10,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-card)'; e.currentTarget.style.transform = 'rotate(90deg)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'rotate(0deg)'; }}
+              >
+                <X size={24} color="var(--mute)" />
+              </button>
+            )}
+          </div>
+        )}
 
         {children}
       </div>

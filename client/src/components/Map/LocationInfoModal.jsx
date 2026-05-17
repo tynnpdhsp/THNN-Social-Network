@@ -1,9 +1,9 @@
 import React from 'react';
 import { MapPin, Navigation, Star, X, Map, Layers } from 'lucide-react';
 import Modal from '../Common/Modal';
-import { resolveImageUrl } from '../../config/api';
+import { resolveImageUrl, getDefaultAvatar } from '../../config/api';
 
-const LocationInfoModal = ({ isOpen, onClose, location }) => {
+const LocationInfoModal = ({ isOpen, onClose, location, reviews }) => {
   if (!location) return null;
 
   return (
@@ -60,6 +60,41 @@ const LocationInfoModal = ({ isOpen, onClose, location }) => {
               <MapPin size={20} color="var(--primary)" />
             </div>
             <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>{location.address || 'Chưa có địa chỉ cụ thể'}</p>
+          </div>
+        </div>
+
+        {/* Reviews */}
+        <div style={{ padding: '0 8px', marginBottom: 8 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
+            Nhận xét từ cộng đồng
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 200, overflowY: 'auto', paddingRight: 4 }}>
+            {reviews && reviews.length > 0 ? (
+              reviews.map((rev) => (
+                <div key={rev.id} style={{ display: 'flex', gap: 12, paddingBottom: 12, borderBottom: '1px solid var(--hairline)' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                    <img 
+                      src={resolveImageUrl(rev.user_info?.avatar_url) || getDefaultAvatar(rev.user_info?.full_name)} 
+                      alt="" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>{rev.user_info?.full_name || 'Người dùng'}</span>
+                      <div style={{ display: 'flex', color: '#ffc107' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={10} fill={i < rev.rating ? '#ffc107' : 'none'} color="#ffc107" />
+                        ))}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--body)', margin: 0, opacity: 0.85 }}>{rev.comment}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p style={{ fontSize: 13, color: 'var(--mute)', textAlign: 'center', margin: '16px 0' }}>Chưa có nhận xét nào cho địa điểm này.</p>
+            )}
           </div>
         </div>
       </div>
